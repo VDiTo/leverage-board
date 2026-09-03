@@ -43,7 +43,7 @@ for (const [conference, members] of Object.entries(CONF)) {
       const base = { P4: 3.5, G6: -8, IND: -4 }[TIER[conference]];
       rating = base + (rnd() - 0.5) * 12;
     }
-    teams.push({ team, conference, rating: +rating.toFixed(2), apRank: ap >= 0 ? ap + 1 : null });
+    teams.push({ team, conference, rating: +rating.toFixed(2), apRank: ap >= 0 ? ap + 1 : null, cfpRank: null });
   }
 }
 
@@ -101,7 +101,8 @@ const data = {
   updatedAt: new Date().toISOString(),
   currentWeek: 1,
   source: "placeholder",
-  config: { hfa: 2.2, sdMargin: 16.5, ratingWeight: 1.0, resumeWeight: 1.0, atLargeSlots: 7 },
+  polls: { ap: { name: "AP Top 25 (preseason)", week: 0 }, cfp: null },
+  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, atLargeSlots: 7 },
   conferenceTiers: TIER,
   teams,
   games: games.sort((a, b) => a.week - b.week),

@@ -24,9 +24,23 @@ bucketed by outcome, so `P(in field | home wins)` and `P(in field | away wins)`
 fall out of a single run. The difference is the leverage, and its sign tells you
 who to pull for.
 
+Because both of those are estimates from a finite number of simulated seasons,
+each one carries sampling noise. A 25-point favourite loses in maybe 70 of
+15,000 seasons, and the target team's odds inside those 70 are basically a coin
+flip. The page therefore only reports a game as having an effect when the gap
+is at least two standard errors wide; everything else is listed as "no clear
+effect" rather than shown with a made-up number.
+
+Win probabilities come from the posted point spread when a sportsbook has
+priced the game (`P(home) = Φ(-spread / 13.5)`), and from the rating gap plus
+home advantage otherwise. Lines usually exist only a week or so out, so most of
+the season runs on ratings until the data refreshes.
+
 Ranking is a stand-in for the committee: team rating plus a résumé term that
 rewards beating good teams and punishes losing to bad ones. Tune
-`ratingWeight` / `resumeWeight` in `data.json` if it feels off.
+`ratingWeight` / `resumeWeight` in `data.json` if it feels off. The AP Top 25
+and, once released, the CFP committee rankings are pulled each week and shown
+side by side; the committee ranking drives the "#n" badges when it exists.
 
 ## Setup
 
@@ -39,4 +53,6 @@ rewards beating good teams and punishes losing to bad ones. Tune
 `scripts/gen-sample.mjs` writes placeholder data so the page renders before you
 have a key. Its schedules are synthetic — do not read anything into them.
 
-The workflow in `.github/workflows/` refreshes `data.json` every Wednesday.
+The workflow in `.github/workflows/` refreshes `data.json` every Wednesday
+(rankings, results, and betting lines). Trigger it by hand from the Actions tab
+whenever you want fresher numbers.
