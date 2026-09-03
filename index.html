@@ -107,7 +107,10 @@
   .chip small{color:var(--muted);font-weight:500;font-size:12px}
   .chip.want{border-color:var(--for)}
   .chip.mine{border-color:var(--gold)}
-  .g-top .lev small{display:block;text-align:right;font-weight:500;color:var(--muted);font-size:11.5px}
+  .g-top .lev{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+  .pill{display:inline-block;border-radius:6px;padding:1px 8px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;min-width:38px;text-align:center}
+  .pill.dim{color:var(--muted);font-weight:500}
+  .g-top .lev small{font-weight:500;color:var(--muted);font-size:11.5px}
   .tn{cursor:pointer;text-decoration:underline dotted color-mix(in srgb, var(--muted) 60%, transparent);text-underline-offset:3px}
   .tn:hover{text-decoration-color:var(--gold)}
   /* team popup */
@@ -558,6 +561,10 @@ function finish(acc,N,ti){
       // a 97/3 game keeps about 12% of it, because the outcome you want almost never happens.
       lev: Math.abs(swing)*100 * 4*p*(1-p)});
   }
+  // Normalise: 100 = the biggest remaining game that doesn't involve the target. Own games are capped at 100.
+  const ext=games.filter(g=>g.clear&&!g.involvesMe);
+  const levMax=Math.max(1e-6,...ext.map(g=>g.lev)), impMax=Math.max(1e-6,...ext.map(g=>Math.abs(g.swing)));
+  games.forEach(g=>{ g.levN=Math.min(100,g.lev/levMax*100); g.impN=Math.min(100,Math.abs(g.swing)/impMax*100); });
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
   const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
@@ -569,7 +576,8 @@ function finish(acc,N,ti){
 // ---------- render ----------
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
-const resultKey = () => `${D.updatedAt}|${T}|${$("#sims").value}|${$("#useLines").checked?1:0}`;
+const RESULT_VERSION = 2; // bump when the result shape changes so stale saved results are recomputed
+const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|${T}|${$("#sims").value}|${$("#useLines").checked?1:0}`;
 function loadResult(){ try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
 function saveResult(r){ try{ localStorage.setItem("lb.result", JSON.stringify({key:resultKey(), at:Date.now(), res:r})); }catch(e){} }
 $("#run").onclick=()=>run(true); $("#team").onchange=()=>run(false); $("#useLines").onchange=()=>run(false); $("#sims").onchange=()=>run(false);
@@ -608,7 +616,7 @@ function openTeam(name){
   const levOf=new Map(); if(RES) RES.games.forEach(x=>levOf.set(x.i,x));
   const rows=games.map(({g,i})=>{
     const L=levOf.get(i);
-    const lev = !L ? "" : L.clear ? `<b class="num" style="color:var(--gold)">${L.lev.toFixed(2)}</b>` : (Math.abs(L.swing)<0.001 ? '<span class="sub">—</span>' : `<span class="sub num">~${L.lev.toFixed(2)}</span>`);
+    const lev = !L ? "" : scorePill(L.lev>0?L.levN:null, L.clear);
     const isHome=g.home===name, opp=isHome?g.away:g.home;
     const p = isHome ? gP[i] : 1-gP[i];
     let res;
@@ -712,6 +720,10 @@ function renderBracket(r){
       : `<b>${T}</b> is not in the projected field (${Math.round(mine.pIn*100)}% to make it${mine.pIn>0?`, average seed ${mine.avgSeed.toFixed(1)} when in`:""}).`}</div>`;
 }
 
+// 0-100 score -> gold pill whose intensity follows the score
+const scorePill = (v, ok=true) => ok
+  ? `<span class="pill" style="background:color-mix(in srgb, var(--gold) ${Math.round(8+Math.pow(Math.max(0,Math.min(100,v))/100,0.7)*82)}%, transparent)">${Math.round(v)}</span>`
+  : `<span class="pill dim">${v==null?"—":"~"+Math.round(v)}</span>`;
 const ramp = (v,color,max=1) => `background:color-mix(in srgb, ${color} ${Math.round(Math.min(1,v/max)*85)}%, transparent)`;
 
 function renderBlockers(r){
@@ -804,7 +816,7 @@ function card(g, showWeek){
   // the team you're pulling for is boxed; each team carries its win chance
   const chip=(team,win)=>{ const boxed = g.involvesMe ? team===T : (g.clear && team===want);
     return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <small class="num">(${fmtWin(win)}%)</small></span>`; };
-  const impactNote = g.clear ? `impact ${impact<0.95?impact.toFixed(2):impact.toFixed(1)}` : (Math.abs(g.swing)<0.001 ? "no measurable effect" : `impact ${impact.toFixed(2)} ± ${(2*g.se*100).toFixed(2)}, too close to call`);
+  const noise = Math.abs(g.swing)<0.001 ? "no measurable effect" : `too close to call (±${(2*g.se*100).toFixed(2)} pts)`;
   // the selected team's own game: tint the card by its chance of winning, same ramp as the board
   let own="";
   if(g.involvesMe){
@@ -812,7 +824,7 @@ function card(g, showWeek){
     own=` own" style="background:color-mix(in srgb, ${up?"var(--for)":"var(--against)"} ${Math.round(12+k*50)}%, transparent)`;
   }
   return `<div class="g${own}${dev?" dev":""}">
-    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev">Leverage <b class="num" style="${g.clear?"":"color:var(--muted)"}">${g.lev>0?(g.clear?"":"~")+g.lev.toFixed(2):"—"}</b><small class="num">${impactNote}</small></span></div>
+    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.clear)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.clear)}</small>${g.clear?"":`<small>${noise}</small>`}</span></div>
     <div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>
     <div class="g-line">${line}</div>${dev}
   </div>`;
@@ -824,7 +836,7 @@ function renderSlate(r){
   const ws=$("#slateWeek"); ws.innerHTML=weeks.map(w=>`<option value="${w}" ${w===UI.slateWeek?"selected":""}>Week ${w}</option>`).join("");
   document.querySelectorAll("#slateSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.slateSort)));
   $("#slateTitle").textContent=`Week ${UI.slateWeek} slate`;
-  $("#slateExplain").innerHTML = `<p><strong>Leverage score</strong> = impact × how uncertain the game is. Impact is the change in ${T}'s playoff odds between the two outcomes. A coin flip keeps its full impact; a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
+  $("#slateExplain").innerHTML = `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100 against the biggest remaining game that doesn't involve ${T}; your own games are capped at 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
   let list=r.games.filter(g=>g.week===UI.slateWeek);
   if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
   const byTime=(a,b)=>(a.tbd-b.tbd)||((a.start?Date.parse(a.start):9e15)-(b.start?Date.parse(b.start):9e15))||(b.lev-a.lev);
@@ -837,7 +849,7 @@ function renderSlate(r){
 
 function renderSeason(r){
   document.querySelectorAll("#seasonSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.seasonSort)));
-  $("#seasonExplain").innerHTML = `<p>Every remaining game <strong>not involving ${T}</strong>, ranked by how much it matters to ${T}. Your own games are left out because they obviously dwarf everything else; they're on the Top 25 board and the weekly slate. <strong>Impact</strong> is the raw swing in playoff odds between the two outcomes; <strong>leverage score</strong> discounts that by how unlikely the swing is to happen.</p>`;
+  $("#seasonExplain").innerHTML = `<p>Every remaining game <strong>not involving ${T}</strong>, ranked by how much it matters to ${T}. Your own games are left out because they obviously dwarf everything else; they're on the Top 25 board and the weekly slate. <strong>Impact</strong> is the swing in playoff odds between the two outcomes; <strong>leverage</strong> discounts that by how unlikely the swing is to happen. Both are scaled 0–100 against the biggest of these games, and darker gold means a higher score.</p>`;
   const list=r.games.filter(g=>g.clear&&!g.involvesMe).sort(UI.seasonSort==="impact" ? (a,b)=>Math.abs(b.swing)-Math.abs(a.swing) : (a,b)=>b.lev-a.lev).slice(0,40);
   const quiet=r.games.filter(g=>!g.clear&&!g.involvesMe).length;
   $("#season").innerHTML = list.map(g=>card(g,true)).join("") + (quiet?`<details class="quiet"><summary>${quiet} more games with no measurable effect on ${T}</summary><div class="sub" style="margin-top:6px">They move the odds by less than a tenth of a point either way.</div></details>`:"");
