@@ -96,6 +96,8 @@
   .cell small{display:block;color:var(--muted);font-size:11px}
   .cell.hot small{color:#e9eef5;opacity:.85}
   .cell.w small{color:var(--for)} .cell.l small{color:var(--against)}
+  .cell.h2h{border:1.5px solid var(--gold);color:var(--gold);background:transparent}
+  .cell.h2h small{color:var(--gold);opacity:.8}
   tr.me td.k, td.me{color:var(--gold)}
   .ramp{display:block;border-radius:5px;padding:3px 7px;text-align:right;font-weight:600}
   .legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:0 0 10px;font-size:12.5px;color:var(--muted)}
@@ -153,7 +155,7 @@
   <section class="tab" id="tab-board" hidden>
     <h2>Top 25 schedule board</h2>
     <div class="explain" id="rankExplain"></div>
-    <div class="legend"><span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span>Darker = matters more · "@" = on the road · % = their chance of winning</span></div>
+    <div class="legend"><span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Darker = matters more · "@" = on the road · % = their chance of winning</span></div>
     <div class="scroll"><table id="rankings"></table></div>
   </section>
 
@@ -536,9 +538,9 @@ function renderBoard(r){
   const contenders=new Set(D.teams.filter(t=>t.apRank||t.cfpRank).map(t=>t.team));
   r.teamStats.filter(t=>t.team!==T).sort((a,b)=>b.ahead-a.ahead).slice(0,20).forEach(t=>contenders.add(t.team));
   contenders.add(T);
-  const rows=[...contenders].map(n=>D.teams[idx.get(n)])
+  const rows=[T, ...[...contenders].filter(n=>n!==T).map(n=>D.teams[idx.get(n)])
     .sort((a,b)=>(useCfp()?(a.cfpRank||99)-(b.cfpRank||99):0) || (a.apRank||99)-(b.apRank||99) || (stat.get(b.team).ahead)-(stat.get(a.team).ahead))
-    .map(t=>t.team);
+    .map(t=>t.team)];
 
   // shading scale: the biggest game NOT involving the target gets full colour; the target's own games are always full
   const lev=new Map(); r.games.forEach(g=>lev.set(g.i, g.clear?g.swing:0));
@@ -563,13 +565,15 @@ function renderBoard(r){
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
       return `<tr class="${t===T?"me":""}"><td class="k">${short(t)}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r num">${st?`${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}`:""}</td>`+weeks.map(w=>{
         const c=m.get(w); if(!c) return `<td><span class="cell"><small>bye</small></span></td>`;
-        let a = c.mine ? 1 : Math.min(1, Math.abs(c.sw)/scale);
-        if(!c.mine && Math.abs(c.sw)<0.001) a=0;
+        const sub = c.result ? c.result.text : `${Math.round(c.pWin*100)}%`;
+        const res = c.result ? (c.result.won?" w":" l") : "";
+        // head-to-head with the selected team: no ramp, just marked. You already know you want to win it.
+        if(c.mine) return `<td><span class="cell h2h${res}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small></span></td>`;
+        let a = Math.min(1, Math.abs(c.sw)/scale);
+        if(Math.abs(c.sw)<0.001) a=0;
         const mix = a===0 ? 0 : Math.round(35+a*55);
         const bg = a===0 ? "transparent" : `color-mix(in srgb, ${c.sw>0?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
-        const sub = c.result ? c.result.text : `${Math.round(c.pWin*100)}%`;
-        const cls = (c.result ? (c.result.won?"w":"l") : "") + (mix>=60?" hot":"");
-        return `<td><span class="cell ${cls}" style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small></span></td>`;
+        return `<td><span class="cell${res}${mix>=60?" hot":""}" style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small></span></td>`;
       }).join("")+`</tr>`;
     }).join("");
 }
@@ -613,9 +617,9 @@ function renderSlate(r){
 
 function renderSeason(r){
   document.querySelectorAll("#seasonSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.seasonSort)));
-  $("#seasonExplain").innerHTML = `<p>Every remaining game, ranked by how much it matters to ${T}. <strong>Impact</strong> is the raw swing in playoff odds between the two outcomes; <strong>leverage score</strong> discounts that by how unlikely the swing is to happen.</p>`;
-  const list=r.games.filter(g=>g.clear).sort(UI.seasonSort==="impact" ? (a,b)=>Math.abs(b.swing)-Math.abs(a.swing) : (a,b)=>b.lev-a.lev).slice(0,40);
-  const quiet=r.games.filter(g=>!g.clear).length;
+  $("#seasonExplain").innerHTML = `<p>Every remaining game <strong>not involving ${T}</strong>, ranked by how much it matters to ${T}. Your own games are left out because they obviously dwarf everything else; they're on the Top 25 board and the weekly slate. <strong>Impact</strong> is the raw swing in playoff odds between the two outcomes; <strong>leverage score</strong> discounts that by how unlikely the swing is to happen.</p>`;
+  const list=r.games.filter(g=>g.clear&&!g.involvesMe).sort(UI.seasonSort==="impact" ? (a,b)=>Math.abs(b.swing)-Math.abs(a.swing) : (a,b)=>b.lev-a.lev).slice(0,40);
+  const quiet=r.games.filter(g=>!g.clear&&!g.involvesMe).length;
   $("#season").innerHTML = list.map(g=>card(g,true)).join("") + (quiet?`<details class="quiet"><summary>${quiet} more games with no measurable effect on ${T}</summary><div class="sub" style="margin-top:6px">They move the odds by less than a tenth of a point either way.</div></details>`:"");
 }
 </script>
