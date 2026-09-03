@@ -62,16 +62,18 @@ const teams = fbs.map((t) => ({
   apRank: polls.ap?.ranks.get(t.school) ?? null,
   cfpRank: polls.cfp?.ranks.get(t.school) ?? null,
 }));
-const known = new Set(teams.map((t) => t.team));
+const fbsSet = new Set(teams.map((t) => t.team));
+const known = new Set(fbsSet);
 
 // FCS opponents: keep the game (it counts on the FBS team's record) by adding the opponent as a placeholder team.
+// Only FBS-vs-FCS games qualify; an FCS team's games against other FCS teams are never pulled in.
 for (const g of gamesRaw) {
   const home = pick(g, "home_team", "homeTeam"), away = pick(g, "away_team", "awayTeam");
   if (!home || !away) continue;
   const hc = String(pick(g, "home_classification", "homeClassification") || "").toLowerCase();
   const ac = String(pick(g, "away_classification", "awayClassification") || "").toLowerCase();
   for (const [name, cls, other] of [[home, hc, away], [away, ac, home]]) {
-    if (known.has(name) || !known.has(other)) continue;
+    if (known.has(name) || !fbsSet.has(other)) continue;
     if (cls && cls !== "fcs") continue;                 // skip anything that isn't FBS vs FCS
     teams.push({ team: name, conference: "FCS", rating: FCS_RATING, apRank: null, cfpRank: null, fcs: true });
     known.add(name);
@@ -132,7 +134,7 @@ const games = gamesRaw
     start: pick(g, "start_date", "startDate") ?? null,
     tbd: !!pick(g, "start_time_tbd", "startTimeTBD"),
   }))
-  .filter((g) => known.has(g.home) && known.has(g.away))
+  .filter((g) => known.has(g.home) && known.has(g.away) && (fbsSet.has(g.home) || fbsSet.has(g.away)))
   .filter((g) => !/championship/i.test(g.notes))   // model simulates title games itself
   .map((g) => {
     const line = lineByGame.get(g.id) || {};
