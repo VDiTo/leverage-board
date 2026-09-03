@@ -47,6 +47,24 @@
   select{max-width:100%}
   button{cursor:pointer;background:var(--gold);color:#10233a;border-color:var(--gold);font-weight:650}
   button:disabled{opacity:.5;cursor:default}
+  button.ghost{background:transparent;color:var(--gold);border-color:var(--gold);font-weight:600}
+  /* print fallback: just the board and its explanation, on a light landscape page */
+  @media print{
+    @page{size:landscape;margin:0.3in}
+    html,body{background:#fff;color:#10233a;font-size:8pt}
+    header .bar,header .prog,#cacheNote,nav.tabs,.foot,.modal,#tab-overview,#tab-slate,#tab-season,.info{display:none!important}
+    #tab-board{display:block!important}
+    #tab-board .explain{display:block!important;background:#fff;border:0;padding:0;color:#3a4a60;max-width:none}
+    #tab-board .scroll{overflow:visible;margin:0;padding:0;width:auto}
+    h1,h2{color:#10233a} .sub{color:#5a6b80}
+    th{position:static;background:#fff;color:#5a6b80} td{border-bottom-color:#e6eaf0}
+    td.k{position:static;background:#fff;color:#10233a;box-shadow:none} tr.me td.k{color:#8a6f2e}
+    .cell{color:#10233a;font-size:6.5pt;min-width:0;padding:1px 3px} .cell small{color:#4a5a70;font-size:5.6pt} .cell small.tv{display:none}
+    .cell.h2h{color:#8a6f2e;border-color:#c9a44c} .cell.h2h small{color:#8a6f2e}
+    .cell.hot small{color:#4a5a70}
+    .legend{color:#3a4a60}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
   select:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
   label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
   .prog{height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;margin-top:10px}
@@ -207,6 +225,7 @@
     </select>
     <label class="chk"><input type="checkbox" id="useLines"> Use betting lines instead of SP+</label>
     <button id="run">Run simulation</button>
+    <button id="pdf" class="ghost" title="One-page board with the leverage explanation">Download PDF</button>
   </div>
   <div class="prog"><i id="bar"></i></div>
   <div class="sub" id="cacheNote" hidden></div>
@@ -760,6 +779,16 @@ $("#tabs").addEventListener("click",e=>{
   showTab(b.dataset.tab);
   window.scrollTo({top:0});
 });
+// Download PDF: the daily pre-built page when it matches the selected team, otherwise print this board
+$("#pdf").onclick=()=>{
+  const pdfTeam = (D && D.meta && D.meta.pdfTeam) || "Notre Dame";
+  if(pdfTeam && pdfTeam===T){
+    const a=document.createElement("a"); a.href="Leverage-Board.pdf?v="+encodeURIComponent(D.updatedAt); a.download=`Leverage-Board-${T.replace(/s+/g,"-")}.pdf`; document.body.appendChild(a); a.click(); a.remove();
+  } else {
+    showTab("board"); $("#rankExplain").classList.add("open");
+    setTimeout(()=>window.print(), 50);
+  }
+};
 $("#slateSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.slateSort=b.dataset.v; renderSlate(RES); });
 $("#seasonSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.seasonSort=b.dataset.v; renderSeason(RES); });
 $("#slateRanked").onchange=()=>{ UI.slateRanked=$("#slateRanked").checked; renderSlate(RES); };

@@ -16,9 +16,17 @@ jobs:
         env:
           CFBD_KEY: ${{ secrets.CFBD_KEY }}
           SEASON: "2026"
+          PDF_TEAM: ${{ vars.PDF_TEAM || 'Notre Dame' }}
+      - name: Build the one-page PDF
+        env:
+          TEAM: ${{ vars.PDF_TEAM || 'Notre Dame' }}
+        run: |
+          node scripts/make-pdf.mjs board.html
+          google-chrome --headless=new --no-sandbox --disable-gpu --no-pdf-header-footer --print-to-pdf=Leverage-Board.pdf "file://$PWD/board.html"
+          rm -f board.html
       - run: |
           git config user.name "leverage-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add data.json
+          git add data.json Leverage-Board.pdf
           git diff --staged --quiet || git commit -m "data: daily refresh"
           git push
