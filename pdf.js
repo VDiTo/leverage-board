@@ -73,11 +73,12 @@
     const W=792, H=612, M=22; const {stat,rows,weeks,byTeam,byWeek,maxPIn,unrankedStart}=boardData(r);
     const field = !T;
     // header
+    const title="Top 25 Board", sub=T?` for ${T} Fans`:" for the Playoff Field";
     doc.setFont("helvetica","bold"); doc.setFontSize(17); doc.setTextColor(...NAVY);
-    doc.text("Leverage Board", M, M+14);
-    doc.setProperties({title:clean(`Leverage Board for ${T||"the Playoff Field"}`)});
-    const tw=doc.getTextWidth("Leverage Board");
-    doc.setTextColor(...MUTED); doc.text(clean(` | ${T||"The playoff field"}`), M+tw+2, M+14);
+    doc.text(title, M, M+14);
+    doc.setProperties({title:clean(title+sub)});
+    const tw=doc.getTextWidth(title);
+    doc.setTextColor(...MUTED); doc.text(clean(sub), M+tw, M+14);
     const me = T ? stat.get(T) : null;
     const fbs=r.teamStats.filter(t=>!t.fcs);
     const meta = me ? `${Math.round(r.pIn*100)}% to make the 12-team field | proj. ${me.wins.toFixed(1)}-${(me.games-me.wins).toFixed(1)}`
