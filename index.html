@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Leverage Board</title>
-<meta name="theme-color" content="#f3f5f8">
+<meta name="theme-color" content="#0c2340">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Leverage">
@@ -14,9 +14,9 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <style>
   :root{
-    --field:#ffffff; --panel:#f3f5f8; --panel2:#e7ebf0; --line:#d3d9e0;
-    --ink:#10233a; --muted:#5a6b80; --gold:#5f6f82;
-    --for:#3fa96b; --against:#c65442; --flat:#b9c3ce;
+    --field:#ffffff; --panel:#f2f5f9; --panel2:#e4eaf2; --line:#c9d3df;
+    --ink:#0c2340; --muted:#4f6079; --gold:#0c2340;
+    --for:#3fa96b; --against:#c65442; --flat:#b4c0cf;
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--field);color:var(--ink);
@@ -181,7 +181,7 @@
   body:not(.light) #tab-board{--field:#13161b;--panel:#1a1e24;--panel2:#242a32;--line:#2e353e;--muted:#9aa4ae}
   @media (min-width:1100px){ #tab-board{margin:10px calc(50% - 50vw) 0;width:100vw;border-radius:0;padding:6px 16px 16px} }
   /* light (no-team) theme: the board goes light too, and shaded cells use dark text */
-  body.light #tab-board{--field:#f7f8fa;--panel:#eef1f5;--panel2:#e3e8ee;--line:#d3d9e0;--muted:#5a6b80}
+  body.light #tab-board{--field:#f7f9fc;--panel:#eef2f7;--panel2:#e0e7f0;--line:#c9d3df;--muted:#4f6079}
   body.light .cell.hot small{color:#10233a;opacity:.8}
   body.light .ramp{text-shadow:none} body.light .pill{text-shadow:none}
   body.light .modal{background:rgba(16,35,58,.45)}
@@ -380,7 +380,7 @@ const css = ([r,g,b]) => `rgb(${r},${g},${b})`;
 const BASE_FIELD=[8,24,43];
 function applyTheme(team){
   const root=document.documentElement.style;
-  const clear=()=>{ ["--gold","--field","--panel","--panel2","--line","--muted","--ink","--flat"].forEach(k=>root.removeProperty(k)); document.body.classList.add("light"); document.querySelector('meta[name="theme-color"]').content="#f3f5f8"; };
+  const clear=()=>{ ["--gold","--field","--panel","--panel2","--line","--muted","--ink","--flat"].forEach(k=>root.removeProperty(k)); document.body.classList.add("light"); document.querySelector('meta[name="theme-color"]').content="#0c2340"; };
   const tm=team && D ? D.teams[idx.get(team)] : null;
   const on=$("#teamColors").checked;
   const setAll=(field,accent)=>{
@@ -1083,9 +1083,9 @@ function renderBracket(r){
 }
 
 // 0-100 score -> gold pill whose intensity follows the score
-const scorePill = (v, ok=true) => ok
-  ? `<span class="pill" style="background:color-mix(in srgb, var(--gold) ${Math.round(8+Math.pow(Math.max(0,Math.min(100,v))/100,0.7)*82)}%, transparent)">${Math.round(v)}</span>`
-  : `<span class="pill dim">${v==null?"—":"~"+Math.round(v)}</span>`;
+const scorePill = (v, ok=true) => { const mix=Math.round(8+Math.pow(Math.max(0,Math.min(100,v||0))/100,0.7)*82); return ok
+  ? `<span class="pill" style="background:color-mix(in srgb, var(--gold) ${mix}%, transparent);${mix>=45?"color:#fff":""}">${Math.round(v)}</span>`
+  : `<span class="pill dim">${v==null?"—":"~"+Math.round(v)}</span>`; };
 // percentage ramp with the same intensity curve as the score pills
 const ramp = (v,color,max=1) => `background:color-mix(in srgb, ${color} ${Math.round(8+Math.pow(Math.max(0,Math.min(1,v/max)),0.7)*82)}%, transparent)`;
 
