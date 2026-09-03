@@ -61,8 +61,8 @@ const cell = (t, c) => {
   const sub = c.result ? c.result.text : `${Math.round(c.pWin * 100)}%`;
   const name = (c.isHome ? "" : "@") + cellName(c.opp);
   if (t === TEAM) {
-    const p = c.pWin, up = p >= 0.5, k = Math.min(1, Math.abs(p - 0.5) / 0.5), mix = Math.round(15 + k * 75);
-    const bg = c.result ? "transparent" : `color-mix(in srgb, ${up ? "#3fa96b" : "#c65442"} ${mix}%, white)`;
+    const a = Math.min(1, Math.abs(c.sw) / 100), mix = c.result || a < 0.005 ? 0 : mixCurve(a);
+    const bg = mix ? `color-mix(in srgb, #3fa96b ${mix}%, white)` : "transparent";
     return `<td><div class="cell own" style="background:${bg}">${esc(name)}<small>${sub}</small></div></td>`;
   }
   if (c.mine) return `<td><div class="cell h2h">${esc(name)}<small>${sub}</small></div></td>`;
@@ -218,7 +218,7 @@ ${rows.map(t => {
     <span><i style="background:#c65442"></i>You want this team to lose</span>
     <span><i style="border-color:#c9a44c"></i>Head-to-head with ${esc(TEAM)}</span>
     <span>"@" = on the road · % = their chance of winning (SP+)</span>
-    <span>${esc(TEAM)}'s own row is shaded by its chance of winning each game; the Playoff column by playoff chance.</span>
+    <span>${esc(TEAM)}'s own row is shaded by each game's leverage on its own schedule; the Playoff column by playoff chance.</span>
   </div>
   <h3>What the shading means</h3>
   <p>Darker means the game matters more to ${esc(TEAM)}: it weighs how much the result would move ${esc(short(TEAM))}'s playoff odds together with how likely that swing is, so a coin flip between two contenders shows up stronger than a near-certain blowout. A game can matter because the loser drops behind you in the rankings, because a conference title and its automatic bid change hands, or because a team on your schedule ends up with a better or worse record.</p>
