@@ -20,9 +20,19 @@
   const clean=s=>String(s??"").replace(/–/g,"-").replace(/—/g,"-").replace(/·/g,"|").replace(/≥/g,">=").replace(/[’']/g,"'");
   const isMobile=()=>/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (matchMedia("(pointer:coarse)").matches && innerWidth<900);
 
-  function deliver(doc, name){
-    if(isMobile()){ const url=doc.output("bloburl"); window.open(url, "_blank"); }
-    else doc.save(name);
+  async function deliver(doc, name){
+    if(!isMobile()){ doc.save(name); return; }
+    // phones: hand the system share sheet a named file (Messages, Mail, Files all keep the name);
+    // fall back to a named download, then to a plain new tab
+    const blob = doc.output("blob");
+    const file = new File([blob], name, {type:"application/pdf"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file], title:name.replace(/.pdf$/,"").replace(/-/g," ")}); return; }
+      catch(e){ if(e && e.name==="AbortError") return; }
+    }
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=name; a.rel="noopener"; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
   }
   const fmtDate = iso => { if(!iso) return ""; const d=new Date(iso); return isNaN(d)?"":d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); };
   const kick = g => { if(!g.start) return ""; const d=new Date(g.start); if(isNaN(d)) return "";
@@ -256,8 +266,8 @@
     try{
       const jsPDF = await loadJsPDF();
       const slug = (T||"Field").replace(/\s+/g,"-");
-      if(kind==="board"){ deliver(buildBoard(jsPDF, RES), `Leverage-Board-${slug}.pdf`); }
-      else { const wk = UI.slateWeek ?? Math.min(...RES.games.map(g=>g.week)); deliver(buildWeek(jsPDF, RES, wk), `Top-10-Week-${wk}-${slug}.pdf`); }
+      if(kind==="board"){ await deliver(buildBoard(jsPDF, RES), `Top-25-Board-${slug}.pdf`); }
+      else { const wk = UI.slateWeek ?? Math.min(...RES.games.map(g=>g.week)); await deliver(buildWeek(jsPDF, RES, wk), `Top-10-Games-Week-${wk}-${slug}.pdf`); }
     } catch(e){ alert("Could not build the PDF: "+e.message); }
     finally{ btn.disabled=false; btn.textContent=label; }
   }
