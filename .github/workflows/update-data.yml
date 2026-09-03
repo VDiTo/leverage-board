@@ -1,0 +1,24 @@
+name: Refresh season data
+on:
+  schedule:
+    - cron: "0 13 * * 3"   # Wednesdays 13:00 UTC, after Tuesday CFP rankings
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: node scripts/fetch-data.mjs
+        env:
+          CFBD_KEY: ${{ secrets.CFBD_KEY }}
+          SEASON: "2026"
+      - run: |
+          git config user.name "leverage-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data.json
+          git diff --staged --quiet || git commit -m "data: week refresh"
+          git push

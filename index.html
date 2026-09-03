@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leverage Board</title>
+<style>
+  :root{
+    --field:#08182b; --panel:#0e2740; --panel2:#12314f; --line:#1c4166;
+    --ink:#e9eef5; --muted:#8ba6c2; --gold:#c9a44c;
+    --for:#3fa96b; --against:#c65442; --flat:#2b4a6d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--field);color:var(--ink);
+    font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-text-size-adjust:100%}
+  body{padding:0 0 64px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 18px}
+  h1,h2,.serif{font-family:"Iowan Old Style",Georgia,"Times New Roman",serif;font-weight:600}
+  h1{font-size:26px;letter-spacing:-.01em;margin:0}
+  h2{font-size:19px;margin:34px 0 12px;color:var(--ink)}
+  .sub{color:var(--muted);font-size:13px}
+  .num{font-variant-numeric:tabular-nums}
+
+  header{border-bottom:1px solid var(--line);padding:18px 0 16px;background:linear-gradient(180deg,#0b2038,var(--field))}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+  select,button,input{font:inherit;color:var(--ink);background:var(--panel2);
+    border:1px solid var(--line);border-radius:7px;padding:8px 10px}
+  button{cursor:pointer;background:var(--gold);color:#10233a;border-color:var(--gold);font-weight:650}
+  button:disabled{opacity:.5;cursor:default}
+  select:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+  .hero{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap;padding:22px 0 6px}
+  .odds{font-family:"Iowan Old Style",Georgia,serif;font-size:66px;line-height:.9;color:var(--gold)}
+  .odds small{font-size:26px;opacity:.7}
+  .heroLab{max-width:330px;color:var(--muted);font-size:13.5px}
+  .stats{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px}
+  .stat b{display:block;font-size:22px;font-weight:600}
+  .stat span{color:var(--muted);font-size:12.5px}
+
+  .prog{height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;margin-top:12px}
+  .prog i{display:block;height:100%;background:var(--gold);width:0;transition:width .12s}
+
+  .game{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;
+    padding:11px 0;border-bottom:1px solid var(--line)}
+  .matchup{font-size:15px}
+  .matchup em{font-style:normal;color:var(--muted)}
+  .verdict{font-size:12.5px;margin-top:3px}
+  .swing{text-align:right;font-size:15px}
+  .swing span{display:block;font-size:11.5px;color:var(--muted)}
+  .lev{grid-column:1/-1;height:5px;background:var(--panel2);border-radius:3px;position:relative}
+  .lev i{position:absolute;top:0;bottom:0;border-radius:3px}
+
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  th,td{padding:6px 7px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:500;font-size:11.5px;position:sticky;top:0;background:var(--field)}
+  td.k{position:sticky;left:0;background:var(--field);font-weight:600;min-width:112px}
+  .cell{border-radius:5px;padding:4px 6px;display:block}
+  tr.me td.k{color:var(--gold)}
+  .bad{color:var(--against)} .good{color:var(--for)}
+  .foot{margin-top:34px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+  .tabs{display:flex;gap:8px;margin:6px 0 0;flex-wrap:wrap}
+  .tabs button{background:var(--panel2);color:var(--muted);border-color:var(--line);font-weight:500;padding:6px 11px;font-size:13px}
+  .tabs button[aria-pressed=true]{background:var(--gold);color:#10233a;border-color:var(--gold);font-weight:650}
+  @media (max-width:560px){ .odds{font-size:52px} h1{font-size:22px} }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>Leverage Board</h1>
+  <div class="sub" id="stamp">Loading season data…</div>
+  <div class="bar">
+    <label class="sub" for="team">Team of interest</label>
+    <select id="team"></select>
+    <select id="sims">
+      <option value="5000">5,000 seasons</option>
+      <option value="15000" selected>15,000 seasons</option>
+      <option value="40000">40,000 seasons</option>
+    </select>
+    <button id="run">Run simulation</button>
+  </div>
+  <div class="prog"><i id="bar"></i></div>
+</div></header>
+
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <div class="odds num" id="odds">—<small>%</small></div>
+      <div class="sub" id="oddsLab">chance of making the 12-team field</div>
+    </div>
+    <div class="heroLab" id="pathLab"></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><b class="num" id="sRank">—</b><span>median final ranking</span></div>
+    <div class="stat"><b class="num" id="sBlock">—</b><span>average blockers ahead (need ≤6)</span></div>
+    <div class="stat"><b class="num" id="sChamp">—</b><span>chance of an auto-bid</span></div>
+    <div class="stat"><b class="num" id="sWins">—</b><span>projected wins</span></div>
+  </div>
+
+  <h2>Games that move the needle</h2>
+  <div class="tabs" id="weekTabs"></div>
+  <div id="leverage"></div>
+
+  <h2>Who is actually blocking you</h2>
+  <div class="sub" style="margin-bottom:10px">Chance each team finishes ranked ahead of you <em>without</em> an auto-bid — those are the ones eating at-large slots.</div>
+  <div class="scroll"><table id="blockers"></table></div>
+
+  <h2>Season grid</h2>
+  <div class="sub" style="margin-bottom:10px">Every cell is shaded by how much you want that row's team to win that game. Green means pull for them.</div>
+  <div class="scroll"><table id="grid"></table></div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let D=null, T=null, RES=null, viewWeek=null;
+
+const norm = z => { // standard normal CDF
+  const t = 1/(1+0.2316419*Math.abs(z));
+  const d = 0.3989422804014327*Math.exp(-z*z/2);
+  let p = d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));
+  return z>0 ? 1-p : p;
+};
+const pct = x => (x*100).toFixed(1);
+const short = n => ({"Notre Dame":"Notre Dame","Ohio State":"Ohio St","Michigan State":"Mich St","Mississippi State":"Miss St","Washington State":"Wash St","Oklahoma State":"Okla St","Iowa State":"Iowa St","Arizona State":"Ariz St","Kansas State":"K State","Penn State":"Penn St","Florida State":"Fla St","Boise State":"Boise St","North Carolina":"UNC","South Carolina":"S Carolina","Texas A&M":"Texas A&M","Appalachian State":"App State"}[n] || (n.length>11 ? n.slice(0,10)+"…" : n));
+
+// ---------- load ----------
+fetch("data.json").then(r=>r.json()).then(d=>{
+  D = d; build(); 
+  $("#stamp").textContent = `${d.season} season · updated ${new Date(d.updatedAt).toLocaleDateString()}` + (d.source==="placeholder" ? " · PLACEHOLDER DATA" : "");
+  const sel = $("#team");
+  d.teams.slice().sort((a,b)=>(a.apRank||99)-(b.apRank||99) || a.team.localeCompare(b.team))
+    .forEach(t=>{ const o=document.createElement("option"); o.value=o.textContent=t.team; sel.appendChild(o); });
+  sel.value = d.teams.some(t=>t.team==="Notre Dame") ? "Notre Dame" : d.teams[0].team;
+  run();
+}).catch(e=>{ $("#stamp").textContent="Couldn't load data.json — run scripts/fetch-data.mjs first."; });
+
+// ---------- precompute ----------
+let idx, rating, confOf, tierOf, confList, P4=["ACC","Big Ten","Big 12","SEC"];
+let gH,gA,gP,gConf,gDone,gRes,gWeek,nG,nT;
+function build(){
+  nT = D.teams.length;
+  idx = new Map(D.teams.map((t,i)=>[t.team,i]));
+  rating = Float64Array.from(D.teams.map(t=>t.rating));
+  confOf = D.teams.map(t=>t.conference);
+  tierOf = D.conferenceTiers;
+  confList = [...new Set(confOf)].filter(c=>tierOf[c]!=="IND");
+  const g = D.games; nG = g.length;
+  gH=new Int32Array(nG); gA=new Int32Array(nG); gP=new Float64Array(nG);
+  gConf=new Uint8Array(nG); gDone=new Uint8Array(nG); gRes=new Uint8Array(nG); gWeek=new Int32Array(nG);
+  const {hfa,sdMargin}=D.config;
+  g.forEach((x,i)=>{
+    gH[i]=idx.get(x.home); gA[i]=idx.get(x.away); gWeek[i]=x.week;
+    gConf[i]=x.conferenceGame?1:0; gDone[i]=x.completed?1:0; gRes[i]=x.homeWin?1:0;
+    gP[i]=norm(((rating[gH[i]]-rating[gA[i]])+(x.neutral?0:hfa))/sdMargin);
+  });
+}
+
+// ---------- simulation ----------
+function simulate(target, N, onProgress, done){
+  const ti = idx.get(target);
+  const W=new Int32Array(nT), L=new Int32Array(nT), CW=new Int32Array(nT), CL=new Int32Array(nT);
+  const resume=new Float64Array(nT), score=new Float64Array(nT), aq=new Uint8Array(nT);
+  const res=new Uint8Array(nG);
+  const {ratingWeight,resumeWeight,atLargeSlots,sdMargin}=D.config;
+
+  const acc={ in:0, champ:0, rankSum:0, blockSum:0, winSum:0, ranks:new Int32Array(nT+2),
+    blockers:new Float64Array(nT), aheadN:new Float64Array(nT),
+    gN:[new Float64Array(nG),new Float64Array(nG)], gIn:[new Float64Array(nG),new Float64Array(nG)] };
+
+  let x=2463534242>>>0; // xorshift32
+  const rnd=()=>{ x^=x<<13; x>>>=0; x^=x>>17; x^=x<<5; x>>>=0; return x/4294967296; };
+
+  let n=0;
+  function chunk(){
+    const end=Math.min(N,n+400);
+    for(;n<end;n++){
+      W.fill(0);L.fill(0);CW.fill(0);CL.fill(0);resume.fill(0);aq.fill(0);
+      for(let i=0;i<nG;i++){
+        const h=gH[i],a=gA[i];
+        const hw = gDone[i] ? gRes[i] : (rnd()<gP[i]?1:0);
+        res[i]=hw;
+        const w=hw?h:a, l=hw?a:h;
+        W[w]++; L[l]++;
+        if(gConf[i]){CW[w]++;CL[l]++;}
+        resume[w] += Math.max(0, rating[l]+12)/10;
+        resume[l] -= Math.max(0, 26-rating[w])/10;
+      }
+      for(let i=0;i<nT;i++) score[i]=rating[i]*ratingWeight + resume[i]*resumeWeight;
+
+      // conference champions
+      let bestG6=-1,bestG6s=-1e9;
+      for(const c of confList){
+        let a=-1,b=-1,as=-1e9,bs=-1e9;
+        for(let i=0;i<nT;i++){
+          if(confOf[i]!==c) continue;
+          const gp=CW[i]+CL[i], v=(gp?CW[i]/gp:0)*100 + rating[i]/50;
+          if(v>as){b=a;bs=as;a=i;as=v;} else if(v>bs){b=i;bs=v;}
+        }
+        if(a<0) continue;
+        let champ=a;
+        if(b>=0){ const p=norm((rating[a]-rating[b])/sdMargin); champ = rnd()<p?a:b; }
+        if(P4.includes(c)) aq[champ]=1;
+        else if(score[champ]>bestG6s){bestG6=champ;bestG6s=score[champ];}
+      }
+      if(bestG6>=0) aq[bestG6]=1;
+
+      // where does the target land
+      const ts=score[ti];
+      let ahead=0, blockers=0;
+      for(let i=0;i<nT;i++){
+        if(i===ti) continue;
+        if(score[i]>ts){ ahead++; acc.aheadN[i]++; if(!aq[i]){ blockers++; acc.blockers[i]++; } }
+      }
+      const inField = aq[ti]===1 || blockers < atLargeSlots;
+      acc.in+=inField; acc.champ+=aq[ti];
+      acc.rankSum+=ahead+1; acc.blockSum+=blockers; acc.winSum+=W[ti];
+      acc.ranks[Math.min(nT+1,ahead+1)]++;
+      if(inField) for(let i=0;i<nG;i++){ if(!gDone[i]){ acc.gIn[res[i]][i]++; } }
+      for(let i=0;i<nG;i++){ if(!gDone[i]) acc.gN[res[i]][i]++; }
+    }
+    onProgress(n/N);
+    if(n<N) setTimeout(chunk,0); else done(finish(acc,N,ti));
+  }
+  chunk();
+}
+
+function finish(acc,N,ti){
+  const games=[];
+  for(let i=0;i<nG;i++){
+    if(gDone[i]) continue;
+    const nA=acc.gN[0][i], nH=acc.gN[1][i];
+    if(nA<40||nH<40) continue;              // too rare to estimate cleanly
+    const pH=acc.gIn[1][i]/nH, pA=acc.gIn[0][i]/nA;
+    games.push({i,week:gWeek[i],home:D.teams[gH[i]].team,away:D.teams[gA[i]].team,
+      pHomeWin:nH/(nH+nA), swing:pH-pA});
+  }
+  let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
+  const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,
+    block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N})).filter((_,i)=>i!==ti);
+  return { pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
+           avgWins:acc.winSum/N, games, teamStats, N };
+}
+
+// ---------- render ----------
+$("#run").onclick=run; $("#team").onchange=run;
+function run(){
+  T=$("#team").value; const N=+$("#sims").value;
+  $("#run").disabled=true; $("#run").textContent="Simulating…";
+  simulate(T,N,p=>{$("#bar").style.width=(p*100)+"%";},r=>{
+    RES=r; $("#run").disabled=false; $("#run").textContent="Run simulation"; $("#bar").style.width="0";
+    render();
+  });
+}
+
+function render(){
+  const r=RES;
+  $("#odds").innerHTML = pct(r.pIn)+"<small>%</small>";
+  $("#oddsLab").textContent = `chance ${T} makes the 12-team field`;
+  $("#pathLab").innerHTML = D.conferenceTiers[D.teams[idx.get(T)].conference]==="IND"
+    ? `${T} is an independent, so there is no auto-bid path. The only route is finishing among the seven highest-ranked teams that <em>aren't</em> conference champions.`
+    : `Two routes: win the conference for an auto-bid, or land among the seven highest-ranked non-champions.`;
+  $("#sRank").textContent="#"+r.medRank;
+  $("#sBlock").textContent=r.avgBlock.toFixed(1);
+  $("#sChamp").textContent=pct(r.pChamp)+"%";
+  $("#sWins").textContent=r.avgWins.toFixed(1);
+
+  const weeks=[...new Set(r.games.map(g=>g.week))].sort((a,b)=>a-b);
+  if(viewWeek===null||!weeks.includes(viewWeek)) viewWeek=weeks[0];
+  $("#weekTabs").innerHTML="";
+  [["all","Rest of season"],...weeks.map(w=>[w,"Week "+w])].forEach(([v,lab])=>{
+    const b=document.createElement("button"); b.textContent=lab;
+    b.setAttribute("aria-pressed", String(v===viewWeek));
+    b.onclick=()=>{viewWeek=v; render();}; $("#weekTabs").appendChild(b);
+  });
+
+  const list=r.games.filter(g=>viewWeek==="all"||g.week===viewWeek)
+    .sort((a,b)=>Math.abs(b.swing)-Math.abs(a.swing)).slice(0,viewWeek==="all"?25:14);
+  const max=Math.max(0.001,...list.map(g=>Math.abs(g.swing)));
+  $("#leverage").innerHTML = list.length ? list.map(g=>{
+    const rootHome=g.swing>0, side=rootHome?g.home:g.away, other=rootHome?g.away:g.home;
+    const col=Math.abs(g.swing)<0.0015?"var(--flat)":(rootHome?"var(--for)":"var(--against)");
+    const w=Math.abs(g.swing)/max*50;
+    return `<div class="game">
+      <div><div class="matchup">${g.away} <em>at</em> ${g.home}${viewWeek==="all"?` <em>· wk ${g.week}</em>`:""}</div>
+      <div class="verdict" style="color:${col}">${Math.abs(g.swing)<0.0015?"No real effect either way"
+        :`Pull for <strong>${side}</strong> — ${side} winning is worth ${(Math.abs(g.swing)*100).toFixed(1)} pts of ${T}'s odds`}</div></div>
+      <div class="swing num" style="color:${col}">${g.swing>0?"+":""}${(g.swing*100).toFixed(1)}<span>if ${short(g.home)} wins</span></div>
+      <div class="lev"><i style="background:${col};left:${g.swing>0?50:50-w}%;width:${w}%"></i></div>
+    </div>`;}).join("") : `<div class="sub">No remaining games in this week.</div>`;
+
+  const blk=r.teamStats.slice().sort((a,b)=>b.block-a.block).slice(0,25);
+  $("#blockers").innerHTML = `<tr><th>Team</th><th>Conference</th><th>Blocks you</th><th>Finishes ahead</th></tr>`+
+    blk.map(t=>`<tr><td class="k">${t.team}</td><td class="sub">${t.conf}</td>
+      <td class="num bad">${pct(t.block)}%</td><td class="num sub">${pct(t.ahead)}%</td></tr>`).join("");
+
+  // grid
+  const rows=[...r.teamStats].sort((a,b)=>b.ahead-a.ahead).slice(0,24).map(t=>t.team);
+  rows.push(T); rows.sort((a,b)=>{const A=r.teamStats.find(x=>x.team===a),B=r.teamStats.find(x=>x.team===b);
+    return (B?B.ahead:1)-(A?A.ahead:1);});
+  const gweeks=weeks.slice(0,10);
+  const byTeam=new Map();
+  r.games.forEach(g=>{
+    for(const [t,opp,isHome] of [[g.home,g.away,1],[g.away,g.home,0]]){
+      if(!byTeam.has(t)) byTeam.set(t,new Map());
+      // swing is stated for the home team; flip for the away team
+      byTeam.get(t).set(g.week,{opp,isHome,sw:isHome?g.swing:-g.swing});
+    }
+  });
+  $("#grid").innerHTML = `<tr><th>Team</th>${gweeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+
+    rows.map(t=>{
+      const m=byTeam.get(t)||new Map();
+      return `<tr class="${t===T?"me":""}"><td class="k">${short(t)}</td>`+gweeks.map(w=>{
+        const c=m.get(w); if(!c) return `<td></td>`;
+        const a=Math.min(1,Math.abs(c.sw)/0.02);
+        const bg=Math.abs(c.sw)<0.0015?"transparent":`color-mix(in srgb, ${c.sw>0?"var(--for)":"var(--against)"} ${(a*70).toFixed(0)}%, transparent)`;
+        return `<td><span class="cell" style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}</span></td>`;
+      }).join("")+`</tr>`;
+    }).join("");
+
+  $("#foot").innerHTML = `${r.N.toLocaleString()} simulated seasons. Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining. Win probabilities come from rating gaps with home advantage; final ordering is a rating-plus-résumé stand-in for the committee, not the committee itself.`;
+}
+</script>
+</body>
+</html>
