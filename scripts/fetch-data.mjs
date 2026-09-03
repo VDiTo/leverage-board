@@ -23,7 +23,9 @@ const TIER = {
   American: "G6", "American Athletic": "G6", "Conference USA": "G6", "Mid-American": "G6",
   "Mountain West": "G6", "Pac-12": "G6", "Sun Belt": "G6",
   "FBS Independents": "IND",
+  FCS: "FCS",
 };
+const FCS_RATING = -36; // SP+ has no FCS teams; the worst FBS teams sit near -30, a typical FCS visitor a bit below that
 
 const [fbs, gamesRaw, spNow, spPrev, rankings, linesRaw, mediaRaw] = await Promise.all([
   api(`/teams/fbs?year=${YEAR}`),
@@ -61,6 +63,20 @@ const teams = fbs.map((t) => ({
   cfpRank: polls.cfp?.ranks.get(t.school) ?? null,
 }));
 const known = new Set(teams.map((t) => t.team));
+
+// FCS opponents: keep the game (it counts on the FBS team's record) by adding the opponent as a placeholder team.
+for (const g of gamesRaw) {
+  const home = pick(g, "home_team", "homeTeam"), away = pick(g, "away_team", "awayTeam");
+  if (!home || !away) continue;
+  const hc = String(pick(g, "home_classification", "homeClassification") || "").toLowerCase();
+  const ac = String(pick(g, "away_classification", "awayClassification") || "").toLowerCase();
+  for (const [name, cls, other] of [[home, hc, away], [away, ac, home]]) {
+    if (known.has(name) || !known.has(other)) continue;
+    if (cls && cls !== "fcs") continue;                 // skip anything that isn't FBS vs FCS
+    teams.push({ team: name, conference: "FCS", rating: FCS_RATING, apRank: null, cfpRank: null, fcs: true });
+    known.add(name);
+  }
+}
 
 // ---- betting lines, keyed by game id. Prefer a consensus line when one exists.
 const PROVIDER_ORDER = ["consensus", "DraftKings", "ESPN Bet", "Bovada", "Caesars", "FanDuel"];
@@ -159,4 +175,4 @@ writeFileSync(new URL("../data.json", import.meta.url), JSON.stringify({
   games,
 }));
 
-console.log(`${teams.length} teams · ${games.length} games · ${played.length} played · ${withLines} upcoming with lines · ${games.filter((g) => g.tv).length} with TV · week ${currentWeek} · ${pollName} · ${spNow.length ? "SP+ " + YEAR : "SP+ prior year"}`);
+console.log(`${teams.filter((t) => !t.fcs).length} FBS + ${teams.filter((t) => t.fcs).length} FCS teams · ${games.length} games · ${played.length} played · ${withLines} upcoming with lines · ${games.filter((g) => g.tv).length} with TV · week ${currentWeek} · ${pollName} · ${spNow.length ? "SP+ " + YEAR : "SP+ prior year"}`);

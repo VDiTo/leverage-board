@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Leverage Board</title>
+<meta name="theme-color" content="#0e2740">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Leverage">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <style>
   :root{
     --field:#08182b; --panel:#0e2740; --panel2:#12314f; --line:#1c4166;
@@ -228,7 +236,8 @@ const short = n => ({"Notre Dame":"Notre Dame","Ohio State":"Ohio St","Michigan 
 const useCfp = () => !!(D.polls && D.polls.cfp);
 const rankOf = team => { const t=D.teams[idx.get(team)]; if(!t) return null; return useCfp() ? (t.cfpRank||null) : (t.apRank||null); };
 const isRanked = team => { const t=D.teams[idx.get(team)]; return !!(t && (t.apRank||t.cfpRank)); };
-const badge = team => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${team}` : team; };
+const isFcs = team => !!(D.teams[idx.get(team)]||{}).fcs;
+const badge = team => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${team}` : (isFcs(team) ? `${team} <span class="rk" style="color:var(--muted)">FCS</span>` : team); };
 const fmtKick = g => {
   if(!g.start) return "";
   const d=new Date(g.start); if(isNaN(d)) return "";
@@ -247,7 +256,7 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   $("#stamp").textContent = `${d.season} season · updated ${new Date(d.updatedAt).toLocaleDateString()}`
     + (pollBits.length?` · ${pollBits.join(" · ")}`:"") + (d.meta&&d.meta.ratings?` · ${d.meta.ratings}`:"") + (d.source==="placeholder" ? " · PLACEHOLDER DATA" : "");
   const sel = $("#team");
-  d.teams.slice().sort((a,b)=>(rankOf(a.team)||99)-(rankOf(b.team)||99) || a.team.localeCompare(b.team))
+  d.teams.filter(t=>!t.fcs).sort((a,b)=>(rankOf(a.team)||99)-(rankOf(b.team)||99) || a.team.localeCompare(b.team))
     .forEach(t=>{ const o=document.createElement("option"); o.value=t.team; const r=rankOf(t.team); o.textContent=(r?`#${r} `:"")+t.team; sel.appendChild(o); });
   sel.value = d.teams.some(t=>t.team==="Notre Dame") ? "Notre Dame" : d.teams[0].team;
   run();
@@ -263,7 +272,7 @@ function build(){
   rating = Float64Array.from(D.teams.map(t=>t.rating));
   confOf = D.teams.map(t=>t.conference);
   tierOf = D.conferenceTiers;
-  confList = [...new Set(confOf)].filter(c=>tierOf[c]!=="IND");
+  confList = [...new Set(confOf)].filter(c=>tierOf[c]!=="IND" && tierOf[c]!=="FCS");
   confIdx = new Int32Array(nT).fill(-1);
   members = confList.map(()=>[]);
   confList.forEach((c,k)=>{ for(let i=0;i<nT;i++) if(confOf[i]===c){ confIdx[i]=k; members[k].push(i); } });
@@ -494,7 +503,7 @@ function finish(acc,N,ti){
       lev: Math.abs(swing)*100 * 4*p*(1-p)});
   }
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
-  const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,
+  const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
     pIn:acc.fieldN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N}));
   return { pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
@@ -552,7 +561,7 @@ function render(){
 }
 
 function renderBracket(r){
-  const st=r.teamStats;
+  const st=r.teamStats.filter(t=>!t.fcs);
   const byConf=new Map(); st.forEach(t=>{ if(!byConf.has(t.conf)) byConf.set(t.conf,[]); byConf.get(t.conf).push(t); });
   const field=[], taken=new Set();
   const take=(t,tag)=>{ if(!t||taken.has(t.team)) return; taken.add(t.team); field.push({...t,tag}); };
@@ -587,7 +596,7 @@ const ramp = (v,color,max=1) => `background:color-mix(in srgb, ${color} ${Math.r
 function renderBlockers(r){
   $("#blockExplain").innerHTML = `<p>There are seven at-large spots. Only teams that finish ranked ahead of ${T} <strong>without</strong> winning their conference compete for them, because conference champions take auto-bids instead. Those teams are your blockers. Six or fewer blockers and you're in.</p>
     <p><strong>Blocks you</strong> is how often a team ends up in that at-large pile above ${T}. <strong>Finishes ahead</strong> counts every season it ranks above you, auto-bid or not. A team with a big gap between the two usually finishes ahead of you but wins its conference, so it rarely costs you a spot.</p>`;
-  const blk=r.teamStats.filter(t=>t.team!==T).sort((a,b)=>b.block-a.block).slice(0,25);
+  const blk=r.teamStats.filter(t=>t.team!==T&&!t.fcs).sort((a,b)=>b.block-a.block).slice(0,25);
   const maxB=Math.max(0.01,...blk.map(t=>t.block));
   $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Proj. record</th><th class="c">Blocks you</th><th class="c">Finishes ahead</th></tr>`+
     blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${t.team}</td><td class="sub">${t.conf}</td>
@@ -608,7 +617,7 @@ function renderBoard(r){
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
   const stat=new Map(r.teamStats.map(t=>[t.team,t]));
   const contenders=new Set(D.teams.filter(t=>t.apRank||t.cfpRank).map(t=>t.team));
-  r.teamStats.filter(t=>t.team!==T).sort((a,b)=>b.ahead-a.ahead).slice(0,20).forEach(t=>contenders.add(t.team));
+  r.teamStats.filter(t=>t.team!==T&&!t.fcs).sort((a,b)=>b.ahead-a.ahead).slice(0,20).forEach(t=>contenders.add(t.team));
   contenders.add(T);
   const rows=[T, ...[...contenders].filter(n=>n!==T).map(n=>D.teams[idx.get(n)])
     .sort((a,b)=>(useCfp()?(a.cfpRank||99)-(b.cfpRank||99):0) || (a.apRank||99)-(b.apRank||99) || (stat.get(b.team).ahead)-(stat.get(a.team).ahead))
