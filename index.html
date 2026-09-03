@@ -102,6 +102,25 @@
   .rk{color:var(--gold);font-weight:600;font-size:12.5px}
   .g-line{font-size:12.5px;color:var(--muted)}
   .g-line b{color:var(--ink);font-weight:500}
+  .chip{display:inline-block;padding:1px 7px;border-radius:6px;border:1.5px solid transparent;margin:0 -7px}
+  .chip small{color:var(--muted);font-weight:500;font-size:12px}
+  .chip.want{border-color:var(--for)}
+  .chip.mine{border-color:var(--gold)}
+  .g-top .lev small{display:block;text-align:right;font-weight:500;color:var(--muted);font-size:11.5px}
+  .tn{cursor:pointer;text-decoration:underline dotted color-mix(in srgb, var(--muted) 60%, transparent);text-underline-offset:3px}
+  .tn:hover{text-decoration-color:var(--gold)}
+  /* team popup */
+  .modal{position:fixed;inset:0;z-index:20;background:rgba(3,10,20,.7);display:flex;align-items:flex-end;justify-content:center}
+  .modal[hidden]{display:none}
+  .sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px 14px 0 0;width:100%;max-width:720px;max-height:88vh;overflow:auto;padding:14px 16px 24px}
+  @media (min-width:640px){ .modal{align-items:center} .sheet{border-radius:14px;max-height:85vh} }
+  .sheet h2{margin:0 0 2px;font-size:20px}
+  .sheet h3{margin:16px 0 6px}
+  .sheet .close{position:sticky;top:0;float:right;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:50%;width:32px;height:32px;padding:0;font-size:18px;line-height:1}
+  .sheet .kv{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 6px;font-size:13px;color:var(--muted)}
+  .sheet .kv b{color:var(--ink);font-weight:600}
+  .sheet table{font-size:13px}
+  .sheet td.r2{text-align:right}
   .g-odds{display:flex;gap:14px;flex-wrap:wrap;margin-top:7px;font-size:13.5px}
   .g-odds span{color:var(--muted)}
   .g-odds b{font-weight:600}
@@ -224,6 +243,7 @@
 
   <div class="foot" id="foot"></div>
 </div>
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -246,7 +266,8 @@ const useCfp = () => !!(D.polls && D.polls.cfp);
 const rankOf = team => { const t=D.teams[idx.get(team)]; if(!t) return null; return useCfp() ? (t.cfpRank||null) : (t.apRank||null); };
 const isRanked = team => { const t=D.teams[idx.get(team)]; return !!(t && (t.apRank||t.cfpRank)); };
 const isFcs = team => !!(D.teams[idx.get(team)]||{}).fcs;
-const badge = team => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${team}` : (isFcs(team) ? `${team} <span class="rk" style="color:var(--muted)">FCS</span>` : team); };
+const tn = (team, label) => `<span class="tn" data-team="${team.replace(/"/g,"&quot;")}">${label??team}</span>`;
+const badge = team => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${tn(team)}` : (isFcs(team) ? `${tn(team)} <span class="rk" style="color:var(--muted)">FCS</span>` : tn(team)); };
 const fmtKick = g => {
   if(!g.start) return "";
   const d=new Date(g.start); if(isNaN(d)) return "";
@@ -554,6 +575,43 @@ function run(force){
   });
 }
 
+// team popup: full schedule with results, plus SP+ by unit
+document.addEventListener("click",e=>{
+  const t=e.target.closest(".tn"); if(t){ openTeam(t.dataset.team); return; }
+  if(e.target.closest(".close") || e.target.id==="modal") closeTeam();
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeTeam(); });
+function closeTeam(){ $("#modal").hidden=true; document.body.style.overflow=""; }
+function openTeam(name){
+  const tm=D.teams[idx.get(name)]; if(!tm) return;
+  const st=RES ? RES.teamStats.find(x=>x.team===name) : null;
+  const sp=tm.sp;
+  const unitRow=(lab,u)=> u && u.rating!=null ? `<tr><td>${lab}</td><td class="r2 num">${(+u.rating).toFixed(1)}</td><td class="r2 num sub">${u.rank?"#"+u.rank:""}</td></tr>` : "";
+  const spHtml = sp ? `<h3>SP+ by unit${sp.prior?' <span class="sub">(last season, until this year\'s are published)</span>':""}</h3>
+      <table><tr><th></th><th class="c">Rating</th><th class="c">Rank</th></tr>
+      ${unitRow("Overall",{rating:sp.rating,rank:sp.rank})}${unitRow("Offense",sp.offense)}${unitRow("Defense",sp.defense)}${unitRow("Special teams",sp.specialTeams)}</table>`
+    : `<h3>SP+</h3><div class="sub">Overall rating ${tm.rating}. The unit breakdown arrives with the next data refresh.</div>`;
+  const games=D.games.map((g,i)=>({g,i})).filter(x=>x.g.home===name||x.g.away===name).sort((a,b)=>a.g.week-b.g.week);
+  const rows=games.map(({g,i})=>{
+    const isHome=g.home===name, opp=isHome?g.away:g.home;
+    const p = isHome ? gP[i] : 1-gP[i];
+    let res;
+    if(g.completed){ const won=isHome?g.homeWin:!g.homeWin; const mine=isHome?g.homeScore:g.awayScore, theirs=isHome?g.awayScore:g.homeScore;
+      res=`<span class="${won?"good":"bad"}">${won?"W":"L"}${mine!=null?` ${mine}-${theirs}`:""}</span>`; }
+    else res=`<span class="num">${Math.round(p*100)}%</span>`;
+    const when=g.completed?"":fmtKickShort(g);
+    return `<tr><td class="sub num">${g.week}</td><td>${isHome?"":"@"}${badge(opp)}${g.neutral?' <span class="sub">(N)</span>':""}</td><td class="r2">${res}</td><td class="sub">${when}${g.spreadText&&!g.completed?` · ${g.spreadText}`:""}</td></tr>`;
+  }).join("");
+  const rk=[tm.apRank?`AP #${tm.apRank}`:null, tm.cfpRank?`CFP #${tm.cfpRank}`:null].filter(Boolean).join(" · ");
+  $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
+    <h2>${name}</h2>
+    <div class="kv"><span>${tm.conference}</span>${rk?`<span>${rk}</span>`:""}${st?`<span>Proj. <b class="num">${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}</b></span><span>Playoff <b class="num">${Math.round(st.pIn*100)}%</b></span>`:""}</div>
+    ${spHtml}
+    <h3>Schedule</h3>
+    <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Result / win chance</th><th>Kickoff</th></tr>${rows}</table></div>`;
+  $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
+}
+
 // every section description collapses behind an "i" button next to its heading
 document.querySelectorAll(".explain").forEach(el=>{
   const hd=el.previousElementSibling; if(!hd || hd.tagName!=="H2") return;
@@ -625,13 +683,13 @@ function renderBracket(r){
 
   $("#bracketExplain").innerHTML = `<p>The most likely field: each Power Four conference's most probable champion takes its auto-bid, the strongest Group of Six champion takes the fifth, and seven at-larges fill in by playoff probability. Seeds are each team's average seed across the seasons it made the field. Straight seeding: the four highest-ranked teams get byes whether or not they won a conference. The % is each team's overall chance of making the field.</p>`;
 
-  const row=t=>`<div class="t"><span class="sd num">${t.seed}</span><span class="nm ${t.team===T?"me":""}">${t.team}</span><span class="tag">${t.tag}</span><span class="p">${Math.round(t.pIn*100)}%</span></div>`;
+  const row=t=>`<div class="t"><span class="sd num">${t.seed}</span><span class="nm ${t.team===T?"me":""}">${tn(t.team)}</span><span class="tag">${t.tag}</span><span class="p">${Math.round(t.pIn*100)}%</span></div>`;
   const S=n=>field[n-1];
   const game=(hi,lo,next)=>`<div class="m">${row(S(lo))}<div class="vs">at</div>${row(S(hi))}</div><div class="next">winner meets #${next} ${short(S(next).team)}</div>`;
   $("#bracket").innerHTML = `<div class="br">
     <div><h3>First round</h3>${game(5,12,4)}${game(8,9,1)}${game(6,11,3)}${game(7,10,2)}</div>
     <div><h3>Byes to the quarterfinals</h3><div class="m">${[1,2,3,4].map(n=>row(S(n))).join("")}</div>
-      <h3 style="margin-top:14px">First teams out</h3><div class="m">${nextOut.map(t=>`<div class="t"><span class="sd"></span><span class="nm ${t.team===T?"me":""}">${t.team}</span><span class="tag">${t.conf}</span><span class="p">${Math.round(t.pIn*100)}%</span></div>`).join("")}</div>
+      <h3 style="margin-top:14px">First teams out</h3><div class="m">${nextOut.map(t=>`<div class="t"><span class="sd"></span><span class="nm ${t.team===T?"me":""}">${tn(t.team)}</span><span class="tag">${t.conf}</span><span class="p">${Math.round(t.pIn*100)}%</span></div>`).join("")}</div>
     </div></div>
     <div class="bubble">${me
       ? `<b>${T}</b> projects as the #${me.seed} seed${me.seed<=4?" with a bye":me.seed<=8?", hosting a first-round game":", on the road in the first round"}. Average seed when in: ${mine.avgSeed.toFixed(1)}.`
@@ -646,7 +704,7 @@ function renderBlockers(r){
   const blk=r.teamStats.filter(t=>t.team!==T&&!t.fcs).sort((a,b)=>b.block-a.block).slice(0,25);
   const maxB=Math.max(0.01,...blk.map(t=>t.block));
   $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Proj. record</th><th class="c">Blocks you</th><th class="c">Finishes ahead</th></tr>`+
-    blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${t.team}</td><td class="sub">${t.conf}</td>
+    blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(t.team)}</td><td class="sub">${t.conf}</td>
       <td class="num" style="text-align:center">${t.wins.toFixed(1)}–${(t.games-t.wins).toFixed(1)}</td>
       <td><span class="ramp num" style="${ramp(t.block,"var(--against)",maxB)}">${pct(t.block)}%</span></td>
       <td><span class="ramp num" style="${ramp(t.ahead,"var(--flat)")}">${pct(t.ahead)}%</span></td></tr>`;}).join("");
@@ -692,7 +750,7 @@ function renderBoard(r){
     rows.map(t=>{
       const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
-      return (t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+5}"></td></tr>` : "") + `<tr class="${t===T?"me":""}"><td class="k">${short(t)}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r num">${st?`${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}`:""}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)")};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
+      return (t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+5}"></td></tr>` : "") + `<tr class="${t===T?"me":""}"><td class="k">${tn(t,short(t))}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r num">${st?`${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}`:""}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)")};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
         const c=m.get(w); if(!c) return `<td><span class="cell"><small>bye</small></span></td>`;
         const sub = c.result ? c.result.text : `${Math.round(c.pWin*100)}%`;
         const res = c.result ? (c.result.won?" w":" l") : "";
@@ -727,16 +785,10 @@ function card(g, showWeek){
   }
   const when=fmtKick(g);
   const impact=Math.abs(g.swing)*100;
-  const odd=(team,p,win,isWant)=>`<div class="${isWant?"want":""}"><span>If ${short(team)} wins <small class="num">(${fmtWin(win)}%)</small></span> <b class="num">${pct(p)}%</b></div>`;
-  const odds = g.clear
-    ? (wantHome ? odd(g.home,g.pH,g.pHomeWin,true)+odd(g.away,g.pA,1-g.pHomeWin,false)
-                : odd(g.away,g.pA,1-g.pHomeWin,true)+odd(g.home,g.pH,g.pHomeWin,false))
-    : odd(g.away,g.pA,1-g.pHomeWin,false)+odd(g.home,g.pH,g.pHomeWin,false);
-  const verdict = !g.clear ? (Math.abs(g.swing)<0.001
-      ? `<div class="g-verdict flat">No measurable effect on ${short(T)} either way.</div>`
-      : `<div class="g-verdict flat">Leans <strong style="color:var(--muted)">${want}</strong> · ${impact.toFixed(2)} ± ${(2*g.se*100).toFixed(2)} pt swing, too close to call with this many seasons</div>`)
-    : g.involvesMe ? `<div class="g-verdict mine"><strong>${T}</strong> controls this one · ${impact.toFixed(1)} pt swing</div>`
-    : `<div class="g-verdict">Pull for <strong>${want}</strong> · ${impact<0.95?impact.toFixed(2):impact.toFixed(1)} pt swing, ${fmtWin(wantHome?g.pHomeWin:1-g.pHomeWin)}% likely</div>`;
+  // the team you're pulling for is boxed; each team carries its win chance
+  const chip=(team,win)=>{ const boxed = g.involvesMe ? team===T : (g.clear && team===want);
+    return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <small class="num">(${fmtWin(win)}%)</small></span>`; };
+  const impactNote = g.clear ? `impact ${impact<0.95?impact.toFixed(2):impact.toFixed(1)}` : (Math.abs(g.swing)<0.001 ? "no measurable effect" : `impact ${impact.toFixed(2)} ± ${(2*g.se*100).toFixed(2)}, too close to call`);
   // the selected team's own game: tint the card by its chance of winning, same ramp as the board
   let own="";
   if(g.involvesMe){
@@ -744,11 +796,9 @@ function card(g, showWeek){
     own=` own" style="background:color-mix(in srgb, ${up?"var(--for)":"var(--against)"} ${Math.round(12+k*50)}%, transparent)`;
   }
   return `<div class="g${own}${dev?" dev":""}">
-    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev">Leverage <b class="num" style="${g.clear?"":"color:var(--muted)"}">${g.lev>0?(g.clear?"":"~")+g.lev.toFixed(2):"—"}</b></span></div>
-    <div class="g-match">${badge(g.away)} <em>at</em> ${badge(g.home)}</div>
+    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev">Leverage <b class="num" style="${g.clear?"":"color:var(--muted)"}">${g.lev>0?(g.clear?"":"~")+g.lev.toFixed(2):"—"}</b><small class="num">${impactNote}</small></span></div>
+    <div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>
     <div class="g-line">${line}</div>${dev}
-    <div class="g-odds">${odds}</div>
-    ${verdict}
   </div>`;
 }
 

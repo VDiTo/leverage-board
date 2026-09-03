@@ -41,6 +41,16 @@ const rate = new Map();
 for (const r of spPrev) if (r.team) rate.set(r.team, r.rating * 0.75); // regress last year
 for (const r of spNow) if (r.team) rate.set(r.team, r.rating);
 
+// SP+ by unit, for the team popup. Prior season's numbers are kept (flagged) until this season's exist.
+const unit = (u) => (u && typeof u === "object") ? { rating: u.rating ?? null, rank: u.ranking ?? u.rank ?? null } : { rating: null, rank: null };
+const spComp = (r, prior) => ({
+  prior, rating: r.rating ?? null, rank: r.ranking ?? r.rank ?? null,
+  offense: unit(r.offense), defense: unit(r.defense), specialTeams: unit(r.specialTeams ?? r.special_teams),
+});
+const spInfo = new Map();
+for (const r of spPrev) if (r.team) spInfo.set(r.team, spComp(r, true));
+for (const r of spNow) if (r.team) spInfo.set(r.team, spComp(r, false));
+
 // ---- polls: keep the latest AP Top 25 and the latest CFP committee ranking separately
 const polls = { ap: null, cfp: null };
 for (const wk of rankings) {
@@ -61,6 +71,7 @@ const teams = fbs.map((t) => ({
   rating: +(rate.get(t.school) ?? -6).toFixed(2),
   apRank: polls.ap?.ranks.get(t.school) ?? null,
   cfpRank: polls.cfp?.ranks.get(t.school) ?? null,
+  sp: spInfo.get(t.school) ?? null,
 }));
 const fbsSet = new Set(teams.map((t) => t.team));
 const known = new Set(fbsSet);
