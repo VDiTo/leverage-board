@@ -152,7 +152,7 @@ ${own ? `<div class="own"><div class="lab">Your game · ${fmtKick(own)}${own.tv 
   <div class="sub">Win and ${esc(TEAM)}'s playoff odds are <b>${((own.home === TEAM ? own.pH : own.pA) * 100).toFixed(1)}%</b>; lose and they're <b>${((own.home === TEAM ? own.pA : own.pH) * 100).toFixed(1)}%</b>. A ${(Math.abs(own.swing) * 100).toFixed(1)}-point swing, the biggest thing on this page by far.</div></div>` : `<div class="own"><div class="lab">Bye week</div><div class="sub">${esc(TEAM)} is idle. Every game below is about other teams doing you favours.</div></div>`}
 <h2>Ranked by leverage <span style="font:400 8pt 'Segoe UI',system-ui,sans-serif;color:#5a6b80">· how much the result moves ${esc(TEAM)}'s playoff odds, discounted by how unlikely the swing is</span></h2>
 ${top10.map((g, i) => gameRow(g, i + 1)).join("")}
-<footer>Leverage and impact are scaled 0–100 against the biggest remaining game that doesn't involve ${esc(TEAM)}. Win chances from SP+ with home advantage; every number from ${r.N.toLocaleString()} simulated seasons with each game flipped one at a time. Live board, weekly slate and full explanations: vdito.github.io/leverage-board</footer>
+<footer>Leverage and impact are scaled 0–100 against the biggest remaining game that doesn't involve ${esc(TEAM)}. Win chances from SP+ with home advantage; every number from ${r.N.toLocaleString()} simulated seasons with each game flipped one at a time.</footer>
 </div></body></html>`;
 if (PRODUCT === "week") { writeFileSync(OUT, weekPage); console.log(`wrote ${OUT}: week ${curWeek}, ${top10.length} games; ${TEAM} ${(r.pIn * 100).toFixed(1)}%`); process.exit(0); }
 
@@ -226,7 +226,7 @@ ${rows.map(t => {
   <h3>Biggest games not involving ${esc(short(TEAM))}</h3>
   <ol class="topg">${top.map(g => `<li><span>Wk ${g.week}: ${esc(short(g.away))} at ${esc(short(g.home))} — pull for <b>${esc(short(g.swing > 0 ? g.home : g.away))}</b></span></li>`).join("")}</ol>
 </aside>
-<footer>Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining; straight seeding. Win probabilities from the SP+ rating gap with home advantage; final ordering is a strength-plus-résumé stand-in for the committee. Live board with weekly slates and explanations: vdito.github.io/leverage-board</footer>
+<footer>Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining; straight seeding. Win probabilities from the SP+ rating gap with home advantage; final ordering is a strength-plus-résumé stand-in for the committee.</footer>
 </div></body></html>`;
 writeFileSync(OUT, page);
 console.log(`wrote ${OUT}: ${rows.length} rows x ${weeks.length} weeks; ${TEAM} ${(r.pIn * 100).toFixed(1)}%`);
