@@ -561,10 +561,15 @@ function finish(acc,N,ti){
       // a 97/3 game keeps about 12% of it, because the outcome you want almost never happens.
       lev: Math.abs(swing)*100 * 4*p*(1-p)});
   }
-  // Normalise: 100 = the biggest remaining game that doesn't involve the target. Own games are capped at 100.
-  const ext=games.filter(g=>g.clear&&!g.involvesMe);
+  // Normalise to 0-100 on two separate scales: other teams' games against the biggest of those,
+  // and the target's own games against the biggest game on its own schedule.
+  const ext=games.filter(g=>g.clear&&!g.involvesMe), own=games.filter(g=>g.clear&&g.involvesMe);
   const levMax=Math.max(1e-6,...ext.map(g=>g.lev)), impMax=Math.max(1e-6,...ext.map(g=>Math.abs(g.swing)));
-  games.forEach(g=>{ g.levN=Math.min(100,g.lev/levMax*100); g.impN=Math.min(100,Math.abs(g.swing)/impMax*100); });
+  const ownLevMax=Math.max(1e-6,...own.map(g=>g.lev)), ownImpMax=Math.max(1e-6,...own.map(g=>Math.abs(g.swing)));
+  games.forEach(g=>{
+    const lm=g.involvesMe?ownLevMax:levMax, im=g.involvesMe?ownImpMax:impMax;
+    g.levN=Math.min(100,g.lev/lm*100); g.impN=Math.min(100,Math.abs(g.swing)/im*100);
+  });
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
   const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
@@ -576,7 +581,7 @@ function finish(acc,N,ti){
 // ---------- render ----------
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
-const RESULT_VERSION = 2; // bump when the result shape changes so stale saved results are recomputed
+const RESULT_VERSION = 3; // bump when the result shape changes so stale saved results are recomputed
 const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|${T}|${$("#sims").value}|${$("#useLines").checked?1:0}`;
 function loadResult(){ try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
 function saveResult(r){ try{ localStorage.setItem("lb.result", JSON.stringify({key:resultKey(), at:Date.now(), res:r})); }catch(e){} }
@@ -836,7 +841,7 @@ function renderSlate(r){
   const ws=$("#slateWeek"); ws.innerHTML=weeks.map(w=>`<option value="${w}" ${w===UI.slateWeek?"selected":""}>Week ${w}</option>`).join("");
   document.querySelectorAll("#slateSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.slateSort)));
   $("#slateTitle").textContent=`Week ${UI.slateWeek} slate`;
-  $("#slateExplain").innerHTML = `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100 against the biggest remaining game that doesn't involve ${T}; your own games are capped at 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
+  $("#slateExplain").innerHTML = `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
   let list=r.games.filter(g=>g.week===UI.slateWeek);
   if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
   const byTime=(a,b)=>(a.tbd-b.tbd)||((a.start?Date.parse(a.start):9e15)-(b.start?Date.parse(b.start):9e15))||(b.lev-a.lev);
