@@ -729,7 +729,8 @@ function renderBracket(r){
 const scorePill = (v, ok=true) => ok
   ? `<span class="pill" style="background:color-mix(in srgb, var(--gold) ${Math.round(8+Math.pow(Math.max(0,Math.min(100,v))/100,0.7)*82)}%, transparent)">${Math.round(v)}</span>`
   : `<span class="pill dim">${v==null?"—":"~"+Math.round(v)}</span>`;
-const ramp = (v,color,max=1) => `background:color-mix(in srgb, ${color} ${Math.round(Math.min(1,v/max)*85)}%, transparent)`;
+// percentage ramp with the same intensity curve as the score pills
+const ramp = (v,color,max=1) => `background:color-mix(in srgb, ${color} ${Math.round(8+Math.pow(Math.max(0,Math.min(1,v/max)),0.7)*82)}%, transparent)`;
 
 function renderBlockers(r){
   $("#blockExplain").innerHTML = `<p>There are seven at-large spots. Only teams that finish ranked ahead of ${T} <strong>without</strong> winning their conference compete for them, because conference champions take auto-bids instead. Those teams are your blockers. Six or fewer blockers and you're in.</p>
