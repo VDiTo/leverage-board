@@ -179,9 +179,13 @@
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   /* the Top 25 board always sits on a neutral ground so the green/red shading reads the same for every team */
-  #tab-board{--fieldhue:#3fa96b;background:var(--field);border-radius:12px;padding:6px 14px 14px;margin-top:10px}
+  /* full-bleed on every screen size; on phones the table runs edge to edge */
+  #tab-board{--fieldhue:#3fa96b;background:var(--field);border-radius:0;padding:6px 0 14px;margin:10px calc(50% - 50vw) 0;width:100vw}
+  #tab-board > h2, #tab-board > .explain, #tab-board > .controls{margin-left:14px;margin-right:14px}
+  #tab-board .scroll{margin:0;padding:0;width:auto}
+  #rankings td.k{padding-left:8px}
   body:not(.light) #tab-board{--field:#13161b;--panel:#1a1e24;--panel2:#242a32;--line:#2e353e;--muted:#9aa4ae}
-  @media (min-width:1100px){ #tab-board{margin:10px calc(50% - 50vw) 0;width:100vw;border-radius:0;padding:6px 16px 16px} }
+  @media (min-width:1100px){ #tab-board{padding:6px 16px 16px} #tab-board > h2, #tab-board > .explain, #tab-board > .controls{margin-left:0;margin-right:0} }
   /* light (no-team) theme: the board goes light too, and shaded cells use dark text */
   body.light #tab-board{--field:#f7f9fc;--panel:#eef2f7;--panel2:#e0e7f0;--line:#c9d3df;--muted:#4f6079}
   body.light .cell.hot small{color:#10233a;opacity:.8}
