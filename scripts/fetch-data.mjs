@@ -25,13 +25,14 @@ const TIER = {
   "FBS Independents": "IND",
 };
 
-const [fbs, gamesRaw, spNow, spPrev, rankings, linesRaw] = await Promise.all([
+const [fbs, gamesRaw, spNow, spPrev, rankings, linesRaw, mediaRaw] = await Promise.all([
   api(`/teams/fbs?year=${YEAR}`),
   api(`/games?year=${YEAR}&seasonType=regular`),
   api(`/ratings/sp?year=${YEAR}`).catch(() => []),
   api(`/ratings/sp?year=${YEAR - 1}`).catch(() => []),
   api(`/rankings?year=${YEAR}&seasonType=regular`).catch(() => []),
   api(`/lines?year=${YEAR}&seasonType=regular`).catch(() => []),
+  api(`/games/media?year=${YEAR}&seasonType=regular`).catch(() => []),
 ]);
 
 const rate = new Map();
@@ -91,6 +92,16 @@ for (const g of linesRaw) {
   });
 }
 
+// ---- TV: one outlet per game (prefer TV over web/radio)
+const MEDIA_ORDER = { tv: 0, web: 1, radio: 2, ppv: 3, mobile: 4 };
+const tvByGame = new Map();
+for (const m of mediaRaw) {
+  const id = pick(m, "id", "gameId"); if (id == null) continue;
+  const type = String(m.mediaType || m.media_type || "tv").toLowerCase();
+  const cur = tvByGame.get(id);
+  if (!cur || (MEDIA_ORDER[type] ?? 9) < (MEDIA_ORDER[cur.type] ?? 9)) tvByGame.set(id, { outlet: m.outlet || null, type });
+}
+
 const games = gamesRaw
   .map((g) => ({
     id: g.id,
@@ -103,13 +114,15 @@ const games = gamesRaw
     ap: pick(g, "away_points", "awayPoints"),
     notes: g.notes || "",
     start: pick(g, "start_date", "startDate") ?? null,
+    tbd: !!pick(g, "start_time_tbd", "startTimeTBD"),
   }))
   .filter((g) => known.has(g.home) && known.has(g.away))
   .filter((g) => !/championship/i.test(g.notes))   // model simulates title games itself
   .map((g) => {
     const line = lineByGame.get(g.id) || {};
     return {
-      id: g.id, week: g.week, home: g.home, away: g.away, start: g.start,
+      id: g.id, week: g.week, home: g.home, away: g.away, start: g.start, tbd: g.tbd,
+      tv: tvByGame.get(g.id)?.outlet ?? null,
       neutral: g.neutral, conferenceGame: g.conferenceGame,
       completed: g.hp != null && g.ap != null,
       homeWin: g.hp != null && g.ap != null ? g.hp > g.ap : null,
@@ -134,11 +147,16 @@ writeFileSync(new URL("../data.json", import.meta.url), JSON.stringify({
     ap: polls.ap ? { name: polls.ap.name, week: polls.ap.week } : null,
     cfp: polls.cfp ? { name: polls.cfp.name, week: polls.cfp.week } : null,
   },
-  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, lossPenalty: 4, ratingSd: 7, atLargeSlots: 7 },
+  meta: {
+    ratings: spNow.length ? `SP+ ${YEAR}` : `SP+ ${YEAR - 1}, regressed 25%`,
+    lines: { games: linesRaw.length, matched: lineByGame.size },
+    media: { games: mediaRaw.length, matched: tvByGame.size },
+  },
+  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, lossPenalty: 5, winQuality: 0.3, lossQuality: 0.35, ratingSd: 8, atLargeSlots: 7 },
   conferenceTiers: Object.fromEntries([...new Set(teams.map((t) => t.conference))]
     .map((c) => [c, TIER[c] || "G6"])),
   teams,
   games,
 }));
 
-console.log(`${teams.length} teams · ${games.length} games · ${played.length} played · ${withLines} upcoming with lines · week ${currentWeek} · ${pollName}`);
+console.log(`${teams.length} teams · ${games.length} games · ${played.length} played · ${withLines} upcoming with lines · ${games.filter((g) => g.tv).length} with TV · week ${currentWeek} · ${pollName} · ${spNow.length ? "SP+ " + YEAR : "SP+ prior year"}`);

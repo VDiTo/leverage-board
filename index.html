@@ -15,82 +15,93 @@
     font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
     -webkit-text-size-adjust:100%}
   body{padding:0 0 64px}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 18px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 14px}
   h1,h2,.serif{font-family:"Iowan Old Style",Georgia,"Times New Roman",serif;font-weight:600}
-  h1{font-size:26px;letter-spacing:-.01em;margin:0}
-  h2{font-size:19px;margin:34px 0 6px;color:var(--ink)}
+  h1{font-size:24px;letter-spacing:-.01em;margin:0}
+  h2{font-size:19px;margin:26px 0 6px;color:var(--ink)}
+  h3{font-size:14.5px;margin:22px 0 6px;font-weight:600}
   .sub{color:var(--muted);font-size:13px}
   .num{font-variant-numeric:tabular-nums}
-  .explain{color:var(--muted);font-size:13.5px;max-width:760px;margin:0 0 14px}
+  .explain{color:var(--muted);font-size:13.5px;max-width:760px;margin:0 0 12px}
   .explain strong{color:var(--ink);font-weight:600}
+  .explain p{margin:0 0 8px}
 
-  header{border-bottom:1px solid var(--line);padding:18px 0 16px;background:linear-gradient(180deg,#0b2038,var(--field))}
-  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+  header{border-bottom:1px solid var(--line);padding:14px 0 12px;background:linear-gradient(180deg,#0b2038,var(--field))}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
   select,button,input{font:inherit;color:var(--ink);background:var(--panel2);
     border:1px solid var(--line);border-radius:7px;padding:8px 10px}
+  select{max-width:100%}
   button{cursor:pointer;background:var(--gold);color:#10233a;border-color:var(--gold);font-weight:650}
   button:disabled{opacity:.5;cursor:default}
   select:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
-
-  .hero{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap;padding:22px 0 6px}
-  .odds{font-family:"Iowan Old Style",Georgia,serif;font-size:66px;line-height:.9;color:var(--gold)}
-  .odds small{font-size:26px;opacity:.7}
-  .heroLab{max-width:330px;color:var(--muted);font-size:13.5px}
-  .stats{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px}
-  .stat b{display:block;font-size:22px;font-weight:600}
-  .stat span{color:var(--muted);font-size:12.5px}
-
-  .prog{height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;margin-top:12px}
+  label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+  .prog{height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;margin-top:10px}
   .prog i{display:block;height:100%;background:var(--gold);width:0;transition:width .12s}
 
+  /* ---- tabs ---- */
+  nav.tabs{position:sticky;top:0;z-index:5;background:var(--field);border-bottom:1px solid var(--line);
+    display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav.tabs::-webkit-scrollbar{display:none}
+  nav.tabs button{flex:1 0 auto;background:transparent;color:var(--muted);border:0;border-bottom:3px solid transparent;
+    border-radius:0;padding:11px 14px;font-weight:600;font-size:14px;white-space:nowrap}
+  nav.tabs button[aria-selected=true]{color:var(--gold);border-bottom-color:var(--gold)}
+  section.tab{padding-top:6px}
+
+  /* ---- overview ---- */
+  .hero{display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap;padding:18px 0 4px}
+  .odds{font-family:"Iowan Old Style",Georgia,serif;font-size:64px;line-height:.9;color:var(--gold)}
+  .odds small{font-size:24px;opacity:.7}
+  .heroLab{max-width:360px;color:var(--muted);font-size:13.5px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:14px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+  .stat b{display:block;font-size:22px;font-weight:600}
+  .stat span{color:var(--muted);font-size:12px}
+
   /* ---- game cards ---- */
-  .game{padding:14px 0;border-bottom:1px solid var(--line)}
-  .ghead{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap}
-  .matchup{font-size:16px;font-weight:600}
-  .matchup em{font-style:normal;color:var(--muted);font-weight:400}
-  .rk{color:var(--gold);font-weight:600;font-size:13px}
-  .meta{color:var(--muted);font-size:12.5px;margin-top:1px}
-  .meta b{color:var(--ink);font-weight:500}
-  .impact{text-align:right;white-space:nowrap}
-  .impact b{display:block;font-size:20px;font-weight:600;line-height:1.1}
-  .impact span{font-size:11.5px;color:var(--muted)}
-  .outcomes{display:grid;grid-template-columns:auto 1fr auto;gap:5px 12px;align-items:center;margin-top:9px;max-width:640px}
-  .oc-lab{font-size:13px;color:var(--muted);white-space:nowrap}
-  .oc-lab.want{color:var(--ink)}
-  .oc-lab .p{opacity:.7;font-size:11.5px}
-  .oc-bar{height:9px;background:var(--panel2);border-radius:5px;overflow:hidden}
-  .oc-bar i{display:block;height:100%;border-radius:5px;background:var(--flat)}
-  .oc-bar.want i{background:var(--for)}
-  .oc-val{font-size:14px;font-weight:600;text-align:right;min-width:50px}
-  .oc-val.dim{color:var(--muted);font-weight:500}
-  .verdict{font-size:13px;margin-top:8px}
-  .verdict strong{color:var(--for)}
-  .verdict.mine strong{color:var(--gold)}
+  .g{padding:12px 0;border-bottom:1px solid var(--line)}
+  .g-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:12.5px;color:var(--muted)}
+  .g-top .lev{color:var(--ink);font-weight:600;white-space:nowrap}
+  .g-top .lev b{color:var(--gold);font-size:15px}
+  .g-match{font-size:16px;font-weight:600;margin-top:3px}
+  .g-match em{font-style:normal;color:var(--muted);font-weight:400}
+  .rk{color:var(--gold);font-weight:600;font-size:12.5px}
+  .g-line{font-size:12.5px;color:var(--muted)}
+  .g-line b{color:var(--ink);font-weight:500}
+  .g-odds{display:flex;gap:14px;flex-wrap:wrap;margin-top:7px;font-size:13.5px}
+  .g-odds span{color:var(--muted)}
+  .g-odds b{font-weight:600}
+  .g-odds .want b{color:var(--for)}
+  .g-odds .want span{color:var(--ink)}
+  .g-verdict{font-size:13px;margin-top:5px;color:var(--muted)}
+  .g-verdict strong{color:var(--for)}
+  .g-verdict.mine strong{color:var(--gold)}
+  .g-verdict.flat{color:var(--muted)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 6px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .seg button{background:var(--panel2);color:var(--muted);border:0;border-radius:0;padding:6px 11px;font-size:13px;font-weight:500}
+  .seg button[aria-pressed=true]{background:var(--gold);color:#10233a;font-weight:650}
   details.quiet{margin-top:12px;color:var(--muted);font-size:13px}
   details.quiet summary{cursor:pointer}
-  details.quiet ul{margin:8px 0 0;padding-left:18px;columns:2;column-gap:28px}
-  @media (max-width:560px){ details.quiet ul{columns:1} }
 
+  /* ---- tables ---- */
   table{border-collapse:collapse;width:100%;font-size:12.5px}
-  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
   th,td{padding:6px 7px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
   th{color:var(--muted);font-weight:500;font-size:11.5px;position:sticky;top:0;background:var(--field)}
-  td.k{position:sticky;left:0;background:var(--field);font-weight:600;min-width:112px;z-index:1}
-  td.r{color:var(--muted);text-align:center;width:38px}
+  td.k{position:sticky;left:0;background:var(--field);font-weight:600;min-width:104px;z-index:1}
+  td.r{color:var(--muted);text-align:center;width:36px}
   td.r b{color:var(--gold);font-weight:600}
   th.c{text-align:center}
-  .cell{border-radius:5px;padding:3px 6px;display:block;line-height:1.25;min-width:66px}
+  .cell{border-radius:5px;padding:3px 6px;display:block;line-height:1.25;min-width:64px;color:var(--ink)}
   .cell small{display:block;color:var(--muted);font-size:11px}
+  .cell.hot small{color:#e9eef5;opacity:.85}
   .cell.w small{color:var(--for)} .cell.l small{color:var(--against)}
   tr.me td.k, td.me{color:var(--gold)}
-  .bad{color:var(--against)} .good{color:var(--for)}
-  .legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:0 0 10px;font-size:12.5px;color:var(--muted)}
+  .ramp{display:block;border-radius:5px;padding:3px 7px;text-align:right;font-weight:600}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:0 0 10px;font-size:12.5px;color:var(--muted)}
   .legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
-  .foot{margin-top:34px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
-  .tabs{display:flex;gap:8px;margin:6px 0 12px;flex-wrap:wrap}
-  .tabs button{background:var(--panel2);color:var(--muted);border-color:var(--line);font-weight:500;padding:6px 11px;font-size:13px}
-  .tabs button[aria-pressed=true]{background:var(--gold);color:#10233a;border-color:var(--gold);font-weight:650}
-  @media (max-width:560px){ .odds{font-size:52px} h1{font-size:22px} .matchup{font-size:15px} }
+  .foot{margin-top:30px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:12px}
+  @media (max-width:560px){ .odds{font-size:54px} h1{font-size:21px} .g-match{font-size:15px} }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -99,53 +110,80 @@
   <h1>Leverage Board</h1>
   <div class="sub" id="stamp">Loading season data…</div>
   <div class="bar">
-    <label class="sub" for="team">Team of interest</label>
-    <select id="team"></select>
-    <select id="sims">
-      <option value="5000">5,000 seasons</option>
-      <option value="15000" selected>15,000 seasons</option>
-      <option value="40000">40,000 seasons</option>
+    <select id="team" aria-label="Team of interest"></select>
+    <select id="sims" aria-label="Simulated seasons">
+      <option value="5000" selected>5,000 seasons</option>
+      <option value="10000">10,000 seasons</option>
+      <option value="25000">25,000 seasons</option>
     </select>
+    <label class="chk"><input type="checkbox" id="useLines" checked> Use betting lines</label>
     <button id="run">Run simulation</button>
   </div>
   <div class="prog"><i id="bar"></i></div>
 </div></header>
 
+<nav class="tabs" id="tabs">
+  <button data-tab="overview" aria-selected="true">Overview</button>
+  <button data-tab="board" aria-selected="false">Top 25 board</button>
+  <button data-tab="slate" aria-selected="false">This week</button>
+  <button data-tab="season" aria-selected="false">Rest of season</button>
+</nav>
+
 <div class="wrap">
-  <div class="hero">
-    <div>
-      <div class="odds num" id="odds">—<small>%</small></div>
-      <div class="sub" id="oddsLab">chance of making the 12-team field</div>
+  <section class="tab" id="tab-overview">
+    <div class="hero">
+      <div>
+        <div class="odds num" id="odds">—<small>%</small></div>
+        <div class="sub" id="oddsLab">chance of making the 12-team field</div>
+      </div>
+      <div class="heroLab" id="pathLab"></div>
     </div>
-    <div class="heroLab" id="pathLab"></div>
-  </div>
-  <div class="stats">
-    <div class="stat"><b class="num" id="sRank">—</b><span>median final ranking</span></div>
-    <div class="stat"><b class="num" id="sBlock">—</b><span>average blockers ahead (need ≤6)</span></div>
-    <div class="stat"><b class="num" id="sChamp">—</b><span>chance of an auto-bid</span></div>
-    <div class="stat"><b class="num" id="sWins">—</b><span>projected wins</span></div>
-  </div>
+    <div class="stats">
+      <div class="stat"><b class="num" id="sRec">—</b><span>projected record</span></div>
+      <div class="stat"><b class="num" id="sRank">—</b><span>median final ranking</span></div>
+      <div class="stat"><b class="num" id="sBlock">—</b><span>avg. blockers ahead (need ≤6)</span></div>
+      <div class="stat"><b class="num" id="sChamp">—</b><span>chance of an auto-bid</span></div>
+    </div>
 
-  <h2>Rankings and schedules</h2>
-  <p class="explain" id="rankExplain"></p>
-  <div class="legend"><span><i style="background:var(--for)"></i>You want this team to win</span><span><i style="background:var(--against)"></i>You want this team to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span>Darker = matters more. "@" = on the road. The % is that team's chance of winning.</span></div>
-  <div class="scroll"><table id="rankings"></table></div>
+    <h2>Who is actually blocking you</h2>
+    <div class="explain" id="blockExplain"></div>
+    <div class="scroll"><table id="blockers"></table></div>
+  </section>
 
-  <h2>Games that move the needle</h2>
-  <p class="explain" id="levExplain"></p>
-  <div class="tabs" id="weekTabs"></div>
-  <div id="leverage"></div>
+  <section class="tab" id="tab-board" hidden>
+    <h2>Top 25 schedule board</h2>
+    <div class="explain" id="rankExplain"></div>
+    <div class="legend"><span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span>Darker = matters more · "@" = on the road · % = their chance of winning</span></div>
+    <div class="scroll"><table id="rankings"></table></div>
+  </section>
 
-  <h2>Who is actually blocking you</h2>
-  <p class="explain" id="blockExplain"></p>
-  <div class="scroll"><table id="blockers"></table></div>
+  <section class="tab" id="tab-slate" hidden>
+    <h2 id="slateTitle">This week</h2>
+    <div class="explain" id="slateExplain"></div>
+    <div class="controls">
+      <select id="slateWeek" aria-label="Week"></select>
+      <div class="seg" id="slateSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="time" aria-pressed="false">Kickoff</button></div>
+      <label class="chk"><input type="checkbox" id="slateRanked" checked> Ranked teams only</label>
+    </div>
+    <div id="slate"></div>
+  </section>
+
+  <section class="tab" id="tab-season" hidden>
+    <h2>Rest of season</h2>
+    <div class="explain" id="seasonExplain"></div>
+    <div class="controls">
+      <div class="seg" id="seasonSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="impact" aria-pressed="false">Impact</button></div>
+    </div>
+    <div id="season"></div>
+  </section>
 
   <div class="foot" id="foot"></div>
 </div>
 
 <script>
 const $ = s => document.querySelector(s);
-let D=null, T=null, RES=null, viewWeek=null;
+let D=null, T=null, RES=null;
+const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:true, seasonSort:"lev" };
 
 const norm = z => { // standard normal CDF
   const t = 1/(1+0.2316419*Math.abs(z));
@@ -154,23 +192,30 @@ const norm = z => { // standard normal CDF
   return z>0 ? 1-p : p;
 };
 const pct = x => (x*100).toFixed(1);
-const short = n => ({"Notre Dame":"Notre Dame","Ohio State":"Ohio St","Michigan State":"Mich St","Mississippi State":"Miss St","Washington State":"Wash St","Oklahoma State":"Okla St","Iowa State":"Iowa St","Arizona State":"Ariz St","Kansas State":"K State","Penn State":"Penn St","Florida State":"Fla St","Boise State":"Boise St","North Carolina":"UNC","South Carolina":"S Carolina","Texas A&M":"Texas A&M","Appalachian State":"App State"}[n] || (n.length>11 ? n.slice(0,10)+"…" : n));
+const short = n => ({"Notre Dame":"Notre Dame","Ohio State":"Ohio St","Michigan State":"Mich St","Mississippi State":"Miss St","Washington State":"Wash St","Oklahoma State":"Okla St","Iowa State":"Iowa St","Arizona State":"Ariz St","Kansas State":"K State","Penn State":"Penn St","Florida State":"Fla St","Boise State":"Boise St","North Carolina":"UNC","South Carolina":"S Carolina","Texas A&M":"Texas A&M","Appalachian State":"App State","Western Kentucky":"W Kentucky","Georgia Tech":"Ga Tech","Boston College":"Boston Col","Louisiana Tech":"La Tech","Missouri State":"Missouri St","Northwestern":"N'western"}[n] || (n.length>11 ? n.slice(0,10)+"…" : n));
 
 // Which poll drives the "#n" badges: the committee once it exists, otherwise AP.
 const useCfp = () => !!(D.polls && D.polls.cfp);
 const rankOf = team => { const t=D.teams[idx.get(team)]; if(!t) return null; return useCfp() ? (t.cfpRank||null) : (t.apRank||null); };
+const isRanked = team => { const t=D.teams[idx.get(team)]; return !!(t && (t.apRank||t.cfpRank)); };
 const badge = team => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${team}` : team; };
-const fmtDate = iso => { if(!iso) return ""; const d=new Date(iso); if(isNaN(d)) return "";
-  return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}); };
+const fmtKick = g => {
+  if(!g.start) return "";
+  const d=new Date(g.start); if(isNaN(d)) return "";
+  const day=d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+  if(g.tbd) return `${day} · TBD`;
+  return `${day} · ${d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}`;
+};
+const fmtWin = p => p<0.005?"<1":p>0.995?">99":Math.round(p*100);
 
 // ---------- load ----------
-fetch("data.json").then(r=>r.json()).then(d=>{
+fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   D = d; build();
   const pollBits=[];
-  if(d.polls && d.polls.ap) pollBits.push(`AP poll wk ${d.polls.ap.week}`);
-  if(d.polls && d.polls.cfp) pollBits.push(`CFP rankings wk ${d.polls.cfp.week}`);
+  if(d.polls && d.polls.ap) pollBits.push(`AP wk ${d.polls.ap.week}`);
+  if(d.polls && d.polls.cfp) pollBits.push(`CFP wk ${d.polls.cfp.week}`);
   $("#stamp").textContent = `${d.season} season · updated ${new Date(d.updatedAt).toLocaleDateString()}`
-    + (pollBits.length?` · ${pollBits.join(" · ")}`:"") + (d.source==="placeholder" ? " · PLACEHOLDER DATA" : "");
+    + (pollBits.length?` · ${pollBits.join(" · ")}`:"") + (d.meta&&d.meta.ratings?` · ${d.meta.ratings}`:"") + (d.source==="placeholder" ? " · PLACEHOLDER DATA" : "");
   const sel = $("#team");
   d.teams.slice().sort((a,b)=>(rankOf(a.team)||99)-(rankOf(b.team)||99) || a.team.localeCompare(b.team))
     .forEach(t=>{ const o=document.createElement("option"); o.value=t.team; const r=rankOf(t.team); o.textContent=(r?`#${r} `:"")+t.team; sel.appendChild(o); });
@@ -181,7 +226,7 @@ fetch("data.json").then(r=>r.json()).then(d=>{
 // ---------- precompute ----------
 let idx, rating, confOf, tierOf, confList, P4=["ACC","Big Ten","Big 12","SEC"];
 let gH,gA,gP,gConf,gDone,gRes,gWeek,gLine,gHfa,nG,nT;
-let confIdx, members, isP4;
+let confIdx, members, isP4, teamGames, gamesPerTeam;
 function build(){
   nT = D.teams.length;
   idx = new Map(D.teams.map((t,i)=>[t.team,i]));
@@ -197,23 +242,32 @@ function build(){
   gH=new Int32Array(nG); gA=new Int32Array(nG); gP=new Float64Array(nG); gLine=new Uint8Array(nG); gHfa=new Float64Array(nG);
   gConf=new Uint8Array(nG); gDone=new Uint8Array(nG); gRes=new Uint8Array(nG); gWeek=new Int32Array(nG);
   const {hfa,sdMargin}=D.config, spreadSd=D.config.spreadSd||13.5;
+  const useLines = $("#useLines").checked;
+  const tg = D.teams.map(()=>[]);
   g.forEach((x,i)=>{
     gH[i]=idx.get(x.home); gA[i]=idx.get(x.away); gWeek[i]=x.week;
     gConf[i]=x.conferenceGame?1:0; gDone[i]=x.completed?1:0; gRes[i]=x.homeWin?1:0; gHfa[i]=x.neutral?0:hfa;
-    if(typeof x.spread==="number" && isFinite(x.spread)){
+    tg[gH[i]].push(i); tg[gA[i]].push(i);
+    if(useLines && typeof x.spread==="number" && isFinite(x.spread)){
       // Market line beats the rating model when a book has priced the game. Spread is home-perspective, negative = home favoured.
       gP[i]=norm(-x.spread/spreadSd); gLine[i]=1;
     } else {
-      gP[i]=norm(((rating[gH[i]]-rating[gA[i]])+(x.neutral?0:hfa))/sdMargin);
+      gP[i]=norm(((rating[gH[i]]-rating[gA[i]])+gHfa[i])/sdMargin);
     }
   });
+  teamGames = tg.map(a=>Int32Array.from(a));
+  gamesPerTeam = Int32Array.from(tg.map(a=>a.length));
 }
 
 // ---------- simulation ----------
 // Each simulated season is played out once, then every remaining game is flipped in place and the
 // target's fate is re-evaluated with everything else held fixed. That paired comparison is what makes
 // a game's leverage precise: a 25-point favourite's game contributes exactly zero unless flipping it
-// actually changes the target's outcome, instead of being estimated from a handful of upset seasons.
+// actually changes the target's outcome.
+//
+// Committee stand-in: true strength (rating + per-season noise) plus a résumé built from opponents'
+// FINAL records. Beating a team is worth more the more games that team ends up winning; losing costs a
+// flat penalty plus more the worse the opponent turns out. So your opponents' other games matter to you.
 function simulate(target, N, onProgress, done){
   const ti = idx.get(target);
   const W=new Int32Array(nT), L=new Int32Array(nT), CW=new Int32Array(nT), CL=new Int32Array(nT);
@@ -222,24 +276,17 @@ function simulate(target, N, onProgress, done){
   const nC=confList.length, champ=new Int32Array(nC), uC=new Float64Array(nC);
   let bestG6=-1, blockers=0;
   const {ratingWeight,resumeWeight,atLargeSlots,sdMargin}=D.config;
-  // Résumé: beating a good team helps a little; every loss costs a flat penalty plus extra if the opponent was weak.
-  // The flat penalty is what makes a two-loss team a bubble team, the way the committee actually treats them.
-  const LP = D.config.lossPenalty ?? 4;
-  // Each season draws a "true strength" around the published rating. Preseason ratings are guesses;
-  // without this the model treats them as gospel and hands the top-rated team a near-lock.
-  const RS = D.config.ratingSd ?? 7, {hfa}=D.config;
+  const LP = D.config.lossPenalty ?? 5, WQ = D.config.winQuality ?? 0.3, LQ = D.config.lossQuality ?? 0.35;
+  const RS = D.config.ratingSd ?? 8;
   const rs = new Float64Array(nT);
-  const winGain = l => Math.max(0, rs[l]+12)/10;
-  const lossCost = w => LP + Math.max(0, 26-rs[w])/10;
 
   const acc={ in:0, champ:0, rankSum:0, blockSum:0, winSum:0, ranks:new Int32Array(nT+2),
-    blockers:new Float64Array(nT), aheadN:new Float64Array(nT),
+    blockers:new Float64Array(nT), aheadN:new Float64Array(nT), teamWins:new Float64Array(nT),
     sumH:new Float64Array(nG), sumA:new Float64Array(nG), sumD:new Float64Array(nG), sumD2:new Float64Array(nG) };
 
   let x=2463534242>>>0; // xorshift32
   const rnd=()=>{ x^=x<<13; x>>>=0; x^=x>>17; x^=x<<5; x>>>=0; return x/4294967296; };
 
-  // Conference champion under the current CW/CL, using this season's stored title-game draw.
   function resolveConf(k){
     let a=-1,b=-1,as=-1e9,bs=-1e9;
     const m=members[k];
@@ -253,17 +300,30 @@ function simulate(target, N, onProgress, done){
     return uC[k]<p?a:b;
   }
 
-  // Does the target make the field if game i had gone the other way? Everything else stays as simulated.
-  const touched=new Int32Array(8);
+  // sparse score overrides for the flip evaluation
+  const stamp=new Int32Array(nT); let cur=0;
+  const dS=new Float64Array(nT), touched=new Int32Array(nT); let nTouch=0;
+  const touch=(j,delta)=>{ if(stamp[j]!==cur){ stamp[j]=cur; dS[j]=0; touched[nTouch++]=j; } dS[j]+=delta; };
+  const sc=j=> stamp[j]===cur ? score[j]+dS[j] : score[j];
+
   function flipInField(i){
+    cur++; nTouch=0;
     const h=gH[i], a=gA[i], hw=res[i];
     const w=hw?h:a, l=hw?a:h;                       // actual winner / loser; after the flip, l wins
-    const rw = resume[w] - winGain(l) - lossCost(l);
-    const rl = resume[l] + lossCost(w) + winGain(w);
-    const sw = rs[w]*ratingWeight + rw*resumeWeight;
-    const sl = rs[l]*ratingWeight + rl*resumeWeight;
-    const sc = j => j===w?sw : j===l?sl : score[j];
+    const rw=resumeWeight;
+    // the two teams in the game swap their result
+    touch(w, rw*( -WQ*W[l] - (LP + LQ*(L[l]-1)) ));
+    touch(l, rw*( (LP + LQ*L[w]) + WQ*(W[w]-1) ));
+    // everyone who played l: l finishes with one more win, so beating l is worth more and losing to l costs less
+    const tl=teamGames[l];
+    for(let q=0;q<tl.length;q++){ const j=tl[q]; if(j===i) continue;
+      const o = gH[j]===l?gA[j]:gH[j]; const oWon = (gH[j]===o)===(res[j]===1); touch(o, rw*(oWon?WQ:LQ)); }
+    // everyone who played w: the reverse
+    const tw=teamGames[w];
+    for(let q=0;q<tw.length;q++){ const j=tw[q]; if(j===i) continue;
+      const o = gH[j]===w?gA[j]:gH[j]; const oWon = (gH[j]===o)===(res[j]===1); touch(o, -rw*(oWon?WQ:LQ)); }
 
+    // conference champion of the game's conference may change
     let k=-1, oldC=-1, newC=-1;
     if(gConf[i]){
       k=confIdx[h];
@@ -275,10 +335,9 @@ function simulate(target, N, onProgress, done){
         if(newC===oldC){ k=-1; oldC=newC=-1; }
       }
     }
-    // Group-of-Six auto-bid: re-pick if a G6 champion changed or a G6 champion's score changed.
-    let newG6=bestG6;
-    const cw=confIdx[w], cl=confIdx[l];
-    const g6Touch = (k>=0 && !isP4[k]) || (cw>=0 && !isP4[cw] && champ[cw]===w) || (cl>=0 && !isP4[cl] && champ[cl]===l);
+    // Group-of-Six auto-bid: re-pick if a G6 champion changed or any touched team is a G6 champion
+    let newG6=bestG6, g6Touch = k>=0 && !isP4[k];
+    if(!g6Touch) for(let q=0;q<nTouch;q++){ const j=touched[q], kk=confIdx[j]; if(kk>=0 && !isP4[kk] && champ[kk]===j){ g6Touch=true; break; } }
     if(g6Touch){
       newG6=-1; let best=-1e9;
       for(let kk=0;kk<nC;kk++){
@@ -295,18 +354,17 @@ function simulate(target, N, onProgress, done){
       return aq[j];
     };
 
-    const ts=sc(ti);
     let B;
-    if(ti===w || ti===l){
-      B=0;
+    if(stamp[ti]===cur){
+      // the target's own score moved: recount everyone
+      const ts=sc(ti); B=0;
       for(let j=0;j<nT;j++){ if(j===ti) continue; if(sc(j)>ts && !aqOf(j)) B++; }
     } else {
-      B=blockers;
-      let n=0;
-      const add=j=>{ if(j<0||j===ti) return; for(let q=0;q<n;q++) if(touched[q]===j) return; touched[n++]=j; };
-      add(w); add(l); add(oldC); add(newC); add(bestG6); add(newG6);
-      for(let q=0;q<n;q++){
-        const j=touched[q];
+      const ts=score[ti]; B=blockers;
+      if(oldC>=0 && oldC!==ti) touch(oldC,0); if(newC>=0 && newC!==ti) touch(newC,0);
+      if(bestG6>=0 && bestG6!==ti) touch(bestG6,0); if(newG6>=0 && newG6!==ti) touch(newG6,0);
+      for(let q=0;q<nTouch;q++){
+        const j=touched[q]; if(j===ti) continue;
         const was = (score[j]>ts && !aq[j]) ? 1:0;
         const now = (sc(j)>ts && !aqOf(j)) ? 1:0;
         B += now-was;
@@ -329,10 +387,14 @@ function simulate(target, N, onProgress, done){
         const w=hw?h:a, l=hw?a:h;
         W[w]++; L[l]++;
         if(gConf[i]){CW[w]++;CL[l]++;}
-        resume[w] += winGain(l);
-        resume[l] -= lossCost(w);
       }
-      for(let i=0;i<nT;i++) score[i]=rs[i]*ratingWeight + resume[i]*resumeWeight;
+      // résumé from final records
+      for(let i=0;i<nG;i++){
+        const hw=res[i], w=hw?gH[i]:gA[i], l=hw?gA[i]:gH[i];
+        resume[w] += WQ*W[l];
+        resume[l] -= LP + LQ*L[w];
+      }
+      for(let i=0;i<nT;i++){ score[i]=rs[i]*ratingWeight + resume[i]*resumeWeight; acc.teamWins[i]+=W[i]; }
 
       // conference champions
       bestG6=-1; let bestG6s=-1e9;
@@ -357,7 +419,7 @@ function simulate(target, N, onProgress, done){
       acc.rankSum+=ahead+1; acc.blockSum+=blockers; acc.winSum+=W[ti];
       acc.ranks[Math.min(nT+1,ahead+1)]++;
 
-      // paired leverage: flip each remaining game and see whether the target's fate changes
+      // paired leverage
       for(let i=0;i<nG;i++){
         if(gDone[i]) continue;
         const flipped=flipInField(i);
@@ -381,28 +443,46 @@ function finish(acc,N,ti){
     const pH=acc.sumH[i]/N, pA=acc.sumA[i]/N, swing=acc.sumD[i]/N;
     const varD=Math.max(0, acc.sumD2[i]/N - swing*swing);
     const se=Math.sqrt(varD/N);
-    games.push({i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,
+    const p=gP[i];
+    games.push({i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,tbd:!!src.tbd,tv:src.tv||null,
       spread:src.spread??null,spreadText:src.spreadText||"",overUnder:src.overUnder??null,
-      pHomeWin:gP[i], line:!!gLine[i], involvesMe: gH[i]===ti||gA[i]===ti,
-      pH,pA,swing,se, clear: Math.abs(swing)>=0.001 && Math.abs(swing)>=2.5*se});
+      pHomeWin:p, line:!!gLine[i], involvesMe: gH[i]===ti||gA[i]===ti,
+      pH,pA,swing,se, clear: Math.abs(swing)>=0.001 && Math.abs(swing)>=2.5*se,
+      // Leverage score: impact weighted by how uncertain the game is. A coin flip keeps its full impact;
+      // a 97/3 game keeps about 12% of it, because the outcome you want almost never happens.
+      lev: Math.abs(swing)*100 * 4*p*(1-p)});
   }
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
   const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,
-    block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N})).filter((_,i)=>i!==ti);
+    block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i]}));
   return { pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
-           avgWins:acc.winSum/N, games, teamStats, N };
+           avgWins:acc.winSum/N, myGames:gamesPerTeam[ti], games, teamStats, N };
 }
 
 // ---------- render ----------
-$("#run").onclick=run; $("#team").onchange=run;
+$("#run").onclick=run; $("#team").onchange=run; $("#useLines").onchange=run;
 function run(){
   T=$("#team").value; const N=+$("#sims").value;
+  build();
   $("#run").disabled=true; $("#run").textContent="Simulating…";
   simulate(T,N,p=>{$("#bar").style.width=(p*100)+"%";},r=>{
     RES=r; $("#run").disabled=false; $("#run").textContent="Run simulation"; $("#bar").style.width="0";
     render();
   });
 }
+
+// tabs
+$("#tabs").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-tab]"); if(!b) return;
+  UI.tab=b.dataset.tab;
+  document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",String(x===b)));
+  document.querySelectorAll("section.tab").forEach(s=>{ s.hidden = s.id!=="tab-"+UI.tab; });
+  window.scrollTo({top:0});
+});
+$("#slateSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.slateSort=b.dataset.v; renderSlate(RES); });
+$("#seasonSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.seasonSort=b.dataset.v; renderSeason(RES); });
+$("#slateRanked").onchange=()=>{ UI.slateRanked=$("#slateRanked").checked; renderSlate(RES); };
+$("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(RES); };
 
 function render(){
   const r=RES;
@@ -411,93 +491,58 @@ function render(){
   $("#pathLab").innerHTML = D.conferenceTiers[D.teams[idx.get(T)].conference]==="IND"
     ? `${T} is an independent, so there is no auto-bid path. The only route is finishing among the seven highest-ranked teams that <em>aren't</em> conference champions.`
     : `Two routes: win the conference for an auto-bid, or land among the seven highest-ranked non-champions.`;
+  $("#sRec").textContent=`${r.avgWins.toFixed(1)}–${(r.myGames-r.avgWins).toFixed(1)}`;
   $("#sRank").textContent="#"+r.medRank;
   $("#sBlock").textContent=r.avgBlock.toFixed(1);
   $("#sChamp").textContent=pct(r.pChamp)+"%";
-  $("#sWins").textContent=r.avgWins.toFixed(1);
 
-  renderLeverage(r);
-  renderRankings(r);
   renderBlockers(r);
+  renderBoard(r);
+  renderSlate(r);
+  renderSeason(r);
 
   const lined=r.games.filter(g=>g.line).length;
   $("#foot").innerHTML = `${r.N.toLocaleString()} simulated seasons. Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining. `
-    + (lined?`Win probabilities for the ${lined} upcoming games with a posted line come from the point spread; the rest use rating gaps with home advantage. `
-            :`Win probabilities come from rating gaps with home advantage (no betting lines in this data yet). `)
-    + `Final ordering is a rating-plus-résumé stand-in for the committee, not the committee itself.`;
+    + (lined?`Win probabilities for the ${lined} upcoming games with a posted line come from the point spread; the rest use the SP+ rating gap with home advantage. `
+            :`Win probabilities come from the SP+ rating gap with home advantage${$("#useLines").checked?" (no betting lines in this data yet)":" (betting lines switched off)"}. `)
+    + `Final ordering is a strength-plus-résumé stand-in for the committee, not the committee itself.`;
 }
 
-function renderLeverage(r){
-  $("#levExplain").innerHTML = `Every simulated season is played out, then each remaining game is flipped on its own and we check whether <strong>${T} still makes the field</strong> with everything else unchanged. A game's impact is how much ${T}'s odds move between the two outcomes. Games are sorted by impact, biggest first; games that move the odds by less than a tenth of a point are listed at the bottom.`;
+const ramp = (v,color,max=1) => `background:color-mix(in srgb, ${color} ${Math.round(Math.min(1,v/max)*85)}%, transparent)`;
 
-  const weeks=[...new Set(r.games.map(g=>g.week))].sort((a,b)=>a-b);
-  if(viewWeek===null||(viewWeek!=="all"&&!weeks.includes(viewWeek))) viewWeek = weeks.includes(D.currentWeek) ? D.currentWeek : weeks[0];
-  $("#weekTabs").innerHTML="";
-  [["all","Rest of season"],...weeks.map(w=>[w,"Week "+w])].forEach(([v,lab])=>{
-    const b=document.createElement("button"); b.textContent=lab;
-    b.setAttribute("aria-pressed", String(v===viewWeek));
-    b.onclick=()=>{viewWeek=v; renderLeverage(RES);}; $("#weekTabs").appendChild(b);
-  });
-
-  const inView=r.games.filter(g=>viewWeek==="all"||g.week===viewWeek);
-  const list=inView.filter(g=>g.clear).sort((a,b)=>Math.abs(b.swing)-Math.abs(a.swing)).slice(0,viewWeek==="all"?30:20);
-  const quiet=inView.filter(g=>!g.clear);
-  const maxP=Math.max(0.001,...list.flatMap(g=>[g.pH,g.pA]));
-  const fmtWin = p => p<0.005?"<1":p>0.995?">99":Math.round(p*100);
-
-  const card=g=>{
-    const wantHome=g.swing>0, want=wantHome?g.home:g.away;
-    const line=g.spreadText ? `<b>${g.spreadText}</b>${g.overUnder?` · O/U ${g.overUnder}`:""}` : `<b>No line yet</b>`;
-    const when=fmtDate(g.start);
-    const row=(team,p,win,isWant)=>`
-      <div class="oc-lab ${isWant?"want":""}">If ${team} wins <span class="p num">(${fmtWin(win)}% likely)</span></div>
-      <div class="oc-bar ${isWant?"want":""}"><i style="width:${(p/maxP*100).toFixed(1)}%"></i></div>
-      <div class="oc-val num ${isWant?"":"dim"}">${pct(p)}%</div>`;
-    const rows = wantHome
-      ? row(g.home,g.pH,g.pHomeWin,true)+row(g.away,g.pA,1-g.pHomeWin,false)
-      : row(g.away,g.pA,1-g.pHomeWin,true)+row(g.home,g.pH,g.pHomeWin,false);
-    const mag=Math.abs(g.swing)*100;
-    return `<div class="game">
-      <div class="ghead">
-        <div>
-          <div class="matchup">${badge(g.away)} <em>at</em> ${badge(g.home)}${viewWeek==="all"?` <em>· wk ${g.week}</em>`:""}</div>
-          <div class="meta">${when?when+" · ":""}${line}</div>
-        </div>
-        <div class="impact num"><b>${mag<0.95?mag.toFixed(2):mag.toFixed(1)} pts</b><span>swing in ${short(T)}'s odds</span></div>
-      </div>
-      <div class="outcomes">${rows}</div>
-      <div class="verdict ${g.involvesMe?"mine":""}">${g.involvesMe
-        ? `<strong>${T}</strong> controls this one.`
-        : `Pull for <strong>${want}</strong>.`}</div>
-    </div>`;
-  };
-
-  let html = list.length ? list.map(card).join("") : `<div class="sub" style="padding:10px 0">No game in this week measurably changes ${T}'s odds.</div>`;
-  if(quiet.length){
-    html += `<details class="quiet"><summary>${quiet.length} other game${quiet.length>1?"s":""} with no measurable effect on ${T} (under 0.1 pts)</summary>
-      <ul>${quiet.sort((a,b)=>a.week-b.week||a.home.localeCompare(b.home)).map(g=>`<li>${g.away} at ${g.home}${viewWeek==="all"?` (wk ${g.week})`:""}</li>`).join("")}</ul></details>`;
-  }
-  $("#leverage").innerHTML=html;
+function renderBlockers(r){
+  $("#blockExplain").innerHTML = `<p>There are seven at-large spots. Only teams that finish ranked ahead of ${T} <strong>without</strong> winning their conference compete for them, because conference champions take auto-bids instead. Those teams are your blockers. Six or fewer blockers and you're in.</p>
+    <p><strong>Blocks you</strong> is how often a team ends up in that at-large pile above ${T}. <strong>Finishes ahead</strong> counts every season it ranks above you, auto-bid or not. A team with a big gap between the two usually finishes ahead of you but wins its conference, so it rarely costs you a spot.</p>`;
+  const blk=r.teamStats.filter(t=>t.team!==T).sort((a,b)=>b.block-a.block).slice(0,25);
+  const maxB=Math.max(0.01,...blk.map(t=>t.block));
+  $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Proj. record</th><th class="c">Blocks you</th><th class="c">Finishes ahead</th></tr>`+
+    blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${t.team}</td><td class="sub">${t.conf}</td>
+      <td class="num" style="text-align:center">${t.wins.toFixed(1)}–${(t.games-t.wins).toFixed(1)}</td>
+      <td><span class="ramp num" style="${ramp(t.block,"var(--against)",maxB)}">${pct(t.block)}%</span></td>
+      <td><span class="ramp num" style="${ramp(t.ahead,"var(--flat)")}">${pct(t.ahead)}%</span></td></tr>`;}).join("");
 }
 
-function renderRankings(r){
+function renderBoard(r){
   const ap=D.polls&&D.polls.ap, cfp=D.polls&&D.polls.cfp;
-  $("#rankExplain").innerHTML = (cfp
-    ? `Every ranked team's schedule, ordered by the <strong>CFP committee ranking</strong> (week ${cfp.week}), which is what actually seeds the bracket. The AP poll is shown alongside. `
-    : `Every AP Top 25 team's schedule. The AP poll (week ${ap?ap.week:"—"}) orders the table until the CFP selection committee releases its first ranking, usually the first Tuesday in November; the committee ranking takes over from then on. `)
-    + `Unranked teams that often finish ahead of ${T} in the simulations are included too. Each cell is that week's opponent and the row team's chance of winning it. Shading shows whether <strong>${T}</strong> wants the row team to win or lose that game.`;
+  const src = D.meta&&D.meta.ratings ? D.meta.ratings : "SP+";
+  $("#rankExplain").innerHTML = `<p>${cfp
+    ? `Ordered by the <strong>CFP committee ranking</strong> (week ${cfp.week}), which is what actually seeds the bracket, with the AP poll alongside.`
+    : `Ordered by the <strong>AP poll</strong> (week ${ap?ap.week:"—"}) until the CFP committee releases its first ranking in early November, then by the committee.`}
+    Unranked teams that often finish ahead of ${T} are included too.</p>
+    <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. When a sportsbook has posted a line, the line replaces SP+ for that game (uncheck "Use betting lines" to see pure SP+). Shading shows whether ${T} wants the row team to win or lose that game.</p>`;
 
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
-  const aheadOf=new Map(r.teamStats.map(t=>[t.team,t.ahead]));
+  const stat=new Map(r.teamStats.map(t=>[t.team,t]));
   const contenders=new Set(D.teams.filter(t=>t.apRank||t.cfpRank).map(t=>t.team));
-  r.teamStats.slice().sort((a,b)=>b.ahead-a.ahead).slice(0,20).forEach(t=>contenders.add(t.team));
+  r.teamStats.filter(t=>t.team!==T).sort((a,b)=>b.ahead-a.ahead).slice(0,20).forEach(t=>contenders.add(t.team));
   contenders.add(T);
-  const ranked=[...contenders].map(n=>D.teams[idx.get(n)])
-    .sort((a,b)=>(useCfp()?(a.cfpRank||99)-(b.cfpRank||99):0) || (a.apRank||99)-(b.apRank||99) || (aheadOf.get(b.team)||0)-(aheadOf.get(a.team)||0))
+  const rows=[...contenders].map(n=>D.teams[idx.get(n)])
+    .sort((a,b)=>(useCfp()?(a.cfpRank||99)-(b.cfpRank||99):0) || (a.apRank||99)-(b.apRank||99) || (stat.get(b.team).ahead)-(stat.get(a.team).ahead))
     .map(t=>t.team);
 
-  // leverage per game for the target, keyed by game index
+  // shading scale: the biggest game NOT involving the target gets full colour; the target's own games are always full
   const lev=new Map(); r.games.forEach(g=>lev.set(g.i, g.clear?g.swing:0));
+  const scale=Math.max(0.002,...r.games.filter(g=>!g.involvesMe&&g.clear).map(g=>Math.abs(g.swing)));
   const byTeam=new Map();
   D.games.forEach((g,i)=>{
     const sw=lev.get(i)||0;
@@ -508,31 +553,70 @@ function renderRankings(r){
       if(g.completed){ const won = isHome ? g.homeWin : !g.homeWin;
         const mine = isHome ? g.homeScore : g.awayScore, theirs = isHome ? g.awayScore : g.homeScore;
         result={won, text:(won?"W":"L")+(mine!=null&&theirs!=null?` ${mine}-${theirs}`:"")}; }
-      byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw}); // swing is stated for the home team; flip for the away team
+      byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw,mine:t===T||opp===T});
     }
   });
 
-  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">AP</th><th class="c">CFP</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+
-    ranked.map(t=>{
-      const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map();
+  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">AP</th><th class="c">CFP</th><th class="c">Proj.</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+
+    rows.map(t=>{
+      const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
-      return `<tr class="${t===T?"me":""}"><td class="k">${t}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td>`+weeks.map(w=>{
+      return `<tr class="${t===T?"me":""}"><td class="k">${short(t)}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r num">${st?`${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}`:""}</td>`+weeks.map(w=>{
         const c=m.get(w); if(!c) return `<td><span class="cell"><small>bye</small></span></td>`;
-        const a=Math.min(1,Math.abs(c.sw)/0.02);
-        const bg=Math.abs(c.sw)<0.001?"transparent":`color-mix(in srgb, ${c.sw>0?"var(--for)":"var(--against)"} ${(a*70).toFixed(0)}%, transparent)`;
+        let a = c.mine ? 1 : Math.min(1, Math.abs(c.sw)/scale);
+        if(!c.mine && Math.abs(c.sw)<0.001) a=0;
+        const mix = a===0 ? 0 : Math.round(35+a*55);
+        const bg = a===0 ? "transparent" : `color-mix(in srgb, ${c.sw>0?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
         const sub = c.result ? c.result.text : `${Math.round(c.pWin*100)}%`;
-        const cls = c.result ? (c.result.won?"w":"l") : "";
+        const cls = (c.result ? (c.result.won?"w":"l") : "") + (mix>=60?" hot":"");
         return `<td><span class="cell ${cls}" style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small></span></td>`;
       }).join("")+`</tr>`;
     }).join("");
 }
 
-function renderBlockers(r){
-  $("#blockExplain").innerHTML = `A team only hurts you if it finishes ranked ahead of you <strong>without</strong> winning its conference. Conference champions take auto-bids and stop competing for the seven at-large spots. This is how often each team ends up in that at-large pile above ${T}.`;
-  const blk=r.teamStats.slice().sort((a,b)=>b.block-a.block).slice(0,25);
-  $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conference</th><th>Blocks you</th><th>Finishes ahead of you</th></tr>`+
-    blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="num sub">${rk?"#"+rk:""}</td><td class="k">${t.team}</td><td class="sub">${t.conf}</td>
-      <td class="num bad">${pct(t.block)}%</td><td class="num sub">${pct(t.ahead)}%</td></tr>`;}).join("");
+// One card renderer for both the weekly slate and the season list
+function card(g, showWeek){
+  const wantHome=g.swing>0, want=wantHome?g.home:g.away;
+  const line=g.spreadText ? `<b>${g.spreadText}</b>${g.overUnder?` · O/U ${g.overUnder}`:""}` : `<b>No line</b>`;
+  const when=fmtKick(g);
+  const impact=Math.abs(g.swing)*100;
+  const odd=(team,p,win,isWant)=>`<div class="${isWant?"want":""}"><span>If ${short(team)} wins <small class="num">(${fmtWin(win)}%)</small></span> <b class="num">${pct(p)}%</b></div>`;
+  const odds = g.clear
+    ? (wantHome ? odd(g.home,g.pH,g.pHomeWin,true)+odd(g.away,g.pA,1-g.pHomeWin,false)
+                : odd(g.away,g.pA,1-g.pHomeWin,true)+odd(g.home,g.pH,g.pHomeWin,false))
+    : odd(g.away,g.pA,1-g.pHomeWin,false)+odd(g.home,g.pH,g.pHomeWin,false);
+  const verdict = !g.clear ? `<div class="g-verdict flat">No measurable effect on ${short(T)} either way.</div>`
+    : g.involvesMe ? `<div class="g-verdict mine"><strong>${T}</strong> controls this one · ${impact.toFixed(1)} pt swing</div>`
+    : `<div class="g-verdict">Pull for <strong>${want}</strong> · ${impact<0.95?impact.toFixed(2):impact.toFixed(1)} pt swing, ${fmtWin(wantHome?g.pHomeWin:1-g.pHomeWin)}% likely</div>`;
+  return `<div class="g">
+    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev">Leverage <b class="num">${g.lev.toFixed(2)}</b></span></div>
+    <div class="g-match">${badge(g.away)} <em>at</em> ${badge(g.home)}</div>
+    <div class="g-line">${line}</div>
+    <div class="g-odds">${odds}</div>
+    ${verdict}
+  </div>`;
+}
+
+function renderSlate(r){
+  const weeks=[...new Set(r.games.map(g=>g.week))].sort((a,b)=>a-b);
+  if(UI.slateWeek===null||!weeks.includes(UI.slateWeek)) UI.slateWeek = weeks[0]; // earliest week that still has games to play
+  const ws=$("#slateWeek"); ws.innerHTML=weeks.map(w=>`<option value="${w}" ${w===UI.slateWeek?"selected":""}>Week ${w}</option>`).join("");
+  document.querySelectorAll("#slateSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.slateSort)));
+  $("#slateTitle").textContent=`Week ${UI.slateWeek} slate`;
+  $("#slateExplain").innerHTML = `<p><strong>Leverage score</strong> = impact × how uncertain the game is. Impact is the change in ${T}'s playoff odds between the two outcomes. A coin flip keeps its full impact; a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Sort by kickoff to follow the day.</p>`;
+  let list=r.games.filter(g=>g.week===UI.slateWeek);
+  if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
+  const byTime=(a,b)=>(a.tbd-b.tbd)||((a.start?Date.parse(a.start):9e15)-(b.start?Date.parse(b.start):9e15))||(b.lev-a.lev);
+  list.sort(UI.slateSort==="time" ? byTime : (a,b)=>b.lev-a.lev);
+  $("#slate").innerHTML = list.length ? list.map(g=>card(g,false)).join("") : `<div class="sub" style="padding:10px 0">No games match.</div>`;
+}
+
+function renderSeason(r){
+  document.querySelectorAll("#seasonSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.seasonSort)));
+  $("#seasonExplain").innerHTML = `<p>Every remaining game, ranked by how much it matters to ${T}. <strong>Impact</strong> is the raw swing in playoff odds between the two outcomes; <strong>leverage score</strong> discounts that by how unlikely the swing is to happen.</p>`;
+  const list=r.games.filter(g=>g.clear).sort(UI.seasonSort==="impact" ? (a,b)=>Math.abs(b.swing)-Math.abs(a.swing) : (a,b)=>b.lev-a.lev).slice(0,40);
+  const quiet=r.games.filter(g=>!g.clear).length;
+  $("#season").innerHTML = list.map(g=>card(g,true)).join("") + (quiet?`<details class="quiet"><summary>${quiet} more games with no measurable effect on ${T}</summary><div class="sub" style="margin-top:6px">They move the odds by less than a tenth of a point either way.</div></details>`:"");
 }
 </script>
 </body>

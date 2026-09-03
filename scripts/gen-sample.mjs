@@ -102,7 +102,7 @@ const data = {
   currentWeek: 1,
   source: "placeholder",
   polls: { ap: { name: "AP Top 25 (preseason)", week: 0 }, cfp: null },
-  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, lossPenalty: 4, ratingSd: 7, atLargeSlots: 7 },
+  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, lossPenalty: 5, winQuality: 0.3, lossQuality: 0.35, ratingSd: 8, atLargeSlots: 7 },
   conferenceTiers: TIER,
   teams,
   games: games.sort((a, b) => a.week - b.week),

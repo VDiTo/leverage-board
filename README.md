@@ -36,25 +36,33 @@ by less than a tenth of a point are still listed, just not ranked.
 ## The model
 
 Win probabilities come from the posted point spread when a sportsbook has
-priced the game (`P(home) = Φ(-spread / 13.5)`), and from the rating gap plus
-home advantage otherwise. Lines usually exist only a week or so out, so most of
-the season runs on ratings until the data refreshes.
+priced the game (`P(home) = Φ(-spread / 13.5)`), and from the SP+ rating gap
+plus home advantage otherwise. Lines usually exist only a week or so out, so
+most of the season runs on SP+ until the data refreshes. The "Use betting
+lines" switch turns the override off.
 
-Ratings are regressed SP+ and are treated as uncertain: each simulated season
-draws a "true strength" for every team around its rating (`ratingSd`, 7
-points). Without that, the top-rated team is a near-lock before kickoff.
+Ratings are SP+ (this season's once published, otherwise last season's
+regressed 25%) and are treated as uncertain: each simulated season draws a
+"true strength" for every team around its rating (`ratingSd`, 8 points).
+Without that, the top-rated team is a near-lock before kickoff.
 
-Ranking is a stand-in for the committee: true strength plus a résumé term.
-Beating a good team helps a little; every loss costs a flat `lossPenalty`
-(4 points) plus extra when the opponent was weak. The flat penalty is what makes
-a two-loss team a bubble team. Preseason the model gives Ohio State about 84%,
-Notre Dame about 74%, Texas about 48%, Ole Miss about 22% and Louisville about
-17%, which is in the neighbourhood of how the markets price them. All of these
-knobs live in `config` in `data.json`.
+Ranking is a stand-in for the committee: true strength plus a résumé built from
+opponents' **final records**. A win is worth `winQuality` (0.3) points per game
+the beaten team ends up winning, so beating an 11-1 team is worth far more than
+beating a 3-9 team. A loss costs a flat `lossPenalty` (5) plus `lossQuality`
+(0.35) per game the winner ends up losing, so losing to a bad team hurts more.
+Because opponents' records feed your résumé, your opponents' other games matter
+to you: the model wants your scheduled opponents to win everything else.
+
+Leverage score on the weekly slate is impact × 4p(1-p): the raw swing in
+playoff odds, discounted by how unlikely a coin-flip-sized surprise is. A 97/3
+game keeps about 12% of its impact.
+
+All of these knobs live in `config` in `data.json`.
 
 The AP Top 25 and, once released, the CFP committee rankings are pulled each
-week and shown in the schedule grid; the committee ranking drives the "#n"
-badges when it exists.
+week and shown in the schedule board; the committee ranking drives the "#n"
+badges when it exists. TV outlets and kickoff times come from CFBD's media feed.
 
 ## Setup
 
