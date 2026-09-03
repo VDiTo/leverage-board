@@ -1168,16 +1168,17 @@ function renderBoard(r){
   const summary=(()=>{ // weekly summary rows: highest and average leverage of every game that week (own games excluded)
       const byWeek=new Map(); r.games.filter(g=>!g.involvesMe).forEach(g=>{ if(!byWeek.has(g.week)) byWeek.set(g.week,[]); byWeek.get(g.week).push(g.clear?g.levN:0); });
       const cellFor=v=>v==null?`<td class="r sub">—</td>`:`<td class="c">${scorePill(v,true)}</td>`;
-      const row=(label,f)=>`<tr class="sum"><td class="k">${label}</td><td colspan="3" class="sub" style="font-size:11px">all games that week</td>${weeks.map(w=>{ const L=byWeek.get(w); return cellFor(L&&L.length?f(L):null); }).join("")}</tr>`;
+      const row=(label,f)=>`<tr class="sum"><td class="k">${label}</td><td class="sub" style="font-size:11px;white-space:normal;line-height:1.1">all games</td>${weeks.map(w=>{ const L=byWeek.get(w); return cellFor(L&&L.length?f(L):null); }).join("")}</tr>`;
       return row("Highest leverage", L=>Math.max(...L)) + row("Average leverage", L=>L.reduce((a,b)=>a+b,0)/L.length);
     })();
-  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">AP</th><th class="c">CFP</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+ summary +
+  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+ summary +
     rows.map(t=>{
       const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
-      return (T && t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+4}"></td></tr>` : "")
-        + (sepBefore===t ? `<tr class="sep lab"><td colspan="${weeks.length+4}">Unranked · playoff chance ${UI.boardMin<=1?"≥ "+Math.round(UI.boardMin*100)+"%":""}</td></tr>` : "")
-        + `<tr class="${t===T?"me":""}"><td class="k">${tn(t,short(t))}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
+      const rkNo = useCfp() ? tm.cfpRank : tm.apRank;
+      return (T && t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+2}"></td></tr>` : "")
+        + (sepBefore===t ? `<tr class="sep lab"><td colspan="${weeks.length+2}">Unranked · playoff chance ${UI.boardMin<=1?"≥ "+Math.round(UI.boardMin*100)+"%":""}</td></tr>` : "")
+        + `<tr class="${t===T?"me":""}"><td class="k">${rkNo?`<span class="rk">#${rkNo}</span> `:""}${tn(t,short(t))}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
         const c=m.get(w); if(!c) return `<td><span class="cell"><small>bye</small></span></td>`;
         const sub = c.result ? c.result.text : `${Math.round(c.pWin*100)}%`;
         const res = c.result ? (c.result.won?" w":" l") : "";
