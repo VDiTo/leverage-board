@@ -177,7 +177,7 @@
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   /* the Top 25 board always sits on a neutral ground so the green/red shading reads the same for every team */
-  #tab-board{--field:#13161b;--panel:#1a1e24;--panel2:#242a32;--line:#2e353e;--muted:#9aa4ae;--fieldhue:#8f7ae0;
+  #tab-board{--field:#13161b;--panel:#1a1e24;--panel2:#242a32;--line:#2e353e;--muted:#9aa4ae;--fieldhue:#3fa96b;
     background:var(--field);border-radius:12px;padding:6px 14px 14px;margin-top:10px}
   @media (min-width:1100px){ #tab-board{margin:10px calc(50% - 50vw) 0;width:100vw;border-radius:0;padding:6px 16px 16px} }
   /* overview: bracket and blockers sit side by side when there's room */
@@ -210,6 +210,7 @@
   tr.me td.k, td.me{color:var(--gold)}
   #rankings tr.me td{border-bottom:3px solid var(--gold);padding-bottom:9px}
   #rankings tr.sep td{height:10px;padding:0;border-bottom:0}
+  #rankings tr.sep.lab td{height:auto;padding:10px 6px 4px;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
   .cell.own{border:1px solid color-mix(in srgb, var(--gold) 45%, transparent)}
   .ramp{display:block;border-radius:5px;padding:3px 7px;text-align:right;font-weight:700;color:var(--ink);text-shadow:0 0 3px rgba(3,10,20,.55)}
   .pill{text-shadow:0 0 3px rgba(3,10,20,.45)}
@@ -280,6 +281,10 @@
   <section class="tab" id="tab-board" hidden>
     <h2>Top 25 schedule board</h2>
     <div class="explain" id="rankExplain"></div>
+    <div class="controls">
+      <div class="seg" id="boardSort"><button data-v="rank" aria-pressed="true">By rank</button><button data-v="pIn" aria-pressed="false">By playoff %</button></div>
+      <label class="chk">Unranked teams with playoff chance ≥ <select id="boardMin" aria-label="Minimum playoff chance for unranked teams"><option value="0.05">5%</option><option value="0.10" selected>10%</option><option value="0.25">25%</option><option value="0.50">50%</option><option value="2">none</option></select></label>
+    </div>
     <div class="scroll"><table id="rankings"></table></div>
   </section>
 
@@ -315,7 +320,7 @@ const $ = s => document.querySelector(s);
 let D=null, T=null, RES=null;
 // per-device preferences (team, season count, lines toggle, last tab)
 const pref = { get(k){ try{ return localStorage.getItem("lb."+k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem("lb."+k, v); }catch(e){} } };
-const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:false, slateMin:10, seasonSort:"lev", seasonMin:25 };
+const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:false, slateMin:10, seasonSort:"lev", seasonMin:25, boardSort:"rank", boardMin:0.10 };
 
 const norm = z => { // standard normal CDF
   const t = 1/(1+0.2316419*Math.abs(z));
@@ -411,6 +416,8 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   const sims = pref.get("sims"); if(sims && [...$("#sims").options].some(o=>o.value===sims)) $("#sims").value = sims;
   const tc = pref.get("teamColors"); if(tc!==null) $("#teamColors").checked = tc==="1";
   const smin = pref.get("slateMin"); if(smin!==null && [...$("#slateMin").options].some(o=>o.value===smin)){ $("#slateMin").value=smin; UI.slateMin=+smin; }
+  const bs = pref.get("boardSort"); if(bs==="rank"||bs==="pIn") UI.boardSort=bs;
+  const bm = pref.get("boardMin"); if(bm!==null && [...$("#boardMin").options].some(o=>o.value===bm)){ $("#boardMin").value=bm; UI.boardMin=+bm; }
   const nmin = pref.get("seasonMin"); if(nmin!==null && [...$("#seasonMin").options].some(o=>o.value===nmin)){ $("#seasonMin").value=nmin; UI.seasonMin=+nmin; }
   const tab = pref.get("tab"); if(tab && document.querySelector(`#tabs button[data-tab="${tab}"]`)) showTab(tab);
   run();
@@ -972,6 +979,8 @@ function downloadOrPrint(file, tab, explainId){
 $("#pdf").onclick=()=>downloadOrPrint("Leverage-Board.pdf","board","#rankExplain");
 $("#pdfWeek").onclick=()=>downloadOrPrint("Top-10-Games.pdf","slate","#slateExplain");
 $("#slateSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.slateSort=b.dataset.v; renderSlate(RES); });
+$("#boardSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.boardSort=b.dataset.v; pref.set("boardSort",UI.boardSort); renderBoard(RES); });
+$("#boardMin").onchange=()=>{ UI.boardMin=+$("#boardMin").value; pref.set("boardMin",String(UI.boardMin)); renderBoard(RES); };
 $("#seasonSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.seasonSort=b.dataset.v; renderSeason(RES); });
 $("#slateRanked").onchange=()=>{ UI.slateRanked=$("#slateRanked").checked; renderSlate(RES); };
 $("#slateMin").onchange=()=>{ UI.slateMin=+$("#slateMin").value; pref.set("slateMin",String(UI.slateMin)); renderSlate(RES); };
@@ -1104,13 +1113,18 @@ function renderBoard(r){
 
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
   const stat=new Map(r.teamStats.map(t=>[t.team,t]));
-  const contenders=new Set(D.teams.filter(t=>t.apRank||t.cfpRank).map(t=>t.team));
-  r.teamStats.filter(t=>t.team!==T&&!t.fcs).sort((a,b)=>T?(b.ahead-a.ahead):(b.pIn-a.pIn)).slice(0,20).forEach(t=>contenders.add(t.team));
-  if(T) contenders.add(T);
-  const maxPIn=Math.max(0.01,...[...contenders].map(n=>stat.get(n).pIn));
-  const rows=[...(T?[T]:[]), ...[...contenders].filter(n=>n!==T).map(n=>D.teams[idx.get(n)])
-    .sort((a,b)=>(useCfp()?(a.cfpRank||99)-(b.cfpRank||99):0) || (a.apRank||99)-(b.apRank||99) || (stat.get(b.team).ahead)-(stat.get(a.team).ahead))
-    .map(t=>t.team)];
+  document.querySelectorAll("#boardSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.boardSort)));
+  const rankKey = t => useCfp() ? (t.cfpRank||99) : (t.apRank||99);
+  const rankedTeams = D.teams.filter(t=>!t.fcs && t.team!==T && (useCfp()?t.cfpRank:t.apRank));
+  const unrankedTeams = D.teams.filter(t=>!t.fcs && t.team!==T && !(useCfp()?t.cfpRank:t.apRank) && stat.get(t.team).pIn>=UI.boardMin);
+  const byRank=(a,b)=>rankKey(a)-rankKey(b) || stat.get(b.team).pIn-stat.get(a.team).pIn;
+  const byPIn=(a,b)=>stat.get(b.team).pIn-stat.get(a.team).pIn || rankKey(a)-rankKey(b);
+  let ordered, splitAt=-1;
+  if(UI.boardSort==="pIn"){ ordered=[...rankedTeams,...unrankedTeams].sort(byPIn); }
+  else { ordered=[...rankedTeams.sort(byRank), ...unrankedTeams.sort(byPIn)]; splitAt=rankedTeams.length; }
+  const rows=[...(T?[T]:[]), ...ordered.map(t=>t.team)];
+  const sepBefore = splitAt>=0 && unrankedTeams.length ? rows[(T?1:0)+splitAt] : null;
+  const maxPIn=Math.max(0.01,...rows.map(n=>stat.get(n).pIn));
 
   // shading = the same 0-100 leverage score as the pills, signed by who the target wants
   const lev=new Map(); r.games.forEach(g=>lev.set(g.i, g.clear ? Math.sign(g.swing)*g.levN : 0));
@@ -1133,7 +1147,9 @@ function renderBoard(r){
     rows.map(t=>{
       const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
-      return (T && t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+4}"></td></tr>` : "") + `<tr class="${t===T?"me":""}"><td class="k">${tn(t,short(t))}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
+      return (T && t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+4}"></td></tr>` : "")
+        + (sepBefore===t ? `<tr class="sep lab"><td colspan="${weeks.length+4}">Unranked · playoff chance ${UI.boardMin<=1?"≥ "+Math.round(UI.boardMin*100)+"%":""}</td></tr>` : "")
+        + `<tr class="${t===T?"me":""}"><td class="k">${tn(t,short(t))}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
         const c=m.get(w); if(!c) return `<td><span class="cell"><small>bye</small></span></td>`;
         const sub = c.result ? c.result.text : `${Math.round(c.pWin*100)}%`;
         const res = c.result ? (c.result.won?" w":" l") : "";
