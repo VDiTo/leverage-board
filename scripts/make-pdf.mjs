@@ -73,6 +73,7 @@ const cell = (t, c) => {
 };
 
 const me = stat.get(TEAM);
+const maxPIn = Math.max(0.01, ...rows.map(t => stat.get(t).pIn));
 const top = r.games.filter(g => g.clear && !g.involvesMe).sort((a, b) => b.levN - a.levN).slice(0, 6);
 const pollBits = [D.polls?.ap ? `AP wk ${D.polls.ap.week}` : null, D.polls?.cfp ? `CFP wk ${D.polls.cfp.week}` : null].filter(Boolean).join(" · ");
 
@@ -205,7 +206,7 @@ const page = `<!doctype html><html><head><meta charset="utf-8"><title>Leverage B
 ${rows.map(t => {
   const tm = D.teams[idx.get(t)], m = byTeam.get(t) || new Map(), s = stat.get(t);
   const rk = (v, hot) => v ? (hot ? `<b>${v}</b>` : v) : "NR";
-  const pf = `<span class="pf" style="background:color-mix(in srgb, #3fa96b ${mixCurve(s.pIn)}%, white)">${Math.round(s.pIn * 100)}%</span>`;
+  const pf = `<span class="pf" style="background:color-mix(in srgb, #3fa96b ${mixCurve(s.pIn / maxPIn)}%, white)">${Math.round(s.pIn * 100)}%</span>`;
   return `<tr class="${t === TEAM ? "me" : ""}"><td class="k">${esc(short(t))}</td><td class="r">${rk(tm.apRank, !useCfp)}</td><td class="r">${rk(tm.cfpRank, useCfp)}</td><td class="c">${pf}</td>${weeks.map(w => cell(t, m.get(w))).join("")}</tr>`;
 }).join("")}
 </table>
@@ -216,15 +217,14 @@ ${rows.map(t => {
     <span><i style="background:#3fa96b"></i>You want this team to win</span>
     <span><i style="background:#c65442"></i>You want this team to lose</span>
     <span><i style="border-color:#c9a44c"></i>Head-to-head with ${esc(TEAM)}</span>
-    <span>Darker = higher leverage · "@" = on the road · % = their chance of winning (SP+)</span>
-    <span>${esc(TEAM)}'s own row is shaded by its chance of winning each game.</span>
+    <span>"@" = on the road · % = their chance of winning (SP+)</span>
+    <span>${esc(TEAM)}'s own row is shaded by its chance of winning each game; the Playoff column by playoff chance.</span>
   </div>
-  <h3>What leverage means</h3>
-  <p><b>Impact</b> is how much ${esc(TEAM)}'s playoff odds move between the two possible results of a game. A game can matter for three reasons: the loser drops behind you in the rankings, a conference title (and its automatic bid) changes hands, or a team on your schedule gets a better or worse record, which changes how much your result against them counts.</p>
-  <p><b>Leverage</b> is impact discounted by how unlikely the swing is. A coin flip keeps all of its impact; a game where the favourite wins 95% of the time keeps about a fifth, because the upset you'd need rarely happens.</p>
-  <p>Both are scaled 0–100 against the biggest game left on the schedule. Every number comes from playing out the rest of the season ${r.N.toLocaleString()} times and flipping each game one at a time to see whether ${esc(TEAM)} still makes the field.</p>
+  <h3>What the shading means</h3>
+  <p>Darker means the game matters more to ${esc(TEAM)}: it weighs how much the result would move ${esc(short(TEAM))}'s playoff odds together with how likely that swing is, so a coin flip between two contenders shows up stronger than a near-certain blowout. A game can matter because the loser drops behind you in the rankings, because a conference title and its automatic bid change hands, or because a team on your schedule ends up with a better or worse record.</p>
+  <p>Every shade comes from playing out the rest of the season ${r.N.toLocaleString()} times and flipping each game one at a time to see whether ${esc(TEAM)} still makes the field.</p>
   <h3>Biggest games not involving ${esc(short(TEAM))}</h3>
-  <ol class="topg">${top.map(g => `<li><span>Wk ${g.week}: ${esc(short(g.away))} at ${esc(short(g.home))} — pull for <b>${esc(short(g.swing > 0 ? g.home : g.away))}</b></span><span class="lv">${Math.round(g.levN)}</span></li>`).join("")}</ol>
+  <ol class="topg">${top.map(g => `<li><span>Wk ${g.week}: ${esc(short(g.away))} at ${esc(short(g.home))} — pull for <b>${esc(short(g.swing > 0 ? g.home : g.away))}</b></span></li>`).join("")}</ol>
 </aside>
 <footer>Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining; straight seeding. Win probabilities from the SP+ rating gap with home advantage; final ordering is a strength-plus-résumé stand-in for the committee. Live board with weekly slates and explanations: vdito.github.io/leverage-board</footer>
 </div></body></html>`;
