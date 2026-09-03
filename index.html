@@ -230,7 +230,6 @@
     <label class="chk"><input type="checkbox" id="useLines"> Use betting lines instead of SP+</label>
     <button id="run">Run simulation</button>
     <button id="pdf" class="ghost" title="One-page board with the leverage explanation">Board PDF</button>
-    <button id="pdfWeek" class="ghost" title="Top 10 games for the week selected on the This week tab, one page">Top 10 PDF</button>
   </div>
   <div class="prog"><i id="bar"></i></div>
   <div class="sub" id="cacheNote" hidden></div>
@@ -286,6 +285,7 @@
       <select id="slateWeek" aria-label="Week"></select>
       <div class="seg" id="slateSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="time" aria-pressed="false">Kickoff</button></div>
       <label class="chk"><input type="checkbox" id="slateRanked"> Ranked teams only</label>
+      <button id="pdfWeek" class="ghost" title="One page: the ten highest-leverage games of this week">Top 10 PDF</button>
     </div>
     <div id="slate"></div>
   </section>
@@ -981,6 +981,7 @@ function renderSlate(r){
   const ws=$("#slateWeek"); ws.innerHTML=weeks.map(w=>`<option value="${w}" ${w===UI.slateWeek?"selected":""}>Week ${w}</option>`).join("");
   document.querySelectorAll("#slateSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.slateSort)));
   $("#slateTitle").textContent=`Week ${UI.slateWeek} slate`;
+  $("#pdfWeek").textContent=`Top 10 PDF · Week ${UI.slateWeek}`;
   $("#slateExplain").innerHTML = `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
   let list=r.games.filter(g=>g.week===UI.slateWeek);
   if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
