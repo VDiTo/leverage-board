@@ -296,6 +296,7 @@
     <div class="explain" id="seasonExplain"></div>
     <div class="controls">
       <div class="seg" id="seasonSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="impact" aria-pressed="false">Impact</button></div>
+      <label class="chk">Min leverage <select id="seasonMin" aria-label="Minimum leverage score"><option value="0">any</option><option value="5">5</option><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option></select></label>
     </div>
     <div id="season"></div>
   </section>
@@ -309,7 +310,7 @@ const $ = s => document.querySelector(s);
 let D=null, T=null, RES=null;
 // per-device preferences (team, season count, lines toggle, last tab)
 const pref = { get(k){ try{ return localStorage.getItem("lb."+k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem("lb."+k, v); }catch(e){} } };
-const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:false, slateMin:0, seasonSort:"lev" };
+const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:false, slateMin:0, seasonSort:"lev", seasonMin:10 };
 
 const norm = z => { // standard normal CDF
   const t = 1/(1+0.2316419*Math.abs(z));
@@ -361,6 +362,7 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   const sims = pref.get("sims"); if(sims && [...$("#sims").options].some(o=>o.value===sims)) $("#sims").value = sims;
   const lines = pref.get("lines"); if(lines!==null) $("#useLines").checked = lines==="1";
   const smin = pref.get("slateMin"); if(smin!==null && [...$("#slateMin").options].some(o=>o.value===smin)){ $("#slateMin").value=smin; UI.slateMin=+smin; }
+  const nmin = pref.get("seasonMin"); if(nmin!==null && [...$("#seasonMin").options].some(o=>o.value===nmin)){ $("#seasonMin").value=nmin; UI.seasonMin=+nmin; }
   const tab = pref.get("tab"); if(tab && document.querySelector(`#tabs button[data-tab="${tab}"]`)) showTab(tab);
   run();
 }).catch(e=>{ $("#stamp").textContent="Couldn't load data.json — run scripts/fetch-data.mjs first."; });
@@ -806,6 +808,7 @@ $("#slateSort").addEventListener("click",e=>{ const b=e.target.closest("button[d
 $("#seasonSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.seasonSort=b.dataset.v; renderSeason(RES); });
 $("#slateRanked").onchange=()=>{ UI.slateRanked=$("#slateRanked").checked; renderSlate(RES); };
 $("#slateMin").onchange=()=>{ UI.slateMin=+$("#slateMin").value; pref.set("slateMin",String(UI.slateMin)); renderSlate(RES); };
+$("#seasonMin").onchange=()=>{ UI.seasonMin=+$("#seasonMin").value; pref.set("seasonMin",String(UI.seasonMin)); renderSeason(RES); };
 $("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(RES); };
 
 function render(){
@@ -1001,9 +1004,13 @@ function renderSlate(r){
 function renderSeason(r){
   document.querySelectorAll("#seasonSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.seasonSort)));
   $("#seasonExplain").innerHTML = `<p>Every remaining game <strong>not involving ${T}</strong>, ranked by how much it matters to ${T}. Your own games are left out because they obviously dwarf everything else; they're on the Top 25 board and the weekly slate. <strong>Impact</strong> is the swing in playoff odds between the two outcomes; <strong>leverage</strong> discounts that by how unlikely the swing is to happen. Both are scaled 0–100 against the biggest of these games, and darker gold means a higher score.</p>`;
-  const list=r.games.filter(g=>g.clear&&!g.involvesMe).sort(UI.seasonSort==="impact" ? (a,b)=>Math.abs(b.swing)-Math.abs(a.swing) : (a,b)=>b.lev-a.lev).slice(0,40);
-  const quiet=r.games.filter(g=>!g.clear&&!g.involvesMe).length;
-  $("#season").innerHTML = list.map(g=>card(g,true)).join("") + (quiet?`<details class="quiet"><summary>${quiet} more games with no measurable effect on ${T}</summary><div class="sub" style="margin-top:6px">They move the odds by less than a tenth of a point either way.</div></details>`:"");
+  const all=r.games.filter(g=>g.clear&&!g.involvesMe);
+  const kept=all.filter(g=>g.levN>=UI.seasonMin);
+  const list=kept.sort(UI.seasonSort==="impact" ? (a,b)=>Math.abs(b.swing)-Math.abs(a.swing) : (a,b)=>b.lev-a.lev).slice(0,60);
+  const below=all.length-kept.length, quiet=r.games.filter(g=>!g.clear&&!g.involvesMe).length;
+  $("#season").innerHTML = (list.map(g=>card(g,true)).join("") || `<div class="sub" style="padding:10px 0">No games at or above leverage ${UI.seasonMin}.</div>`)
+    + (below?`<div class="sub" style="padding:10px 0">${below} game${below>1?"s":""} below leverage ${UI.seasonMin} hidden.</div>`:"")
+    + (quiet?`<details class="quiet"><summary>${quiet} more games with no measurable effect on ${T}</summary><div class="sub" style="margin-top:6px">They move the odds by less than a tenth of a point either way.</div></details>`:"");
 }
 </script>
 </body>
