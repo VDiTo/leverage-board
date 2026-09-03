@@ -108,6 +108,16 @@
   .chip.want{border-color:var(--for)}
   .chip.mine{border-color:var(--gold)}
   .g-top .lev{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+  .g-top .lev.why{cursor:pointer}
+  .g-top .lev.why:hover .pill{outline:1.5px solid var(--gold)}
+  .sheet .why-list{margin:6px 0 0;padding-left:0;list-style:none}
+  .sheet .why-list li{padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+  .sheet .why-list li b{color:var(--ink)}
+  .sheet .why-list li .p{color:var(--muted);font-variant-numeric:tabular-nums}
+  .sheet .team-ctx{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  @media (max-width:560px){ .sheet .team-ctx{grid-template-columns:1fr} }
+  .sheet .team-ctx > div{background:var(--panel2);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--muted)}
+  .sheet .team-ctx b{color:var(--ink)}
   .pill{display:inline-block;border-radius:6px;padding:1px 8px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;min-width:38px;text-align:center}
   .pill.dim{color:var(--muted);font-weight:500}
   .g-top .lev small{font-weight:500;color:var(--muted);font-size:11.5px}
@@ -382,7 +392,10 @@ function simulate(target, N, onProgress, done){
   const acc={ in:0, champ:0, rankSum:0, blockSum:0, winSum:0, ranks:new Int32Array(nT+2),
     blockers:new Float64Array(nT), aheadN:new Float64Array(nT), teamWins:new Float64Array(nT),
     fieldN:new Float64Array(nT), seedSum:new Float64Array(nT), p4ChampN:new Float64Array(nT), g6N:new Float64Array(nT),
-    sumH:new Float64Array(nG), sumA:new Float64Array(nG), sumD:new Float64Array(nG), sumD2:new Float64Array(nG) };
+    sumH:new Float64Array(nG), sumA:new Float64Array(nG), sumD:new Float64Array(nG), sumD2:new Float64Array(nG),
+    // why a flip mattered: 0 = target's own résumé moved, 1 = an auto-bid changed hands, 2 = a team moved past the target
+    why:[new Float64Array(nG), new Float64Array(nG), new Float64Array(nG)] };
+  let flipReason=2;
 
   const order=new Int32Array(nT); for(let i=0;i<nT;i++) order[i]=i;
   let x=2463534242>>>0; // xorshift32
@@ -404,11 +417,12 @@ function simulate(target, N, onProgress, done){
   // sparse score overrides for the flip evaluation
   const stamp=new Int32Array(nT); let cur=0;
   const dS=new Float64Array(nT), touched=new Int32Array(nT); let nTouch=0;
-  const touch=(j,delta)=>{ if(stamp[j]!==cur){ stamp[j]=cur; dS[j]=0; touched[nTouch++]=j; } dS[j]+=delta; };
+  let noRes=false; // when set, the target's own résumé is held fixed (used to attribute why a flip mattered)
+  const touch=(j,delta)=>{ if(noRes && j===ti) return; if(stamp[j]!==cur){ stamp[j]=cur; dS[j]=0; touched[nTouch++]=j; } dS[j]+=delta; };
   const sc=j=> stamp[j]===cur ? score[j]+dS[j] : score[j];
 
-  function flipInField(i){
-    cur++; nTouch=0;
+  function flipInField(i, holdResume){
+    cur++; nTouch=0; noRes=!!holdResume;
     const h=gH[i], a=gA[i], hw=res[i];
     const w=hw?h:a, l=hw?a:h;                       // actual winner / loser; after the flip, l wins
     const rw=resumeWeight;
@@ -456,6 +470,7 @@ function simulate(target, N, onProgress, done){
       return aq[j];
     };
 
+    flipReason = stamp[ti]===cur ? 0 : (k>=0 || newG6!==bestG6) ? 1 : 2;
     let B;
     if(stamp[ti]===cur){
       // the target's own score moved: recount everyone
@@ -536,6 +551,15 @@ function simulate(target, N, onProgress, done){
         const FA = res[i] ? flipped : inField;
         acc.sumH[i]+=FH; acc.sumA[i]+=FA;
         const d=FH-FA; acc.sumD[i]+=d; acc.sumD2[i]+=d*d;
+        if(d!==0){
+          let rsn=flipReason;
+          if(rsn===0){ // target's résumé moved; would the flip still matter with the résumé held fixed?
+            const alt=flipInField(i,true);
+            if(alt===flipped) rsn=flipReason; // yes: it was really the ranking / auto-bid mechanism
+            else rsn=0;
+          }
+          acc.why[rsn][i]++;
+        }
       }
     }
     onProgress(n/N);
@@ -553,10 +577,12 @@ function finish(acc,N,ti){
     const varD=Math.max(0, acc.sumD2[i]/N - swing*swing);
     const se=Math.sqrt(varD/N);
     const p=gP[i];
+    const nDiff=acc.sumD2[i]; // seasons where this result decided the target's fate
+    const why = nDiff ? {resume:acc.why[0][i]/nDiff, autobid:acc.why[1][i]/nDiff, rank:acc.why[2][i]/nDiff} : null;
     games.push({i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,tbd:!!src.tbd,tv:src.tv||null,
       spread:src.spread??null,spreadText:src.spreadText||"",overUnder:src.overUnder??null,
       pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe: gH[i]===ti||gA[i]===ti,
-      pH,pA,swing,se, clear: Math.abs(swing)>=0.001 && Math.abs(swing)>=2.5*se,
+      pH,pA,swing,se, clear: Math.abs(swing)>=0.001 && Math.abs(swing)>=2*se, pDecides:nDiff/N, why,
       // Leverage score: impact weighted by how uncertain the game is. A coin flip keeps its full impact;
       // a 97/3 game keeps about 12% of it, because the outcome you want almost never happens.
       lev: Math.abs(swing)*100 * 4*p*(1-p)});
@@ -581,7 +607,7 @@ function finish(acc,N,ti){
 // ---------- render ----------
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
-const RESULT_VERSION = 3; // bump when the result shape changes so stale saved results are recomputed
+const RESULT_VERSION = 5; // bump when the result shape changes so stale saved results are recomputed
 const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|${T}|${$("#sims").value}|${$("#useLines").checked?1:0}`;
 function loadResult(){ try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
 function saveResult(r){ try{ localStorage.setItem("lb.result", JSON.stringify({key:resultKey(), at:Date.now(), res:r})); }catch(e){} }
@@ -603,11 +629,50 @@ function run(force){
 
 // team popup: full schedule with results, plus SP+ by unit
 document.addEventListener("click",e=>{
+  const w=e.target.closest(".lev.why"); if(w){ openWhy(+w.dataset.game); return; }
   const t=e.target.closest(".tn"); if(t){ openTeam(t.dataset.team); return; }
   if(e.target.closest(".close") || e.target.id==="modal") closeTeam();
 });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeTeam(); });
 function closeTeam(){ $("#modal").hidden=true; document.body.style.overflow=""; }
+function openWhy(gi){
+  const g=RES && RES.games.find(x=>x.i===gi); if(!g) return;
+  const st=name=>RES.teamStats.find(x=>x.team===name);
+  const sH=st(g.home), sA=st(g.away);
+  const wantHome=g.swing>0, want=wantHome?g.home:g.away, other=wantHome?g.away:g.home;
+  const pWant=wantHome?g.pHomeWin:1-g.pHomeWin;
+  const impact=Math.abs(g.swing)*100, disc=4*g.pHomeWin*(1-g.pHomeWin);
+  const pctS=x=>(x*100).toFixed(1)+"%";
+  const myGames=D.games.filter(x=>x.home===T||x.away===T);
+  const onSched=name=>myGames.find(x=>x.home===name||x.away===name);
+
+  // 1. the two outcomes
+  const step1=`<li><b>The two outcomes.</b> ${T} makes the field <b class="num">${pctS(g.pH)}</b> of the time when ${g.home} wins and <b class="num">${pctS(g.pA)}</b> when ${g.away} wins. That gap is the impact: <b class="num">${impact.toFixed(2)} points</b>${g.clear?`, which scores <b>${Math.round(g.impN)}</b> on the 0–100 scale`:`, within the simulation's noise (±${(2*g.se*100).toFixed(2)})`}.</li>`;
+  // 2. likelihood discount
+  const step2=`<li><b>How likely the swing is.</b> ${g.home} wins <b class="num">${fmtWin(g.pHomeWin)}%</b> of the time${g.line?" (from the betting line)":" (SP+)"}. Leverage multiplies impact by 4p(1−p) = <b class="num">${disc.toFixed(2)}</b>, so ${disc>0.9?"nearly all":disc>0.5?"about half":disc>0.25?"about a quarter":"only a sliver"} of the impact survives${g.clear?`: leverage <b>${Math.round(g.levN)}</b>`:""}.</li>`;
+  // 3. mechanism
+  let step3="";
+  if(g.why && g.pDecides>0){
+    const parts=[["rank","the winner or loser moves past "+T+" in the final ranking, changing how many non-champions sit above you"],["autobid","a conference auto-bid changes hands, which changes how many at-large spots are left"],["resume", g.involvesMe ? T+"'s own record changes, which is the whole ballgame" : T+"'s own résumé moves, because one of these teams is on your schedule and its final record feeds your strength of schedule"]]
+      .map(([k,txt])=>[g.why[k],txt]).filter(([v])=>v>=0.02).sort((a,b)=>b[0]-a[0]);
+    step3=`<li><b>Why it matters when it matters.</b> This result decides ${T}'s fate in <b class="num">${pctS(g.pDecides)}</b> of simulated seasons. In those seasons:<ul style="margin:6px 0 0 16px;padding:0">${parts.map(([v,txt])=>`<li style="border:0;padding:2px 0"><span class="p">${Math.round(v*100)}%</span> — ${txt}</li>`).join("")}</ul></li>`;
+  } else step3=`<li><b>Why it matters when it matters.</b> In ${RES.N.toLocaleString()} simulated seasons this result never changed whether ${T} made the field.</li>`;
+  // 4. verdict
+  const step4 = g.involvesMe ? `<li><b>Verdict.</b> ${T} controls this one.</li>`
+    : g.clear ? `<li><b>Verdict.</b> Pull for <b style="color:var(--for)">${want}</b>. A ${want} win happens ${fmtWin(pWant)}% of the time and is worth ${impact.toFixed(2)} points to ${T}.</li>`
+    : `<li><b>Verdict.</b> Too close to call. The estimate leans ${want} but the margin of error is bigger than the effect; more simulated seasons would sharpen it.</li>`;
+
+  const ctx=(name,s)=>{ const sc=onSched(name);
+    return `<div><b>${badge(name)}</b> · ${s.conf}<br>Playoff ${Math.round(s.pIn*100)}% · finishes ahead of ${short(T)} ${Math.round(s.ahead*100)}% · blocks you ${Math.round(s.block*100)}%${s.pP4Champ>=0.02?` · wins conference ${Math.round(s.pP4Champ*100)}%`:""}${s.pG6>=0.02?` · takes the G6 bid ${Math.round(s.pG6*100)}%`:""}<br>${sc?`On ${short(T)}'s schedule (week ${sc.week}${sc.completed?", played":""}) — proj. ${s.wins.toFixed(1)}–${(s.games-s.wins).toFixed(1)}, so wins by ${short(name)} ${s.wins>=8?"add to":"barely touch"} your résumé`:`Not on ${short(T)}'s schedule`}</div>`; };
+
+  $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
+    <h2>Why leverage ${g.clear?Math.round(g.levN):"—"}</h2>
+    <div class="kv"><span>${badge(g.away)} at ${badge(g.home)}</span><span>wk ${g.week}</span>${g.spreadText?`<span>${g.spreadText}</span>`:""}</div>
+    <ol class="why-list">${step1}${step2}${step3}${step4}</ol>
+    <h3>The teams</h3>
+    <div class="team-ctx">${ctx(g.away,sA)}${ctx(g.home,sH)}</div>`;
+  $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
+}
 function openTeam(name){
   const tm=D.teams[idx.get(name)]; if(!tm) return;
   const st=RES ? RES.teamStats.find(x=>x.team===name) : null;
@@ -830,7 +895,7 @@ function card(g, showWeek){
     own=` own" style="background:color-mix(in srgb, ${up?"var(--for)":"var(--against)"} ${Math.round(12+k*50)}%, transparent)`;
   }
   return `<div class="g${own}${dev?" dev":""}">
-    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.clear)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.clear)}</small>${g.clear?"":`<small>${noise}</small>`}</span></div>
+    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.clear)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.clear)}</small>${g.clear?"":`<small>${noise}</small>`}</span></div>
     <div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>
     <div class="g-line">${line}</div>${dev}
   </div>`;
