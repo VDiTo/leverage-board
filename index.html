@@ -285,7 +285,7 @@
       <select id="slateWeek" aria-label="Week"></select>
       <div class="seg" id="slateSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="time" aria-pressed="false">Kickoff</button></div>
       <label class="chk"><input type="checkbox" id="slateRanked"> Ranked teams only</label>
-      <label class="chk">Min leverage <select id="slateMin" aria-label="Minimum leverage score"><option value="0">any</option><option value="5">5</option><option value="10">10</option><option value="25">25</option><option value="50">50</option></select></label>
+      <label class="chk">Min leverage <select id="slateMin" aria-label="Minimum leverage score"><option value="0">any</option><option value="5">5</option><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option></select></label>
       <button id="pdfWeek" class="ghost" title="One page: the ten highest-leverage games of this week">Top 10 PDF</button>
     </div>
     <div id="slate"></div>
@@ -296,7 +296,7 @@
     <div class="explain" id="seasonExplain"></div>
     <div class="controls">
       <div class="seg" id="seasonSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="impact" aria-pressed="false">Impact</button></div>
-      <label class="chk">Min leverage <select id="seasonMin" aria-label="Minimum leverage score"><option value="0">any</option><option value="5">5</option><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option></select></label>
+      <label class="chk">Min leverage <select id="seasonMin" aria-label="Minimum leverage score"><option value="0">any</option><option value="5">5</option><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label>
     </div>
     <div id="season"></div>
   </section>
@@ -310,7 +310,7 @@ const $ = s => document.querySelector(s);
 let D=null, T=null, RES=null;
 // per-device preferences (team, season count, lines toggle, last tab)
 const pref = { get(k){ try{ return localStorage.getItem("lb."+k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem("lb."+k, v); }catch(e){} } };
-const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:false, slateMin:0, seasonSort:"lev", seasonMin:10 };
+const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:false, slateMin:10, seasonSort:"lev", seasonMin:25 };
 
 const norm = z => { // standard normal CDF
   const t = 1/(1+0.2316419*Math.abs(z));
