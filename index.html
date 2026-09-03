@@ -592,7 +592,10 @@ function openTeam(name){
       ${unitRow("Overall",{rating:sp.rating,rank:sp.rank})}${unitRow("Offense",sp.offense)}${unitRow("Defense",sp.defense)}${unitRow("Special teams",sp.specialTeams)}</table>`
     : `<h3>SP+</h3><div class="sub">Overall rating ${tm.rating}. The unit breakdown arrives with the next data refresh.</div>`;
   const games=D.games.map((g,i)=>({g,i})).filter(x=>x.g.home===name||x.g.away===name).sort((a,b)=>a.g.week-b.g.week);
+  const levOf=new Map(); if(RES) RES.games.forEach(x=>levOf.set(x.i,x));
   const rows=games.map(({g,i})=>{
+    const L=levOf.get(i);
+    const lev = !L ? "" : L.clear ? `<b class="num" style="color:var(--gold)">${L.lev.toFixed(2)}</b>` : (Math.abs(L.swing)<0.001 ? '<span class="sub">—</span>' : `<span class="sub num">~${L.lev.toFixed(2)}</span>`);
     const isHome=g.home===name, opp=isHome?g.away:g.home;
     const p = isHome ? gP[i] : 1-gP[i];
     let res;
@@ -600,15 +603,15 @@ function openTeam(name){
       res=`<span class="${won?"good":"bad"}">${won?"W":"L"}${mine!=null?` ${mine}-${theirs}`:""}</span>`; }
     else res=`<span class="num">${Math.round(p*100)}%</span>`;
     const when=g.completed?"":fmtKickShort(g);
-    return `<tr><td class="sub num">${g.week}</td><td>${isHome?"":"@"}${badge(opp)}${g.neutral?' <span class="sub">(N)</span>':""}</td><td class="r2">${res}</td><td class="sub">${when}${g.spreadText&&!g.completed?` · ${g.spreadText}`:""}</td></tr>`;
+    return `<tr><td class="sub num">${g.week}</td><td>${isHome?"":"@"}${badge(opp)}${g.neutral?' <span class="sub">(N)</span>':""}</td><td class="r2">${res}</td><td class="r2">${lev}</td><td class="sub">${when}${g.spreadText&&!g.completed?` · ${g.spreadText}`:""}</td></tr>`;
   }).join("");
   const rk=[tm.apRank?`AP #${tm.apRank}`:null, tm.cfpRank?`CFP #${tm.cfpRank}`:null].filter(Boolean).join(" · ");
   $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
     <h2>${name}</h2>
     <div class="kv"><span>${tm.conference}</span>${rk?`<span>${rk}</span>`:""}${st?`<span>Proj. <b class="num">${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}</b></span><span>Playoff <b class="num">${Math.round(st.pIn*100)}%</b></span>`:""}</div>
     ${spHtml}
-    <h3>Schedule</h3>
-    <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Result / win chance</th><th>Kickoff</th></tr>${rows}</table></div>`;
+    <h3>Schedule <span class="sub" style="font-weight:400">· leverage is for ${T}</span></h3>
+    <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
 }
 
