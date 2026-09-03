@@ -1,5 +1,6 @@
 // Usage: node scripts/make-pdf.mjs out.html  (then print it: chrome --headless=new --no-pdf-header-footer --print-to-pdf=Leverage-Board.pdf out.html)
 // Env: TEAM="Notre Dame" N=10000 PRODUCT=board|week   (board = the Top 25 schedule board, week = Top 10 games of the week)
+//      WEEK=5  picks the week for the Top 10 page (default: the earliest week with games still to play)
 // Builds a one-page landscape HTML of the Leverage Board for the selected team, ready for Chrome --print-to-pdf.
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -97,7 +98,9 @@ function reason(g) {
   if (!parts.length) return "";
   return (parts.length > 1 ? "Mostly because " : "Because ") + parts[0] + (parts[1] ? "; also " + parts[1] : "") + ".";
 }
-const curWeek = Math.min(...r.games.map(g => g.week));
+const weeksLeft = [...new Set(r.games.map(g => g.week))].sort((x, y) => x - y);
+const curWeek = process.env.WEEK && weeksLeft.includes(+process.env.WEEK) ? +process.env.WEEK : weeksLeft[0];
+if (process.env.WEEK && !weeksLeft.includes(+process.env.WEEK)) console.error(`WEEK=${process.env.WEEK} has no games left to play; using week ${curWeek}`);
 const weekGames = r.games.filter(g => g.week === curWeek);
 const own = weekGames.find(g => g.involvesMe);
 const top10 = weekGames.filter(g => !g.involvesMe && g.clear).sort((a, b) => b.lev - a.lev).slice(0, 10);

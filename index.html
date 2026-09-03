@@ -230,7 +230,7 @@
     <label class="chk"><input type="checkbox" id="useLines"> Use betting lines instead of SP+</label>
     <button id="run">Run simulation</button>
     <button id="pdf" class="ghost" title="One-page board with the leverage explanation">Board PDF</button>
-    <button id="pdfWeek" class="ghost" title="Top 10 games of the week, one page">Top 10 PDF</button>
+    <button id="pdfWeek" class="ghost" title="Top 10 games for the week selected on the This week tab, one page">Top 10 PDF</button>
   </div>
   <div class="prog"><i id="bar"></i></div>
   <div class="sub" id="cacheNote" hidden></div>
@@ -787,7 +787,10 @@ $("#tabs").addEventListener("click",e=>{
 // Download PDF: the daily pre-built page when it matches the selected team, otherwise print this board
 function downloadOrPrint(file, tab, explainId){
   const pdfTeam = (D && D.meta && D.meta.pdfTeam) || "Notre Dame";
-  if(pdfTeam===T){
+  // the pre-built Top 10 covers the current week only; another week prints from the slate
+  const curWeek = RES ? Math.min(...RES.games.map(g=>g.week)) : null;
+  const prebuilt = pdfTeam===T && !(tab==="slate" && UI.slateWeek!==null && UI.slateWeek!==curWeek);
+  if(prebuilt){
     const a=document.createElement("a"); a.href=file+"?v="+encodeURIComponent(D.updatedAt); a.download=file.replace(".pdf","-"+T.replace(/s+/g,"-")+".pdf"); document.body.appendChild(a); a.click(); a.remove();
   } else {
     showTab(tab); $(explainId).classList.add("open");
