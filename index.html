@@ -139,7 +139,7 @@
   #rankings tr.sep td{height:10px;padding:0;border-bottom:0}
   .cell.own{border:1px solid color-mix(in srgb, var(--gold) 45%, transparent)}
   .ramp{display:block;border-radius:5px;padding:3px 7px;text-align:right;font-weight:600}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:0 0 10px;font-size:12.5px;color:var(--muted)}
+  .legend{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center;margin:0 0 8px;font-size:12.5px;color:var(--muted)}
   .legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
   .foot{margin-top:30px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:12px}
   @media (max-width:560px){ .odds{font-size:54px} h1{font-size:21px} .g-match{font-size:15px} }
@@ -199,7 +199,6 @@
   <section class="tab" id="tab-board" hidden>
     <h2>Top 25 schedule board</h2>
     <div class="explain" id="rankExplain"></div>
-    <div class="legend"><span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by your chance of winning</span><span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff in your local time</span></div>
     <div class="scroll"><table id="rankings"></table></div>
   </section>
 
@@ -253,15 +252,16 @@ const fmtKick = g => {
   const d=new Date(g.start); if(isNaN(d)) return "";
   const day=d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
   if(g.tbd) return `${day} · TBD`;
-  return `${day} · ${d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}`;
+  return `${day} · ${hhmm(d)}`;
 };
-// compact kickoff for board cells: "Sat 3:30p · ABC"
+// kickoff as a 24-hour clock in local time: 1330
+const hhmm = d => String(d.getHours()).padStart(2,"0")+String(d.getMinutes()).padStart(2,"0");
+// compact kickoff for board cells: "Sat 1530 · ABC"
 const fmtKickShort = g => {
   if(!g.start) return "";
   const d=new Date(g.start); if(isNaN(d)) return "";
   const day=d.toLocaleDateString(undefined,{weekday:"short"});
-  const time = g.tbd ? "TBD" : d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}).replace(/[s  ]*([AP]).?M.?/i,(m,p)=>p.toLowerCase()).replace(":00","");
-  return `${day} ${time}${g.tv?" · "+g.tv:""}`;
+  return `${day} ${g.tbd?"TBD":hhmm(d)}${g.tv?" · "+g.tv:""}`;
 };
 const fmtWin = p => p<0.005?"<1":p>0.995?">99":Math.round(p*100);
 
@@ -659,6 +659,7 @@ function renderBoard(r){
     ? `Ordered by the <strong>CFP committee ranking</strong> (week ${cfp.week}), which is what actually seeds the bracket, with the AP poll alongside.`
     : `Ordered by the <strong>AP poll</strong> (week ${ap?ap.week:"—"}) until the CFP committee releases its first ranking in early November, then by the committee.`}
     Unranked teams that often finish ahead of ${T} are included too.</p>
+    <div class="legend"><span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by your chance of winning</span><span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
     <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Tick "Use betting lines" at the top to have posted point spreads replace SP+ where they exist. Shading shows whether ${T} wants the row team to win or lose that game, and how much: it follows the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.</p>`;
 
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
