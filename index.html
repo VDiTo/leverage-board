@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Leverage Board</title>
-<meta name="theme-color" content="#0e2740">
+<meta name="theme-color" content="#f3f5f8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Leverage">
@@ -14,9 +14,9 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <style>
   :root{
-    --field:#08182b; --panel:#0e2740; --panel2:#12314f; --line:#1c4166;
-    --ink:#e9eef5; --muted:#8ba6c2; --gold:#c9a44c;
-    --for:#3fa96b; --against:#c65442; --flat:#2b4a6d;
+    --field:#ffffff; --panel:#f3f5f8; --panel2:#e7ebf0; --line:#d3d9e0;
+    --ink:#10233a; --muted:#5a6b80; --gold:#5f6f82;
+    --for:#3fa96b; --against:#c65442; --flat:#b9c3ce;
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--field);color:var(--ink);
@@ -40,7 +40,7 @@
     font:italic 600 12px/1 Georgia,serif;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
   .info[aria-expanded=true]{background:var(--gold);color:#10233a}
 
-  header{border-bottom:1px solid var(--line);padding:14px 0 12px;background:linear-gradient(180deg,#0b2038,var(--field))}
+  header{border-bottom:1px solid var(--line);padding:14px 0 12px;background:linear-gradient(180deg,var(--panel),var(--field))}
   .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
   select,button,input{font:inherit;color:var(--ink);background:var(--panel2);
     border:1px solid var(--line);border-radius:7px;padding:8px 10px}
@@ -177,9 +177,19 @@
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   /* the Top 25 board always sits on a neutral ground so the green/red shading reads the same for every team */
-  #tab-board{--field:#13161b;--panel:#1a1e24;--panel2:#242a32;--line:#2e353e;--muted:#9aa4ae;--fieldhue:#3fa96b;
-    background:var(--field);border-radius:12px;padding:6px 14px 14px;margin-top:10px}
+  #tab-board{--fieldhue:#3fa96b;background:var(--field);border-radius:12px;padding:6px 14px 14px;margin-top:10px}
+  body:not(.light) #tab-board{--field:#13161b;--panel:#1a1e24;--panel2:#242a32;--line:#2e353e;--muted:#9aa4ae}
   @media (min-width:1100px){ #tab-board{margin:10px calc(50% - 50vw) 0;width:100vw;border-radius:0;padding:6px 16px 16px} }
+  /* light (no-team) theme: the board goes light too, and shaded cells use dark text */
+  body.light #tab-board{--field:#f7f8fa;--panel:#eef1f5;--panel2:#e3e8ee;--line:#d3d9e0;--muted:#5a6b80}
+  body.light .cell.hot small{color:#10233a;opacity:.8}
+  body.light .ramp{text-shadow:none} body.light .pill{text-shadow:none}
+  body.light .modal{background:rgba(16,35,58,.45)}
+  body.light #run, body.light .seg button[aria-pressed=true], body.light .tabs button[aria-pressed=true]{color:#fff}
+  body.light .tabs button{color:var(--muted)} body.light .tabs button[aria-selected=true]{color:var(--gold)}
+  body.light .info{color:var(--gold)} body.light .info[aria-expanded=true]{color:#fff}
+  body.light .sheet .close{color:var(--ink)}
+  body.light .g.own{color:var(--ink)}
   /* overview: bracket and blockers sit side by side when there's room */
   @media (min-width:1100px){
     .ov2{display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;align-items:start;
@@ -222,7 +232,7 @@
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
-<body>
+<body class="light">
 <header><div class="wrap">
   <h1>Leverage Board</h1>
   <div class="sub" id="stamp">Loading season data…</div>
@@ -367,7 +377,7 @@ const css = ([r,g,b]) => `rgb(${r},${g},${b})`;
 const BASE_FIELD=[8,24,43];
 function applyTheme(team){
   const root=document.documentElement.style;
-  const clear=()=>["--gold","--field","--panel","--panel2","--line","--muted"].forEach(k=>root.removeProperty(k));
+  const clear=()=>{ ["--gold","--field","--panel","--panel2","--line","--muted","--ink","--flat"].forEach(k=>root.removeProperty(k)); document.body.classList.add("light"); document.querySelector('meta[name="theme-color"]').content="#f3f5f8"; };
   const tm=team && D ? D.teams[idx.get(team)] : null;
   const on=$("#teamColors").checked;
   const setAll=(field,accent)=>{
@@ -379,11 +389,12 @@ function applyTheme(team){
     root.setProperty("--gold", css(accent));
     document.querySelector('meta[name="theme-color"]').content=css(mixRgb(field,[255,255,255],0.05));
   };
-  // no team: neutral charcoal ground with a warm silver accent, so no school's colours are implied
-  if(team===""){ setAll([21,24,29],[196,203,212]); return; }
-  if(!on || !tm || (!tm.color && !tm.altColor)){ clear(); document.querySelector('meta[name="theme-color"]').content="#0e2740"; return; }
+  // no team: plain light theme (white ground, dark text, slate accent) so no school's colours are implied
+  if(team==="" || !on || !tm || (!tm.color && !tm.altColor)){ clear(); return; }
   const cols=[tm.color,tm.altColor].map(hexRgb).filter(Boolean);
   if(!cols.length){ clear(); return; }
+  document.body.classList.remove("light");
+  root.setProperty("--ink","#e9eef5"); root.setProperty("--flat","#2b4a6d");
   // ground: navy tinted toward the darker school colour
   const dark = cols.slice().sort((a,b)=>lum(a)-lum(b))[0];
   const field = mixRgb(BASE_FIELD, dark, 0.35);
