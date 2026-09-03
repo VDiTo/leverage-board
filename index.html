@@ -266,7 +266,7 @@
         <div id="bracket"></div>
       </div>
       <div class="col">
-        <h2>Who is actually blocking you</h2>
+        <h2><span id="blockTitle">Who is actually blocking you</span></h2>
         <div class="explain" id="blockExplain"></div>
         <div class="scroll"><table id="blockers"></table></div>
       </div>
@@ -356,10 +356,11 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   $("#stamp").textContent = `${d.season} season · updated ${new Date(d.updatedAt).toLocaleDateString()}`
     + (pollBits.length?` · ${pollBits.join(" · ")}`:"") + (d.meta&&d.meta.ratings?` · ${d.meta.ratings}`:"") + (d.source==="placeholder" ? " · PLACEHOLDER DATA" : "");
   const sel = $("#team");
+  { const o=document.createElement("option"); o.value=""; o.textContent="— No team (whole playoff field)"; sel.appendChild(o); }
   d.teams.filter(t=>!t.fcs).sort((a,b)=>(rankOf(a.team)||99)-(rankOf(b.team)||99) || a.team.localeCompare(b.team))
     .forEach(t=>{ const o=document.createElement("option"); o.value=t.team; const r=rankOf(t.team); o.textContent=(r?`#${r} `:"")+t.team; sel.appendChild(o); });
   const saved = pref.get("team");
-  sel.value = (saved && d.teams.some(t=>t.team===saved)) ? saved : d.teams.some(t=>t.team==="Notre Dame") ? "Notre Dame" : d.teams[0].team;
+  sel.value = saved==="" ? "" : (saved && d.teams.some(t=>t.team===saved)) ? saved : d.teams.some(t=>t.team==="Notre Dame") ? "Notre Dame" : d.teams[0].team;
   const sims = pref.get("sims"); if(sims && [...$("#sims").options].some(o=>o.value===sims)) $("#sims").value = sims;
   const lines = pref.get("lines"); if(lines!==null) $("#useLines").checked = lines==="1";
   const smin = pref.get("slateMin"); if(smin!==null && [...$("#slateMin").options].some(o=>o.value===smin)){ $("#slateMin").value=smin; UI.slateMin=+smin; }
@@ -411,7 +412,8 @@ function build(){
 // FINAL records. Beating a team is worth more the more games that team ends up winning; losing costs a
 // flat penalty plus more the worse the opponent turns out. So your opponents' other games matter to you.
 function simulate(target, N, onProgress, done){
-  const ti = idx.get(target);
+  const ti = target ? idx.get(target) : -1;
+  const NONE = ti < 0; // no preferred team: score games by how often they change who makes the field
   const W=new Int32Array(nT), L=new Int32Array(nT), CW=new Int32Array(nT), CL=new Int32Array(nT);
   const resume=new Float64Array(nT), score=new Float64Array(nT), aq=new Uint8Array(nT);
   const res=new Uint8Array(nG);
@@ -431,8 +433,14 @@ function simulate(target, N, onProgress, done){
     fieldN:new Float64Array(nT), seedSum:new Float64Array(nT), p4ChampN:new Float64Array(nT), g6N:new Float64Array(nT),
     sumH:new Float64Array(nG), sumA:new Float64Array(nG), sumD:new Float64Array(nG), sumD2:new Float64Array(nG),
     // why a flip mattered: 0 = target's own résumé moved, 1 = an auto-bid changed hands, 2 = a team moved past the target
-    why:[new Float64Array(nG), new Float64Array(nG), new Float64Array(nG)] };
+    why:[new Float64Array(nG), new Float64Array(nG), new Float64Array(nG)],
+    // no-team mode: seasons where flipping the game changed the field, slots swapped, and per-team membership flips
+    fieldChg:new Float64Array(nG), fieldSwaps:new Float64Array(nG), teamFlip: NONE ? new Float64Array(nG*nT) : null };
   let flipReason=2;
+  // this season's field: who is in, the seven at-larges in order, and the next three out
+  const inF=new Uint8Array(nT), alList=new Int32Array(8), reserve=new Int32Array(3); let nRes=0;
+  const stampF=new Int32Array(nT), stampIn=new Int32Array(nT); let curF=0;
+  const cand=new Int32Array(nT), pool=new Int32Array(nT); let nCand=0;
 
   const order=new Int32Array(nT); for(let i=0;i<nT;i++) order[i]=i;
   let x=2463534242>>>0; // xorshift32
@@ -457,6 +465,76 @@ function simulate(target, N, onProgress, done){
   let noRes=false; // when set, the target's own résumé is held fixed (used to attribute why a flip mattered)
   const touch=(j,delta)=>{ if(noRes && j===ti) return; if(stamp[j]!==cur){ stamp[j]=cur; dS[j]=0; touched[nTouch++]=j; } dS[j]+=delta; };
   const sc=j=> stamp[j]===cur ? score[j]+dS[j] : score[j];
+
+  // No-team mode: does flipping game i change who makes the 12-team field? Returns the number of teams whose
+  // membership changes (2 per swapped slot). Only candidates near the at-large line are re-ranked.
+  function fieldFlip(i){
+    cur++; nTouch=0; noRes=false;
+    const h=gH[i], a=gA[i], hw=res[i];
+    const w=hw?h:a, l=hw?a:h;                       // actual winner / loser; after the flip, l wins
+    const rw=resumeWeight;
+    // the two teams in the game swap their result
+    touch(w, rw*( -winGain(W[l]) - (LP + LQ*(L[l]-1)) ));
+    touch(l, rw*( (LP + LQ*L[w]) + winGain(W[w]-1) ));
+    const dl = winGain(W[l]+1)-winGain(W[l]), dw = winGain(W[w]-1)-winGain(W[w]);
+    // everyone who played l: l finishes with one more win, so beating l is worth more and losing to l costs less
+    const tl=teamGames[l];
+    for(let q=0;q<tl.length;q++){ const j=tl[q]; if(j===i) continue;
+      const o = gH[j]===l?gA[j]:gH[j]; const oWon = (gH[j]===o)===(res[j]===1); touch(o, rw*(oWon?dl:LQ)); }
+    // everyone who played w: the reverse
+    const tw=teamGames[w];
+    for(let q=0;q<tw.length;q++){ const j=tw[q]; if(j===i) continue;
+      const o = gH[j]===w?gA[j]:gH[j]; const oWon = (gH[j]===o)===(res[j]===1); touch(o, rw*(oWon?dw:-LQ)); }
+
+    // conference champion of the game's conference may change
+    let k=-1, oldC=-1, newC=-1;
+    if(gConf[i]){
+      k=confIdx[h];
+      if(k>=0){
+        CW[w]--;CL[w]++;CW[l]++;CL[l]--;
+        newC=resolveConf(k);
+        CW[w]++;CL[w]--;CW[l]--;CL[l]++;
+        oldC=champ[k];
+        if(newC===oldC){ k=-1; oldC=newC=-1; }
+      }
+    }
+    // Group-of-Six auto-bid: re-pick if a G6 champion changed or any touched team is a G6 champion
+    let newG6=bestG6, g6Touch = k>=0 && !isP4[k];
+    if(!g6Touch) for(let q=0;q<nTouch;q++){ const j=touched[q], kk=confIdx[j]; if(kk>=0 && !isP4[kk] && champ[kk]===j){ g6Touch=true; break; } }
+    if(g6Touch){
+      newG6=-1; let best=-1e9;
+      for(let kk=0;kk<nC;kk++){
+        if(isP4[kk]) continue;
+        const c = kk===k ? newC : champ[kk];
+        if(c>=0 && sc(c)>best){ best=sc(c); newG6=c; }
+      }
+    }
+    const p4Change = k>=0 && isP4[k];
+    const aqOf = j => {
+      if(p4Change){ if(j===newC) return 1; if(j===oldC) return 0; }
+      if(j===newG6) return 1;
+      if(j===bestG6) return 0;
+      return aq[j];
+    };
+
+    const cutIn = alList[6]>=0 ? score[alList[6]] : -1e9;   // weakest at-large that is in
+    const cutOut = nRes>0 ? score[reserve[0]] : -1e9;        // strongest team that is out
+    let maybe = (k>=0) || (newG6!==bestG6);
+    if(!maybe) for(let q=0;q<nTouch;q++){ const j=touched[q]; if(aq[j]) continue; const s=sc(j); if(inF[j] ? s<cutOut : s>cutIn){ maybe=true; break; } }
+    if(!maybe) return 0;
+    curF++; nCand=0;
+    const add=j=>{ if(j<0||stampF[j]===curF) return; stampF[j]=curF; cand[nCand++]=j; };
+    for(let q=0;q<nTouch;q++) add(touched[q]);
+    for(let q=0;q<7;q++) add(alList[q]); for(let q=0;q<nRes;q++) add(reserve[q]);
+    add(oldC); add(newC); add(bestG6); add(newG6);
+    let m=0; for(let q=0;q<nCand;q++){ const j=cand[q]; if(!aqOf(j)) pool[m++]=j; }
+    for(let x=1;x<m;x++){ const v=pool[x], sv=sc(v); let y=x-1; while(y>=0 && sc(pool[y])<sv){ pool[y+1]=pool[y]; y--; } pool[y+1]=v; }
+    for(let x=0;x<m && x<atLargeSlots;x++) stampIn[pool[x]]=curF;
+    let diff=0;
+    for(let q=0;q<nCand;q++){ const j=cand[q]; const nowIn = (aqOf(j) || stampIn[j]===curF) ? 1 : 0;
+      if(nowIn!==inF[j]){ diff++; if(acc.teamFlip) acc.teamFlip[i*nT+j]++; } }
+    return diff;
+  }
 
   function flipInField(i, holdResume){
     cur++; nTouch=0; noRes=!!holdResume;
@@ -564,25 +642,32 @@ function simulate(target, N, onProgress, done){
 
       // the full 12-team field this season: every auto-bid plus the seven best non-champions, seeded by ranking
       order.sort((p,q)=>score[q]-score[p]);
+      inF.fill(0); alList.fill(-1); nRes=0;
       { let seed=0, al=0;
-        for(let j=0;j<nT && seed<12;j++){ const i=order[j];
-          if(aq[i] || al<atLargeSlots){ if(!aq[i]) al++; seed++; acc.fieldN[i]++; acc.seedSum[i]+=seed; } } }
+        for(let j=0;j<nT;j++){ const i=order[j];
+          if(seed<12 && (aq[i] || al<atLargeSlots)){ if(!aq[i]){ alList[al]=i; al++; } seed++; inF[i]=1; acc.fieldN[i]++; acc.seedSum[i]+=seed; }
+          else if(!aq[i] && nRes<3){ reserve[nRes++]=i; }
+          if(seed>=12 && nRes>=3) break; } }
 
       // where does the target land
+      let inField=0;
+      if(!NONE){
       const ts=score[ti];
       let ahead=0; blockers=0;
       for(let i=0;i<nT;i++){
         if(i===ti) continue;
         if(score[i]>ts){ ahead++; acc.aheadN[i]++; if(!aq[i]){ blockers++; acc.blockers[i]++; } }
       }
-      const inField = (aq[ti]===1 || blockers < atLargeSlots) ? 1 : 0;
+      inField = (aq[ti]===1 || blockers < atLargeSlots) ? 1 : 0;
       acc.in+=inField; acc.champ+=aq[ti];
       acc.rankSum+=ahead+1; acc.blockSum+=blockers; acc.winSum+=W[ti];
       acc.ranks[Math.min(nT+1,ahead+1)]++;
+      }
 
       // paired leverage
       for(let i=0;i<nG;i++){
         if(gDone[i]) continue;
+        if(NONE){ const diff=fieldFlip(i); if(diff>0){ acc.fieldChg[i]++; acc.fieldSwaps[i]+=diff/2; } continue; }
         const flipped=flipInField(i);
         const FH = res[i] ? inField : flipped;
         const FA = res[i] ? flipped : inField;
@@ -610,6 +695,17 @@ function finish(acc,N,ti){
   for(let i=0;i<nG;i++){
     if(gDone[i]) continue;
     const src=D.games[i];
+    if(ti<0){
+      const p=gP[i], chg=acc.fieldChg[i]/N, se=Math.sqrt(chg*(1-chg)/N);
+      const top=[]; if(acc.fieldChg[i]>0){ for(let j=0;j<nT;j++){ const c=acc.teamFlip[i*nT+j]; if(c>0) top.push({team:D.teams[j].team, share:c/acc.fieldChg[i]}); } top.sort((a,b)=>b.share-a.share); }
+      games.push({i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,tbd:!!src.tbd,tv:src.tv||null,
+        spread:src.spread??null,spreadText:src.spreadText||"",overUnder:src.overUnder??null,
+        pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe:false,
+        pH:null,pA:null, swing:chg, se, clear: chg>=0.001 && chg>=2*se, pDecides:chg, why:null,
+        swapsAvg: acc.fieldChg[i]?acc.fieldSwaps[i]/acc.fieldChg[i]:0, fieldTop: top.slice(0,3),
+        lev: chg*100 * 4*p*(1-p)});
+      continue;
+    }
     const pH=acc.sumH[i]/N, pA=acc.sumA[i]/N, swing=acc.sumD[i]/N;
     const varD=Math.max(0, acc.sumD2[i]/N - swing*swing);
     const se=Math.sqrt(varD/N);
@@ -637,14 +733,14 @@ function finish(acc,N,ti){
   const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
     pIn:acc.fieldN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N}));
-  return { pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
-           avgWins:acc.winSum/N, myGames:gamesPerTeam[ti], games, teamStats, N };
+  return { mode: ti<0?"field":"team", pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
+           avgWins:acc.winSum/N, myGames:ti>=0?gamesPerTeam[ti]:0, games, teamStats, N };
 }
 
 // ---------- render ----------
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
-const RESULT_VERSION = 5; // bump when the result shape changes so stale saved results are recomputed
+const RESULT_VERSION = 6; // bump when the result shape changes so stale saved results are recomputed
 const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|${T}|${$("#sims").value}|${$("#useLines").checked?1:0}`;
 function loadResult(){ try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
 function saveResult(r){ try{ localStorage.setItem("lb.result", JSON.stringify({key:resultKey(), at:Date.now(), res:r})); }catch(e){} }
@@ -694,11 +790,29 @@ function openWhySimple(g){
     ? (pFav>=0.9 ? `${fav===T?"You're":fav+" is"} a heavy favourite (${fmtWin(pFav)}%), so this game rarely decides anything, which keeps its leverage modest even though losing it would cost a lot.`
       : pFav>=0.65 ? `${fav===T?"You're":fav+" is"} favoured (${fmtWin(pFav)}%), but there's real risk here, so it carries real leverage.`
       : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so it carries nearly all of its impact as leverage.`)
+    : !T ? (pFav>=0.9 ? `<b>${fav}</b> is a heavy favourite (${fmtWin(pFav)}%), so the result that would shake up the field almost never happens; that's why leverage is low even if impact isn't.` : pFav>=0.65 ? `<b>${fav}</b> is favoured (${fmtWin(pFav)}%), which trims the leverage a little.` : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so nearly all of its impact counts as leverage.`)
     : pFav>=0.9 ? `<b>${fav}</b> is a heavy favourite (${fmtWin(pFav)}%), so the upset you'd need almost never happens. That's why the leverage is low even if the impact isn't.`
     : pFav>=0.65 ? `<b>${fav}</b> is favoured (${fmtWin(pFav)}%), so the result is fairly predictable and that trims the leverage.`
     : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so nearly all of the impact counts as leverage.`;
 
   let headline, why="";
+  if(!T){
+    headline=`<div class="big">${g.clear?"Shapes the playoff field.":"Doesn't change who gets in."}</div>`;
+    const tops=(g.fieldTop||[]).map(t=>`<b>${t.team}</b> (${Math.round(t.share*100)}%)`);
+    why=g.clear ? `<p>Flipping this result changes who makes the 12-team field in <b class="num">${pct(g.swing)}%</b> of simulated seasons${g.swapsAvg>1.5?`, usually moving more than one spot`:""}. The teams most often swapped in or out: ${tops.join(", ")}.</p>`
+                : `<p>Across ${RES.N.toLocaleString()} simulated seasons, flipping this result ${Math.abs(g.swing)<0.001?"never":"almost never"} changed the twelve teams in the field.</p>`;
+    $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
+      <h2>${badge(g.away)} at ${badge(g.home)}</h2>
+      <div class="kv"><span>wk ${g.week}</span>${g.start?`<span>${fmtKick(g)}${g.tv?" · "+g.tv:""}</span>`:""}${g.spreadText?`<span>${g.spreadText}</span>`:""}</div>
+      <div class="plain">${headline}
+        <div class="scores"><span>Leverage ${scorePill(g.lev>0?g.levN:null,g.clear)}</span><span>Impact ${scorePill(g.lev>0?g.impN:null,g.clear)}</span></div>
+        ${why}<p>${favLine}</p>
+        <h3>The teams</h3>
+        ${[g.away,g.home].map(n=>{ const s=st(n); return `<p><b>${badge(n)}</b> makes the playoff ${Math.round(s.pIn*100)}% of the time${s.pP4Champ>=0.05?`, winning the ${s.conf} ${Math.round(s.pP4Champ*100)}% of the time`:""}${s.pG6>=0.05?`, taking the Group of Six bid ${Math.round(s.pG6*100)}% of the time`:""}.</p>`; }).join("")}
+      </div>`;
+    $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
+    return;
+  }
   if(g.involvesMe){
     headline=`<div class="big mine">Your game. Win it.</div>`;
     why=`<p>Winning is worth <b class="num">${impact.toFixed(1)} points</b> of playoff odds to ${T}: ${size(g.impN)} swing on your own schedule.</p>`;
@@ -764,7 +878,7 @@ function openTeam(name){
     <h2>${name}</h2>
     <div class="kv"><span>${tm.conference}</span>${rk?`<span>${rk}</span>`:""}${st?`<span>Proj. <b class="num">${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}</b></span><span>Playoff <b class="num">${Math.round(st.pIn*100)}%</b></span>`:""}</div>
     ${spHtml}
-    <h3>Schedule <span class="sub" style="font-weight:400">· leverage is for ${T}; tap a score for the why</span></h3>
+    <h3>Schedule <span class="sub" style="font-weight:400">· leverage is for ${T||"the whole field"}; tap a score for the why</span></h3>
     <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
 }
@@ -817,15 +931,27 @@ function render(){
   const note=$("#cacheNote");
   if(r.cachedAt){ note.hidden=false; note.textContent=`Showing the result saved on this device ${new Date(r.cachedAt).toLocaleString(undefined,{weekday:"short",hour:"numeric",minute:"2-digit"})}. It stays until the data refreshes; press Run simulation to recompute now.`; }
   else note.hidden=true;
+  if(!T){
+    const ts=r.teamStats.filter(t=>!t.fcs);
+    const locks=ts.filter(t=>t.pIn>=0.9).length, likely=ts.filter(t=>t.pIn>=0.75&&t.pIn<0.9).length, bubble=ts.filter(t=>t.pIn>=0.25&&t.pIn<0.75).length, longs=ts.filter(t=>t.pIn>=0.1&&t.pIn<0.25).length;
+    $("#odds").innerHTML = bubble+"<small> teams</small>";
+    $("#oddsLab").textContent = "on the bubble: between 25% and 75% to make the 12-team field";
+    $("#pathLab").innerHTML = "No team selected. Every game is scored by how often flipping its result changes <em>who</em> makes the field, so the board shows the games that shape the playoff picture as a whole.";
+    $("#sRec").textContent=locks; $("#sRec").nextElementSibling.textContent="locks (90%+)";
+    $("#sRank").textContent=likely; $("#sRank").nextElementSibling.textContent="likely (75–90%)";
+    $("#sBlock").textContent=bubble; $("#sBlock").nextElementSibling.textContent="bubble (25–75%)";
+    $("#sChamp").textContent=longs; $("#sChamp").nextElementSibling.textContent="long shots (10–25%)";
+  } else {
   $("#odds").innerHTML = pct(r.pIn)+"<small>%</small>";
   $("#oddsLab").textContent = `chance ${T} makes the 12-team field`;
   $("#pathLab").innerHTML = D.conferenceTiers[D.teams[idx.get(T)].conference]==="IND"
     ? `${T} is an independent, so there is no auto-bid path. The only route is finishing among the seven highest-ranked teams that <em>aren't</em> conference champions.`
     : `Two routes: win the conference for an auto-bid, or land among the seven highest-ranked non-champions.`;
-  $("#sRec").textContent=`${r.avgWins.toFixed(1)}–${(r.myGames-r.avgWins).toFixed(1)}`;
-  $("#sRank").textContent="#"+r.medRank;
-  $("#sBlock").textContent=r.avgBlock.toFixed(1);
-  $("#sChamp").textContent=pct(r.pChamp)+"%";
+  $("#sRec").textContent=`${r.avgWins.toFixed(1)}–${(r.myGames-r.avgWins).toFixed(1)}`; $("#sRec").nextElementSibling.textContent="projected record";
+  $("#sRank").textContent="#"+r.medRank; $("#sRank").nextElementSibling.textContent="median final ranking";
+  $("#sBlock").textContent=r.avgBlock.toFixed(1); $("#sBlock").nextElementSibling.textContent="avg. blockers ahead (need ≤6)";
+  $("#sChamp").textContent=pct(r.pChamp)+"%"; $("#sChamp").nextElementSibling.textContent="chance of an auto-bid";
+  }
 
   renderBracket(r);
   renderBlockers(r);
@@ -853,10 +979,10 @@ function renderBracket(r){
   st.filter(t=>!taken.has(t.team)).sort((a,b)=>b.pIn-a.pIn).slice(0,D.config.atLargeSlots).forEach(t=>take(t,"at-large"));
   field.sort((a,b)=>a.avgSeed-b.avgSeed);
   field.forEach((t,i)=>t.seed=i+1);
-  const me=field.find(t=>t.team===T), mine=st.find(t=>t.team===T);
+  const me=T?field.find(t=>t.team===T):null, mine=T?st.find(t=>t.team===T):null;
   const nextOut=st.filter(t=>!taken.has(t.team)).sort((a,b)=>b.pIn-a.pIn).slice(0,4);
 
-  $("#bracketExplain").innerHTML = `<p>The most likely field: each Power Four conference's most probable champion takes its auto-bid, the strongest Group of Six champion takes the fifth, and seven at-larges fill in by playoff probability. Seeds are each team's average seed across the seasons it made the field. Straight seeding: the four highest-ranked teams get byes whether or not they won a conference. The % is each team's overall chance of making the field.</p>`;
+  $("#bracketExplain").innerHTML = `<p>${T?"":"No team selected, so this is the whole picture. "}The most likely field: each Power Four conference's most probable champion takes its auto-bid, the strongest Group of Six champion takes the fifth, and seven at-larges fill in by playoff probability. Seeds are each team's average seed across the seasons it made the field. Straight seeding: the four highest-ranked teams get byes whether or not they won a conference. The % is each team's overall chance of making the field.</p>`;
 
   const row=t=>`<div class="t"><span class="sd num">${t.seed}</span><span class="nm ${t.team===T?"me":""}">${tn(t.team)}</span><span class="tag">${t.tag}</span><span class="p">${Math.round(t.pIn*100)}%</span></div>`;
   const S=n=>field[n-1];
@@ -866,7 +992,7 @@ function renderBracket(r){
     <div><h3>Byes to the quarterfinals</h3><div class="m">${[1,2,3,4].map(n=>row(S(n))).join("")}</div>
       <h3 style="margin-top:14px">First teams out</h3><div class="m">${nextOut.map(t=>`<div class="t"><span class="sd"></span><span class="nm ${t.team===T?"me":""}">${tn(t.team)}</span><span class="tag">${t.conf}</span><span class="p">${Math.round(t.pIn*100)}%</span></div>`).join("")}</div>
     </div></div>
-    <div class="bubble">${me
+    <div class="bubble">${!T ? "" : me
       ? `<b>${T}</b> projects as the #${me.seed} seed${me.seed<=4?" with a bye":me.seed<=8?", hosting a first-round game":", on the road in the first round"}. Average seed when in: ${mine.avgSeed.toFixed(1)}.`
       : `<b>${T}</b> is not in the projected field (${Math.round(mine.pIn*100)}% to make it${mine.pIn>0?`, average seed ${mine.avgSeed.toFixed(1)} when in`:""}).`}</div>`;
 }
@@ -879,6 +1005,20 @@ const scorePill = (v, ok=true) => ok
 const ramp = (v,color,max=1) => `background:color-mix(in srgb, ${color} ${Math.round(8+Math.pow(Math.max(0,Math.min(1,v/max)),0.7)*82)}%, transparent)`;
 
 function renderBlockers(r){
+  if(!T){
+    $("#blockTitle").textContent="Bubble watch";
+    $("#blockExplain").innerHTML = `<p>Every team with a real shot, ordered by playoff probability. <strong>Seed</strong> is the average seed in the seasons the team makes it; <strong>Title</strong> is how often it wins its conference (which brings an automatic bid).</p>`;
+    const list=r.teamStats.filter(t=>!t.fcs&&t.pIn>=0.05).sort((a,b)=>b.pIn-a.pIn).slice(0,30);
+    const maxP=Math.max(0.01,...list.map(t=>t.pIn));
+    $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Playoff</th><th class="c">Proj. record</th><th class="c">Seed</th><th class="c">Title</th></tr>`+
+      list.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(t.team)}</td><td class="sub">${t.conf}</td>
+        <td><span class="ramp num" style="${ramp(t.pIn,"var(--for)",maxP)}">${pct(t.pIn)}%</span></td>
+        <td class="num" style="text-align:center">${t.wins.toFixed(1)}–${(t.games-t.wins).toFixed(1)}</td>
+        <td class="num" style="text-align:center">${t.avgSeed<99?t.avgSeed.toFixed(1):"—"}</td>
+        <td class="num" style="text-align:center">${Math.round(Math.max(t.pP4Champ,t.pG6)*100)}%</td></tr>`;}).join("");
+    return;
+  }
+  $("#blockTitle").textContent="Who is actually blocking you";
   $("#blockExplain").innerHTML = `<p>There are seven at-large spots. Only teams that finish ranked ahead of ${T} <strong>without</strong> winning their conference compete for them, because conference champions take auto-bids instead. Those teams are your blockers. Six or fewer blockers and you're in.</p>
     <p><strong>Blocks you</strong> is how often a team ends up in that at-large pile above ${T}. <strong>Finishes ahead</strong> counts every season it ranks above you, auto-bid or not. A team with a big gap between the two usually finishes ahead of you but wins its conference, so it rarely costs you a spot.</p>`;
   const blk=r.teamStats.filter(t=>t.team!==T&&!t.fcs).sort((a,b)=>b.block-a.block).slice(0,25);
@@ -896,17 +1036,17 @@ function renderBoard(r){
   $("#rankExplain").innerHTML = `<p>${cfp
     ? `Ordered by the <strong>CFP committee ranking</strong> (week ${cfp.week}), which is what actually seeds the bracket, with the AP poll alongside.`
     : `Ordered by the <strong>AP poll</strong> (week ${ap?ap.week:"—"}) until the CFP committee releases its first ranking in early November, then by the committee.`}
-    Unranked teams that often finish ahead of ${T} are included too.</p>
-    <div class="legend"><span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by each game's leverage on your own schedule</span><span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
-    <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Tick "Use betting lines" at the top to have posted point spreads replace SP+ where they exist. Shading shows whether ${T} wants the row team to win or lose that game, and how much: it follows the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.</p>`;
+    ${T?`Unranked teams that often finish ahead of ${T} are included too.`:"Unranked teams with a real playoff chance are included too."}</p>
+    <div class="legend">${T?`<span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by each game's leverage on your own schedule</span>`:`<span><i style="background:var(--gold)"></i>Shapes the playoff field</span><span><i style="background:var(--panel2)"></i>Doesn't change who gets in</span>`}<span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
+    <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Tick "Use betting lines" at the top to have posted point spreads replace SP+ where they exist. ${T?`Shading shows whether ${T} wants the row team to win or lose that game, and how much: it follows the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.`:"With no team selected, gold shading shows how much each game shapes the whole playoff field: how often flipping its result changes who gets in, discounted by how unlikely that is."}</p>`;
 
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
   const stat=new Map(r.teamStats.map(t=>[t.team,t]));
   const contenders=new Set(D.teams.filter(t=>t.apRank||t.cfpRank).map(t=>t.team));
-  r.teamStats.filter(t=>t.team!==T&&!t.fcs).sort((a,b)=>b.ahead-a.ahead).slice(0,20).forEach(t=>contenders.add(t.team));
-  contenders.add(T);
+  r.teamStats.filter(t=>t.team!==T&&!t.fcs).sort((a,b)=>T?(b.ahead-a.ahead):(b.pIn-a.pIn)).slice(0,20).forEach(t=>contenders.add(t.team));
+  if(T) contenders.add(T);
   const maxPIn=Math.max(0.01,...[...contenders].map(n=>stat.get(n).pIn));
-  const rows=[T, ...[...contenders].filter(n=>n!==T).map(n=>D.teams[idx.get(n)])
+  const rows=[...(T?[T]:[]), ...[...contenders].filter(n=>n!==T).map(n=>D.teams[idx.get(n)])
     .sort((a,b)=>(useCfp()?(a.cfpRank||99)-(b.cfpRank||99):0) || (a.apRank||99)-(b.apRank||99) || (stat.get(b.team).ahead)-(stat.get(a.team).ahead))
     .map(t=>t.team)];
 
@@ -931,7 +1071,7 @@ function renderBoard(r){
     rows.map(t=>{
       const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
-      return (t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+4}"></td></tr>` : "") + `<tr class="${t===T?"me":""}"><td class="k">${tn(t,short(t))}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
+      return (T && t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+4}"></td></tr>` : "") + `<tr class="${t===T?"me":""}"><td class="k">${tn(t,short(t))}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
         const c=m.get(w); if(!c) return `<td><span class="cell"><small>bye</small></span></td>`;
         const sub = c.result ? c.result.text : `${Math.round(c.pWin*100)}%`;
         const res = c.result ? (c.result.won?" w":" l") : "";
@@ -946,7 +1086,7 @@ function renderBoard(r){
         let a = Math.min(1, Math.abs(c.sw)/scale);
         if(Math.abs(c.sw)<0.5) a=0;
         const mix = a===0 ? 0 : Math.round(8+Math.pow(a,0.7)*82); // identical curve to the score pills
-        const bg = a===0 ? "transparent" : `color-mix(in srgb, ${c.sw>0?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
+        const bg = a===0 ? "transparent" : `color-mix(in srgb, ${!T?"var(--gold)":c.sw>0?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
         return `<td><span class="cell${res}${mix>=60?" hot":""}"${c.gi!=null?` data-game="${c.gi}" role="button"`:""} style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
       }).join("")+`</tr>`;
     }).join("");
@@ -966,9 +1106,9 @@ function card(g, showWeek){
   const when=fmtKick(g);
   const impact=Math.abs(g.swing)*100;
   // the team you're pulling for is boxed; each team carries its win chance
-  const chip=(team,win)=>{ const boxed = g.involvesMe ? team===T : (g.clear && team===want);
+  const chip=(team,win)=>{ const boxed = !T ? false : g.involvesMe ? team===T : (g.clear && team===want);
     return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <small class="num">(${fmtWin(win)}%)</small></span>`; };
-  const noise = Math.abs(g.swing)<0.001 ? "no measurable effect" : `too close to call (±${(2*g.se*100).toFixed(2)} pts)`;
+  const noise = Math.abs(g.swing)<0.001 ? (T?"no measurable effect":"never changes the field") : `too close to call (±${(2*g.se*100).toFixed(2)}${T?" pts":"%"})`;
   // the selected team's own game: tint the card by its chance of winning, same ramp as the board
   let own="";
   if(g.involvesMe){
@@ -978,7 +1118,7 @@ function card(g, showWeek){
   return `<div class="g${own}${dev?" dev":""}">
     <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.clear)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.clear)}</small>${g.clear?"":`<small>${noise}</small>`}</span></div>
     <div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>
-    <div class="g-line">${line}</div>${dev}
+    <div class="g-line">${line}${!T && g.clear ? ` · <span class="num">changes the field in ${pct(g.swing)}% of seasons</span>${g.fieldTop&&g.fieldTop.length?` · mostly ${g.fieldTop.slice(0,2).map(t=>short(t.team)).join(", ")}`:""}` : ""}</div>${dev}
   </div>`;
 }
 
@@ -989,7 +1129,7 @@ function renderSlate(r){
   document.querySelectorAll("#slateSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.slateSort)));
   $("#slateTitle").textContent=`Week ${UI.slateWeek} slate`;
   $("#pdfWeek").textContent=`Top 10 PDF · Week ${UI.slateWeek}`;
-  $("#slateExplain").innerHTML = `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
+  $("#slateExplain").innerHTML = !T ? `<p>No team selected. <strong>Impact</strong> is how often flipping a game's result changes who makes the 12-team field. <strong>Leverage</strong> discounts that by how unlikely the swing is. Both are scaled 0–100 against the biggest game left. Tap a leverage score to see which teams a game tends to swap in and out.</p>` : `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
   let list=r.games.filter(g=>g.week===UI.slateWeek);
   if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
   const hidden = UI.slateMin>0 ? list.filter(g=>!g.involvesMe && !(g.clear && g.levN>=UI.slateMin)).length : 0;
@@ -1004,7 +1144,7 @@ function renderSlate(r){
 
 function renderSeason(r){
   document.querySelectorAll("#seasonSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.seasonSort)));
-  $("#seasonExplain").innerHTML = `<p>Every remaining game <strong>not involving ${T}</strong>, ranked by how much it matters to ${T}. Your own games are left out because they obviously dwarf everything else; they're on the Top 25 board and the weekly slate. <strong>Impact</strong> is the swing in playoff odds between the two outcomes; <strong>leverage</strong> discounts that by how unlikely the swing is to happen. Both are scaled 0–100 against the biggest of these games, and darker gold means a higher score.</p>`;
+  $("#seasonExplain").innerHTML = !T ? `<p>Every remaining game, ranked by how much it shapes the playoff field: how often flipping the result changes who gets in, discounted by how unlikely the swing is.</p>` : `<p>Every remaining game <strong>not involving ${T}</strong>, ranked by how much it matters to ${T}. Your own games are left out because they obviously dwarf everything else; they're on the Top 25 board and the weekly slate. <strong>Impact</strong> is the swing in playoff odds between the two outcomes; <strong>leverage</strong> discounts that by how unlikely the swing is to happen. Both are scaled 0–100 against the biggest of these games, and darker gold means a higher score.</p>`;
   const all=r.games.filter(g=>g.clear&&!g.involvesMe);
   const kept=all.filter(g=>g.levN>=UI.seasonMin);
   const list=kept.sort(UI.seasonSort==="impact" ? (a,b)=>Math.abs(b.swing)-Math.abs(a.swing) : (a,b)=>b.lev-a.lev).slice(0,60);

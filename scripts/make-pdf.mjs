@@ -113,8 +113,8 @@ const gameRow = (g, n) => {
     <div class="n">${n}</div>
     <div class="body">
       <div class="top"><span class="when">${fmtKick(g)}${g.tv ? " · " + esc(g.tv) : ""}</span><span class="scores">Leverage ${pill(g.levN)} <span class="imp">Impact ${pill(g.impN)}</span></span></div>
-      <div class="match">${badge(g.away)} <small>(${fmtWin(1 - g.pHomeWin)}%)</small> <em>at</em> ${badge(g.home)} <small>(${fmtWin(g.pHomeWin)}%)</small>${g.spreadText ? `<span class="line">${esc(g.spreadText)}${g.overUnder ? " · O/U " + g.overUnder : ""}</span>` : ""}</div>
-      <div class="pull">Pull for <b>${esc(want)}</b> · a ${esc(short(want))} win happens ${fmtWin(pWant)}% of the time and is worth ${impact < 0.95 ? impact.toFixed(2) : impact.toFixed(1)} pts of playoff odds ${TEAM === want ? "" : `(${TEAM} ${(wantHome ? g.pH : g.pA) * 100 > 0 ? ((wantHome ? g.pH : g.pA) * 100).toFixed(1) : ""}% vs ${((wantHome ? g.pA : g.pH) * 100).toFixed(1)}%)`}</div>
+      <div class="match">${wantHome ? "" : '<span class="box">'}${badge(g.away)} <small>(${fmtWin(1 - g.pHomeWin)}%)</small>${wantHome ? "" : "</span>"} <em>at</em> ${wantHome ? '<span class="box">' : ""}${badge(g.home)} <small>(${fmtWin(g.pHomeWin)}%)</small>${wantHome ? "</span>" : ""}${g.spreadText ? `<span class="line">${esc(g.spreadText)}${g.overUnder ? " · O/U " + g.overUnder : ""}</span>` : ""}</div>
+      <div class="pull">A ${esc(short(want))} win happens ${fmtWin(pWant)}% of the time and is worth ${impact < 0.95 ? impact.toFixed(2) : impact.toFixed(1)} pts of playoff odds (${TEAM} ${((wantHome ? g.pH : g.pA) * 100).toFixed(1)}% vs ${((wantHome ? g.pA : g.pH) * 100).toFixed(1)}%)</div>
       <div class="why">${reason(g)}</div>
     </div></div>`;
 };
@@ -140,7 +140,8 @@ const weekPage = `<!doctype html><html><head><meta charset="utf-8"><title>Top 10
   .scores { font-weight: 600; color: #10233a; white-space: nowrap; } .imp { margin-left: 6px; color: #5a6b80; font-weight: 500; }
   .pill { display: inline-block; border-radius: 4px; padding: 0 5px; font-weight: 700; min-width: 22px; text-align: center; } .pill.dim { color: #9aa7b8; }
   .match { font-size: 10.5pt; font-weight: 700; margin-top: 1px; } .match em { font-style: normal; color: #5a6b80; font-weight: 400; }
-  .match small { font-weight: 500; color: #5a6b80; font-size: 8pt; } .match .line { font-weight: 500; font-size: 8pt; color: #3a4a60; margin-left: 8px; }
+  .match small { font-weight: 500; color: #5a6b80; font-size: 8pt; }
+  .match .box { border: 1.5px solid #2f7f50; border-radius: 5px; padding: 0 5px; } .match .line { font-weight: 500; font-size: 8pt; color: #3a4a60; margin-left: 8px; }
   .pull { font-size: 8.2pt; margin-top: 1px; } .pull b { color: #2f7f50; }
   .why { font-size: 7.5pt; color: #3a4a60; margin-top: 1px; }
   footer { margin-top: 4px; font-size: 6.4pt; color: #5a6b80; border-top: 1px solid #cfd6e0; padding-top: 3px; }
@@ -150,7 +151,7 @@ const weekPage = `<!doctype html><html><head><meta charset="utf-8"><title>Top 10
 ${own ? `<div class="own"><div class="lab">Your game · ${fmtKick(own)}${own.tv ? " · " + esc(own.tv) : ""}</div>
   <div class="match">${badge(own.away)} <small>(${fmtWin(1 - own.pHomeWin)}%)</small> <em>at</em> ${badge(own.home)} <small>(${fmtWin(own.pHomeWin)}%)</small>${own.spreadText ? ` <span class="line" style="font-size:8pt;font-weight:500;color:#3a4a60">${esc(own.spreadText)}</span>` : ""}</div>
   <div class="sub">Win and ${esc(TEAM)}'s playoff odds are <b>${((own.home === TEAM ? own.pH : own.pA) * 100).toFixed(1)}%</b>; lose and they're <b>${((own.home === TEAM ? own.pA : own.pH) * 100).toFixed(1)}%</b>. A ${(Math.abs(own.swing) * 100).toFixed(1)}-point swing, the biggest thing on this page by far.</div></div>` : `<div class="own"><div class="lab">Bye week</div><div class="sub">${esc(TEAM)} is idle. Every game below is about other teams doing you favours.</div></div>`}
-<h2>Ranked by leverage <span style="font:400 8pt 'Segoe UI',system-ui,sans-serif;color:#5a6b80">· how much the result moves ${esc(TEAM)}'s playoff odds, discounted by how unlikely the swing is</span></h2>
+<h2>Ranked by leverage <span style="font:400 8pt 'Segoe UI',system-ui,sans-serif;color:#5a6b80">· how much the result moves ${esc(TEAM)}'s playoff odds, discounted by how unlikely the swing is · the boxed team is the one to pull for</span></h2>
 ${top10.map((g, i) => gameRow(g, i + 1)).join("")}
 <footer>Leverage and impact are scaled 0–100 against the biggest remaining game that doesn't involve ${esc(TEAM)}. Win chances from SP+ with home advantage; every number from ${r.N.toLocaleString()} simulated seasons with each game flipped one at a time.</footer>
 </div></body></html>`;
