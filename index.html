@@ -364,16 +364,19 @@ function applyTheme(team){
   const tm=team && D ? D.teams[idx.get(team)] : null;
   const on=$("#teamColors").checked;
   if(!on || !tm || (!tm.color && !tm.altColor)){ clear(); document.querySelector('meta[name="theme-color"]').content="#0e2740"; return; }
-  let cols=[tm.color,tm.altColor].map(hexRgb).filter(Boolean);
+  const cols=[tm.color,tm.altColor].map(hexRgb).filter(Boolean);
   if(!cols.length){ clear(); return; }
   // ground: navy tinted toward the darker school colour
   const dark = cols.slice().sort((a,b)=>lum(a)-lum(b))[0];
   const field = mixRgb(BASE_FIELD, dark, 0.35);
-  // accent: the colour with the best contrast on that ground, lightened until it reads (>= 4.5:1)
-  let accent = cols.slice().sort((a,b)=>contrast(b,field)-contrast(a,field))[0];
-  let guard=0; while(contrast(accent,field)<4.5 && guard++<12) accent=mixRgb(accent,[255,255,255],0.15);
-  // near-white accents lose the "accent" feel on pills; pull them toward the school colour a touch
-  if(lum(accent)>0.8) accent=mixRgb(accent,dark,0.15);
+  // accent: a school colour that reads on that ground without being white or a washed-out version of the ground.
+  // If the school only has one colour, or neither works, keep the default gold.
+  const GOLD=[201,164,76];
+  let accent=null;
+  const tryCol = c => { if(!c || c===dark && cols.length>1) return null; let x=c; for(let i=0;i<4 && contrast(x,field)<4.5;i++) x=mixRgb(x,[255,255,255],0.15); if(contrast(x,field)<4.5) return null; if(lum(x)>0.75) return null; return x; };
+  const others = cols.filter(c=>c!==dark);
+  for(const c of others){ accent=tryCol(c); if(accent) break; }
+  if(!accent) accent=GOLD;
   root.setProperty("--field", css(field));
   root.setProperty("--panel", css(mixRgb(field,[255,255,255],0.05)));
   root.setProperty("--panel2", css(mixRgb(field,[255,255,255],0.10)));
