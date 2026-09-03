@@ -964,8 +964,18 @@ $("#slateMin").onchange=()=>{ UI.slateMin=+$("#slateMin").value; pref.set("slate
 $("#seasonMin").onchange=()=>{ UI.seasonMin=+$("#seasonMin").value; pref.set("seasonMin",String(UI.seasonMin)); renderSeason(RES); };
 $("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(RES); };
 
+function labelPdfButtons(){
+  const pdfTeam = (D && D.meta && D.meta.pdfTeam) || "Notre Dame";
+  const curWeek = RES ? Math.min(...RES.games.map(g=>g.week)) : null;
+  const boardOk = pdfTeam===T, weekOk = boardOk && (UI.slateWeek===null || UI.slateWeek===curWeek);
+  $("#pdf").textContent = boardOk ? "Board PDF" : "Print board…";
+  $("#pdf").title = boardOk ? "Download today's one-page board" : `The daily PDF is built for ${pdfTeam}; this opens your browser's print dialog for the current view (choose Save as PDF)`;
+  $("#pdfWeek").textContent = (weekOk ? "Top 10 PDF" : "Print Top 10…") + (UI.slateWeek!==null ? ` · Week ${UI.slateWeek}` : "");
+  $("#pdfWeek").title = weekOk ? "Download today's Top 10 page" : "Opens your browser's print dialog for this week's slate (choose Save as PDF)";
+}
 function render(){
   const r=RES;
+  labelPdfButtons();
   const note=$("#cacheNote");
   if(r.cachedAt){ note.hidden=false; note.textContent=`Showing the result saved on this device ${new Date(r.cachedAt).toLocaleString(undefined,{weekday:"short",hour:"numeric",minute:"2-digit"})}. It stays until the data refreshes; press Run simulation to recompute now.`; }
   else note.hidden=true;
@@ -1166,7 +1176,7 @@ function renderSlate(r){
   const ws=$("#slateWeek"); ws.innerHTML=weeks.map(w=>`<option value="${w}" ${w===UI.slateWeek?"selected":""}>Week ${w}</option>`).join("");
   document.querySelectorAll("#slateSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.slateSort)));
   $("#slateTitle").textContent=`Week ${UI.slateWeek} slate`;
-  $("#pdfWeek").textContent=`Top 10 PDF · Week ${UI.slateWeek}`;
+  if(RES) labelPdfButtons();
   $("#slateExplain").innerHTML = !T ? `<p>No team selected. <strong>Impact</strong> is how often flipping a game's result changes who makes the 12-team field. <strong>Leverage</strong> discounts that by how unlikely the swing is. Both are scaled 0–100 against the biggest game left. Tap a leverage score to see which teams a game tends to swap in and out.</p>` : `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
   let list=r.games.filter(g=>g.week===UI.slateWeek);
   if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
