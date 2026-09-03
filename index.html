@@ -176,7 +176,10 @@
   /* ---- tables ---- */
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  @media (min-width:1100px){ #tab-board .scroll{margin:0 calc(50% - 50vw);padding:0 16px;width:100vw} }
+  /* the Top 25 board always sits on a neutral ground so the green/red shading reads the same for every team */
+  #tab-board{--field:#13161b;--panel:#1a1e24;--panel2:#242a32;--line:#2e353e;--muted:#9aa4ae;--fieldhue:#8f7ae0;
+    background:var(--field);border-radius:12px;padding:6px 14px 14px;margin-top:10px}
+  @media (min-width:1100px){ #tab-board{margin:10px calc(50% - 50vw) 0;width:100vw;border-radius:0;padding:6px 16px 16px} }
   /* overview: bracket and blockers sit side by side when there's room */
   @media (min-width:1100px){
     .ov2{display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;align-items:start;
@@ -229,7 +232,6 @@
       <option value="10000" selected>10,000 seasons</option>
       <option value="25000">25,000 seasons</option>
     </select>
-    <label class="chk"><input type="checkbox" id="useLines"> Use betting lines instead of SP+</label>
     <label class="chk"><input type="checkbox" id="teamColors" checked> Team colors</label>
     <button id="run">Run simulation</button>
     <button id="pdf" class="ghost" title="One-page board with the leverage explanation">Board PDF</button>
@@ -360,7 +362,7 @@ const css = ([r,g,b]) => `rgb(${r},${g},${b})`;
 const BASE_FIELD=[8,24,43];
 function applyTheme(team){
   const root=document.documentElement.style;
-  const clear=()=>["--gold","--field","--panel","--panel2","--line"].forEach(k=>root.removeProperty(k));
+  const clear=()=>["--gold","--field","--panel","--panel2","--line","--muted"].forEach(k=>root.removeProperty(k));
   const tm=team && D ? D.teams[idx.get(team)] : null;
   const on=$("#teamColors").checked;
   const setAll=(field,accent)=>{
@@ -368,11 +370,12 @@ function applyTheme(team){
     root.setProperty("--panel", css(mixRgb(field,[255,255,255],0.05)));
     root.setProperty("--panel2", css(mixRgb(field,[255,255,255],0.10)));
     root.setProperty("--line", css(mixRgb(field,[255,255,255],0.16)));
+    root.setProperty("--muted", css(mixRgb(field,[255,255,255],0.58)));
     root.setProperty("--gold", css(accent));
     document.querySelector('meta[name="theme-color"]').content=css(mixRgb(field,[255,255,255],0.05));
   };
   // no team: neutral charcoal ground with a warm silver accent, so no school's colours are implied
-  if(team===""){ setAll([22,25,30],[207,202,191]); return; }
+  if(team===""){ setAll([21,24,29],[196,203,212]); return; }
   if(!on || !tm || (!tm.color && !tm.altColor)){ clear(); document.querySelector('meta[name="theme-color"]').content="#0e2740"; return; }
   const cols=[tm.color,tm.altColor].map(hexRgb).filter(Boolean);
   if(!cols.length){ clear(); return; }
@@ -406,7 +409,6 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   const saved = pref.get("team");
   sel.value = saved==="" ? "" : (saved && d.teams.some(t=>t.team===saved)) ? saved : d.teams.some(t=>t.team==="Notre Dame") ? "Notre Dame" : d.teams[0].team;
   const sims = pref.get("sims"); if(sims && [...$("#sims").options].some(o=>o.value===sims)) $("#sims").value = sims;
-  const lines = pref.get("lines"); if(lines!==null) $("#useLines").checked = lines==="1";
   const tc = pref.get("teamColors"); if(tc!==null) $("#teamColors").checked = tc==="1";
   const smin = pref.get("slateMin"); if(smin!==null && [...$("#slateMin").options].some(o=>o.value===smin)){ $("#slateMin").value=smin; UI.slateMin=+smin; }
   const nmin = pref.get("seasonMin"); if(nmin!==null && [...$("#seasonMin").options].some(o=>o.value===nmin)){ $("#seasonMin").value=nmin; UI.seasonMin=+nmin; }
@@ -433,7 +435,7 @@ function build(){
   gH=new Int32Array(nG); gA=new Int32Array(nG); gP=new Float64Array(nG); gPsp=new Float64Array(nG); gPline=new Float64Array(nG).fill(NaN); gLine=new Uint8Array(nG); gHfa=new Float64Array(nG);
   gConf=new Uint8Array(nG); gDone=new Uint8Array(nG); gRes=new Uint8Array(nG); gWeek=new Int32Array(nG);
   const {hfa,sdMargin}=D.config, spreadSd=D.config.spreadSd||13.5;
-  const useLines = $("#useLines").checked;
+  const useLines = false;
   const tg = D.teams.map(()=>[]);
   g.forEach((x,i)=>{
     gH[i]=idx.get(x.home); gA[i]=idx.get(x.away); gWeek[i]=x.week;
@@ -786,14 +788,14 @@ function finish(acc,N,ti){
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
 const RESULT_VERSION = 6; // bump when the result shape changes so stale saved results are recomputed
-const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|${T}|${$("#sims").value}|${$("#useLines").checked?1:0}`;
+const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|${T}|${$("#sims").value}|${false?1:0}`;
 function loadResult(){ try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
 function saveResult(r){ try{ localStorage.setItem("lb.result", JSON.stringify({key:resultKey(), at:Date.now(), res:r})); }catch(e){} }
-$("#run").onclick=()=>run(true); $("#team").onchange=()=>run(false); $("#useLines").onchange=()=>run(false); $("#sims").onchange=()=>run(false);
+$("#run").onclick=()=>run(true); $("#team").onchange=()=>run(false); $("#sims").onchange=()=>run(false);
 function run(force){
   T=$("#team").value; const N=+$("#sims").value;
   applyTheme(T);
-  pref.set("team",T); pref.set("sims",String(N)); pref.set("lines",$("#useLines").checked?"1":"0");
+  pref.set("team",T); pref.set("sims",String(N)); 
   build();
   if(!force){
     const c=loadResult();
@@ -1022,7 +1024,7 @@ function render(){
   const lined=r.games.filter(g=>g.line).length;
   $("#foot").innerHTML = `${r.N.toLocaleString()} simulated seasons. Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining. `
     + (lined?`Win probabilities for the ${lined} upcoming games with a posted line come from the point spread; the rest use the SP+ rating gap with home advantage. `
-            :`Win probabilities come from the SP+ rating gap with home advantage${$("#useLines").checked?" (no betting lines in this data yet)":"; tick the box at the top to use betting lines instead"}. `)
+            :`Win probabilities come from the SP+ rating gap with home advantage. `)
     + `Final ordering is a strength-plus-résumé stand-in for the committee, not the committee itself.`;
 }
 
@@ -1097,8 +1099,8 @@ function renderBoard(r){
     ? `Ordered by the <strong>CFP committee ranking</strong> (week ${cfp.week}), which is what actually seeds the bracket, with the AP poll alongside.`
     : `Ordered by the <strong>AP poll</strong> (week ${ap?ap.week:"—"}) until the CFP committee releases its first ranking in early November, then by the committee.`}
     ${T?`Unranked teams that often finish ahead of ${T} are included too.`:"Unranked teams with a real playoff chance are included too."}</p>
-    <div class="legend">${T?`<span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by each game's leverage on your own schedule</span>`:`<span><i style="background:var(--gold)"></i>Shapes the playoff field</span><span><i style="background:var(--panel2)"></i>Doesn't change who gets in</span>`}<span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
-    <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Tick "Use betting lines" at the top to have posted point spreads replace SP+ where they exist. ${T?`Shading shows whether ${T} wants the row team to win or lose that game, and how much: it follows the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.`:"With no team selected, gold shading shows how much each game shapes the whole playoff field: how often flipping its result changes who gets in, discounted by how unlikely that is."}</p>`;
+    <div class="legend">${T?`<span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by each game's leverage on your own schedule</span>`:`<span><i style="background:var(--fieldhue)"></i>Shapes the playoff field</span><span><i style="background:var(--panel2)"></i>Doesn't change who gets in</span>`}<span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
+    <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Posted point spreads are shown for reference; the simulation uses SP+. ${T?`Shading shows whether ${T} wants the row team to win or lose that game, and how much: it follows the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.`:"With no team selected, gold shading shows how much each game shapes the whole playoff field: how often flipping its result changes who gets in, discounted by how unlikely that is."}</p>`;
 
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
   const stat=new Map(r.teamStats.map(t=>[t.team,t]));
@@ -1146,7 +1148,7 @@ function renderBoard(r){
         let a = Math.min(1, Math.abs(c.sw)/scale);
         if(Math.abs(c.sw)<0.5) a=0;
         const mix = a===0 ? 0 : Math.round(8+Math.pow(a,0.7)*82); // identical curve to the score pills
-        const bg = a===0 ? "transparent" : `color-mix(in srgb, ${!T?"var(--gold)":c.sw>0?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
+        const bg = a===0 ? "transparent" : `color-mix(in srgb, ${!T?"var(--fieldhue)":c.sw>0?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
         return `<td><span class="cell${res}${mix>=60?" hot":""}"${c.gi!=null?` data-game="${c.gi}" role="button"`:""} style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
       }).join("")+`</tr>`;
     }).join("");
@@ -1161,7 +1163,7 @@ function card(g, showWeek){
   if(g.pLine!=null && Math.abs(g.pSp-g.pLine)>=0.10){
     const spFav = g.pSp>=0.5 ? g.home : g.away, spP = g.pSp>=0.5 ? g.pSp : 1-g.pSp;
     const mkP = spFav===g.home ? g.pLine : 1-g.pLine;
-    dev=`<div class="g-dev">SP+ and the market disagree: SP+ has <b>${short(spFav)}</b> at ${Math.round(spP*100)}%, the line says ${Math.round(mkP*100)}%${g.line?"":" (sim is using SP+)"}</div>`;
+    dev=`<div class="g-dev">SP+ and the market disagree: SP+ has <b>${short(spFav)}</b> at ${Math.round(spP*100)}%, the line says ${Math.round(mkP*100)}%</div>`;
   }
   const when=fmtKick(g);
   const impact=Math.abs(g.swing)*100;
@@ -1189,7 +1191,7 @@ function renderSlate(r){
   document.querySelectorAll("#slateSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.slateSort)));
   $("#slateTitle").textContent=`Week ${UI.slateWeek} slate`;
   if(RES) labelPdfButtons();
-  $("#slateExplain").innerHTML = !T ? `<p>No team selected. <strong>Impact</strong> is how often flipping a game's result changes who makes the 12-team field. <strong>Leverage</strong> discounts that by how unlikely the swing is. Both are scaled 0–100 against the biggest game left. Tap a leverage score to see which teams a game tends to swap in and out.</p>` : `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
+  $("#slateExplain").innerHTML = !T ? `<p>No team selected. <strong>Impact</strong> is how often flipping a game's result changes who makes the 12-team field. <strong>Leverage</strong> discounts that by how unlikely the swing is. Both are scaled 0–100 against the biggest game left. Tap a leverage score to see which teams a game tends to swap in and out.</p>` : `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation always uses SP+.</p>`;
   let list=r.games.filter(g=>g.week===UI.slateWeek);
   if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
   const hidden = UI.slateMin>0 ? list.filter(g=>!g.involvesMe && !(g.clear && g.levN>=UI.slateMin)).length : 0;

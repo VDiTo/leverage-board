@@ -20,6 +20,7 @@ jobs:
       - name: Build the one-page PDF
         env:
           TEAM: ${{ vars.PDF_TEAM || 'Notre Dame' }}
+          N: "30000"
         run: |
           node scripts/make-pdf.mjs board.html
           PRODUCT=week node scripts/make-pdf.mjs week.html

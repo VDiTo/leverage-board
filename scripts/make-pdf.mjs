@@ -141,8 +141,8 @@ const weekPage = `<!doctype html><html><head><meta charset="utf-8"><title>Top 10
 <style>
   @page { size: 8.5in 11in; margin: 0.35in; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: #fff; color: #10233a; font: 8.6pt/1.28 "Segoe UI", system-ui, sans-serif; }
-  .sheet { width: 7.8in; max-height: 10.25in; display: flex; flex-direction: column; gap: 0.05in; overflow: hidden; }
+  html, body { margin: 0; background: #fff; color: #10233a; font: 8.6pt/1.28 Arial, "Liberation Sans", Helvetica, sans-serif; }
+  .sheet { width: 7.8in; max-height: 10.25in; display: flex; flex-direction: column; gap: 0.04in; overflow: hidden; }
   header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #c9a44c; padding-bottom: 3px; }
   h1 { font: 600 17pt Georgia, serif; margin: 0; } h1 span { color: #8a6f2e; }
   .meta { font-size: 7.5pt; color: #5a6b80; text-align: right; } .meta b { color: #10233a; }
@@ -161,8 +161,8 @@ const weekPage = `<!doctype html><html><head><meta charset="utf-8"><title>Top 10
   .match { font-size: 10.5pt; font-weight: 700; margin-top: 1px; } .match em { font-style: normal; color: #5a6b80; font-weight: 400; }
   .match small { font-weight: 500; color: #5a6b80; font-size: 8pt; }
   .match .box { border: 1.5px solid #2f7f50; border-radius: 5px; padding: 0 5px; } .match .line { font-weight: 500; font-size: 8pt; color: #3a4a60; margin-left: 8px; }
-  .pull { font-size: 8.2pt; margin-top: 1px; } .pull b { color: #2f7f50; }
-  .why { font-size: 7.5pt; color: #3a4a60; margin-top: 1px; }
+  .pull { font-size: 8pt; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .pull b { color: #2f7f50; }
+  .why { font-size: 7.4pt; color: #3a4a60; margin-top: 1px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   footer { margin-top: 4px; font-size: 6.4pt; color: #5a6b80; border-top: 1px solid #cfd6e0; padding-top: 3px; }
 </style></head><body><div class="sheet">
 <header><h1>Top 10 games this week <span>· ${TEAM ? "for " + esc(TEAM) + " fans" : "for the playoff field"}</span></h1>
@@ -174,7 +174,7 @@ ${FIELD ? `<div class="own"><div class="lab">The field right now</div>
     return f.sort((a, b) => a.avgSeed - b.avgSeed).map(t => esc(short(t.team))).join(", "); })()}.</div></div>` : own ? `<div class="own"><div class="lab">Your game · ${fmtKick(own)}${own.tv ? " · " + esc(own.tv) : ""}</div>
   <div class="match">${badge(own.away)} <small>(${fmtWin(1 - own.pHomeWin)}%)</small> <em>at</em> ${badge(own.home)} <small>(${fmtWin(own.pHomeWin)}%)</small>${own.spreadText ? ` <span class="line" style="font-size:8pt;font-weight:500;color:#3a4a60">${esc(own.spreadText)}</span>` : ""}</div>
   <div class="sub">Win and ${esc(TEAM)}'s playoff odds are <b>${((own.home === TEAM ? own.pH : own.pA) * 100).toFixed(1)}%</b>; lose and they're <b>${((own.home === TEAM ? own.pA : own.pH) * 100).toFixed(1)}%</b>. A ${(Math.abs(own.swing) * 100).toFixed(1)}-point swing, the biggest thing on this page by far.</div></div>` : `<div class="own"><div class="lab">Bye week</div><div class="sub">${esc(TEAM)} is idle. Every game below is about other teams doing you favours.</div></div>`}
-<h2>Ranked by leverage <span style="font:400 8pt 'Segoe UI',system-ui,sans-serif;color:#5a6b80">${FIELD ? "· how often the result changes who makes the 12-team field, discounted by how unlikely the swing is" : `· how much the result moves ${esc(TEAM)}'s playoff odds, discounted by how unlikely the swing is · the boxed team is the one to pull for`}</span></h2>
+<h2>Ranked by leverage <span style="font:400 8pt Arial,'Liberation Sans',Helvetica,sans-serif;color:#5a6b80">${FIELD ? "· how often the result changes who makes the 12-team field, discounted by how unlikely the swing is" : `· how much the result moves ${esc(TEAM)}'s playoff odds, discounted by how unlikely the swing is · the boxed team is the one to pull for`}</span></h2>
 ${top10.map((g, i) => gameRow(g, i + 1)).join("")}
 <footer>Leverage and impact are scaled 0–100 against the biggest remaining game${TEAM ? ` that doesn't involve ${esc(TEAM)}` : ""}. Win chances from SP+ with home advantage; every number from ${r.N.toLocaleString()} simulated seasons with each game flipped one at a time.</footer>
 </div></body></html>`;
@@ -184,7 +184,7 @@ const page = `<!doctype html><html><head><meta charset="utf-8"><title>Leverage B
 <style>
   @page { size: 11in 8.5in; margin: 0.3in; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: #fff; color: #10233a; font: 8pt/1.25 "Segoe UI", system-ui, sans-serif; }
+  html, body { margin: 0; background: #fff; color: #10233a; font: 8pt/1.25 Arial, "Liberation Sans", Helvetica, sans-serif; }
   .sheet { width: 10.4in; height: 7.9in; display: grid; grid-template-columns: 1fr 2.1in; grid-template-rows: auto 1fr auto; gap: 0.08in 0.18in; }
   header { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #c9a44c; padding-bottom: 3px; }
   h1 { font: 600 17pt Georgia, serif; margin: 0; }
@@ -201,7 +201,7 @@ const page = `<!doctype html><html><head><meta charset="utf-8"><title>Leverage B
   tr.me td { border-bottom: 2px solid #c9a44c; }
   tr.me td.k { color: #8a6f2e; }
   .pf { display: inline-block; min-width: 26px; text-align: center; border-radius: 3px; padding: 1px 3px; font-weight: 700; font-size: 6.6pt; }
-  .cell { border-radius: 3px; padding: 1.5px 2px; font-size: 5.8pt; letter-spacing: -0.01em; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid transparent; }
+  .cell { border-radius: 3px; padding: 1.5px 2px; font-size: 5.6pt; letter-spacing: -0.01em; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid transparent; }
   .cell small { display: block; font-size: 5.3pt; color: #4a5a70; }
   .cell.bye { color: #9aa7b8; font-size: 5.8pt; }
   .cell.h2h { border-color: #c9a44c; color: #8a6f2e; }
