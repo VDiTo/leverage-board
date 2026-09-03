@@ -142,6 +142,12 @@
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   @media (min-width:1100px){ #tab-board .scroll{margin:0 calc(50% - 50vw);padding:0 16px;width:100vw} }
+  /* overview: bracket and blockers sit side by side when there's room */
+  @media (min-width:1100px){
+    .ov2{display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;align-items:start;
+      width:min(100vw,1500px);margin-left:calc(50% - min(50vw,750px));padding:0 16px}
+    .ov2 .col{min-width:0}
+  }
   th,td{padding:6px 7px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
   th{color:var(--muted);font-weight:500;font-size:11.5px;position:sticky;top:0;background:var(--field)}
   td.k{position:sticky;left:0;background:var(--field);font-weight:600;min-width:104px;z-index:1;box-shadow:2px 0 0 var(--line)}
@@ -208,13 +214,18 @@
       <div class="stat"><b class="num" id="sChamp">—</b><span>chance of an auto-bid</span></div>
     </div>
 
-    <h2>Projected bracket</h2>
-    <div class="explain" id="bracketExplain"></div>
-    <div id="bracket"></div>
-
-    <h2>Who is actually blocking you</h2>
-    <div class="explain" id="blockExplain"></div>
-    <div class="scroll"><table id="blockers"></table></div>
+    <div class="ov2">
+      <div class="col">
+        <h2>Projected bracket</h2>
+        <div class="explain" id="bracketExplain"></div>
+        <div id="bracket"></div>
+      </div>
+      <div class="col">
+        <h2>Who is actually blocking you</h2>
+        <div class="explain" id="blockExplain"></div>
+        <div class="scroll"><table id="blockers"></table></div>
+      </div>
+    </div>
   </section>
 
   <section class="tab" id="tab-board" hidden>
