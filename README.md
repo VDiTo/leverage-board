@@ -66,6 +66,18 @@ The AP Top 25 and, once released, the CFP committee rankings are pulled each
 week and shown in the schedule board; the committee ranking drives the "#n"
 badges when it exists. TV outlets and kickoff times come from CFBD's media feed.
 
+## One-page PDF
+
+`scripts/make-pdf.mjs` runs the simulation headlessly and writes a single
+landscape page with the Top 25 board and the leverage explanation. Print it
+with Chrome:
+
+    node scripts/make-pdf.mjs board.html
+    chrome --headless=new --no-pdf-header-footer --print-to-pdf=Leverage-Board.pdf board.html
+
+Set `TEAM` and `N` in the environment to change the team of interest or the
+number of simulated seasons.
+
 ## Setup
 
 1. Free API key at collegefootballdata.com/key
