@@ -194,7 +194,7 @@ const norm = z => { // standard normal CDF
   return z>0 ? 1-p : p;
 };
 const pct = x => (x*100).toFixed(1);
-const short = n => ({"Notre Dame":"Notre Dame","Ohio State":"Ohio St","Michigan State":"Mich St","Mississippi State":"Miss St","Washington State":"Wash St","Oklahoma State":"Okla St","Iowa State":"Iowa St","Arizona State":"Ariz St","Kansas State":"K State","Penn State":"Penn St","Florida State":"Fla St","Boise State":"Boise St","North Carolina":"UNC","South Carolina":"S Carolina","Texas A&M":"Texas A&M","Appalachian State":"App State","Western Kentucky":"W Kentucky","Georgia Tech":"Ga Tech","Boston College":"Boston Col","Louisiana Tech":"La Tech","Missouri State":"Missouri St","Northwestern":"N'western"}[n] || (n.length>11 ? n.slice(0,10)+"…" : n));
+const short = n => ({"Notre Dame":"Notre Dame","Ohio State":"Ohio St","Michigan State":"Mich St","Mississippi State":"Miss St","Washington State":"Wash St","Oklahoma State":"Okla St","Iowa State":"Iowa St","Arizona State":"Ariz St","Kansas State":"K State","Penn State":"Penn St","Florida State":"Fla St","Boise State":"Boise St","North Carolina":"UNC","South Carolina":"S Carolina","Texas A&M":"Texas A&M","Appalachian State":"App State","Fresno State":"Fresno St","Florida Atlantic":"FAU","Florida International":"FIU","Jacksonville State":"Jax State","Kennesaw State":"Kennesaw","Colorado State":"Colorado St","San Diego State":"SDSU","San José State":"SJSU","Oregon State":"Oregon St","Georgia Southern":"Ga Southern","Georgia State":"Ga State","Middle Tennessee":"MTSU","Northern Illinois":"NIU","New Mexico State":"NM State","Eastern Michigan":"E Michigan","Western Michigan":"W Michigan","Central Michigan":"C Michigan","Coastal Carolina":"Coastal","Southern Miss":"So Miss","Virginia Tech":"Va Tech","Arkansas State":"Ark State","Texas State":"Texas St","Utah State":"Utah St","Massachusetts":"UMass","North Dakota State":"NDSU","Sacramento State":"Sac State","Old Dominion":"ODU","South Florida":"USF","South Alabama":"S Alabama","West Virginia":"W Virginia","James Madison":"JMU","Bowling Green":"Bowling Grn","Kansas State":"Kansas St","Sam Houston":"Sam Houston","Western Kentucky":"W Kentucky","Georgia Tech":"Ga Tech","Boston College":"Boston Col","Louisiana Tech":"La Tech","Missouri State":"Missouri St","Northwestern":"N'western"}[n] || (n.length>11 ? n.slice(0,10)+"…" : n));
 
 // Which poll drives the "#n" badges: the committee once it exists, otherwise AP.
 const useCfp = () => !!(D.polls && D.polls.cfp);
@@ -278,7 +278,11 @@ function simulate(target, N, onProgress, done){
   const nC=confList.length, champ=new Int32Array(nC), uC=new Float64Array(nC);
   let bestG6=-1, blockers=0;
   const {ratingWeight,resumeWeight,atLargeSlots,sdMargin}=D.config;
-  const LP = D.config.lossPenalty ?? 5, WQ = D.config.winQuality ?? 0.3, LQ = D.config.lossQuality ?? 0.35;
+  const LP = D.config.lossPenalty ?? 5, LQ = D.config.lossQuality ?? 0.35;
+  // Quality wins: only beating teams that finish with strong records earns credit, and it ramps up fast.
+  // Beating a 7-5 team is worth almost nothing; beating a 10-2 team is a real résumé line.
+  const WC = D.config.winCurve ?? 0.1, WF = D.config.winFloor ?? 7;
+  const winGain = wins => { const x=wins-WF; return x>0 ? WC*x*x : 0; };
   const RS = D.config.ratingSd ?? 8;
   const rs = new Float64Array(nT);
 
@@ -314,16 +318,17 @@ function simulate(target, N, onProgress, done){
     const w=hw?h:a, l=hw?a:h;                       // actual winner / loser; after the flip, l wins
     const rw=resumeWeight;
     // the two teams in the game swap their result
-    touch(w, rw*( -WQ*W[l] - (LP + LQ*(L[l]-1)) ));
-    touch(l, rw*( (LP + LQ*L[w]) + WQ*(W[w]-1) ));
+    touch(w, rw*( -winGain(W[l]) - (LP + LQ*(L[l]-1)) ));
+    touch(l, rw*( (LP + LQ*L[w]) + winGain(W[w]-1) ));
+    const dl = winGain(W[l]+1)-winGain(W[l]), dw = winGain(W[w]-1)-winGain(W[w]);
     // everyone who played l: l finishes with one more win, so beating l is worth more and losing to l costs less
     const tl=teamGames[l];
     for(let q=0;q<tl.length;q++){ const j=tl[q]; if(j===i) continue;
-      const o = gH[j]===l?gA[j]:gH[j]; const oWon = (gH[j]===o)===(res[j]===1); touch(o, rw*(oWon?WQ:LQ)); }
+      const o = gH[j]===l?gA[j]:gH[j]; const oWon = (gH[j]===o)===(res[j]===1); touch(o, rw*(oWon?dl:LQ)); }
     // everyone who played w: the reverse
     const tw=teamGames[w];
     for(let q=0;q<tw.length;q++){ const j=tw[q]; if(j===i) continue;
-      const o = gH[j]===w?gA[j]:gH[j]; const oWon = (gH[j]===o)===(res[j]===1); touch(o, -rw*(oWon?WQ:LQ)); }
+      const o = gH[j]===w?gA[j]:gH[j]; const oWon = (gH[j]===o)===(res[j]===1); touch(o, rw*(oWon?dw:-LQ)); }
 
     // conference champion of the game's conference may change
     let k=-1, oldC=-1, newC=-1;
@@ -393,7 +398,7 @@ function simulate(target, N, onProgress, done){
       // résumé from final records
       for(let i=0;i<nG;i++){
         const hw=res[i], w=hw?gH[i]:gA[i], l=hw?gA[i]:gH[i];
-        resume[w] += WQ*W[l];
+        resume[w] += winGain(W[l]);
         resume[l] -= LP + LQ*L[w];
       }
       for(let i=0;i<nT;i++){ score[i]=rs[i]*ratingWeight + resume[i]*resumeWeight; acc.teamWins[i]+=W[i]; }
@@ -589,11 +594,13 @@ function card(g, showWeek){
     ? (wantHome ? odd(g.home,g.pH,g.pHomeWin,true)+odd(g.away,g.pA,1-g.pHomeWin,false)
                 : odd(g.away,g.pA,1-g.pHomeWin,true)+odd(g.home,g.pH,g.pHomeWin,false))
     : odd(g.away,g.pA,1-g.pHomeWin,false)+odd(g.home,g.pH,g.pHomeWin,false);
-  const verdict = !g.clear ? `<div class="g-verdict flat">No measurable effect on ${short(T)} either way.</div>`
+  const verdict = !g.clear ? (Math.abs(g.swing)<0.001
+      ? `<div class="g-verdict flat">No measurable effect on ${short(T)} either way.</div>`
+      : `<div class="g-verdict flat">Leans <strong style="color:var(--muted)">${want}</strong> · ${impact.toFixed(2)} ± ${(2*g.se*100).toFixed(2)} pt swing, too close to call with this many seasons</div>`)
     : g.involvesMe ? `<div class="g-verdict mine"><strong>${T}</strong> controls this one · ${impact.toFixed(1)} pt swing</div>`
     : `<div class="g-verdict">Pull for <strong>${want}</strong> · ${impact<0.95?impact.toFixed(2):impact.toFixed(1)} pt swing, ${fmtWin(wantHome?g.pHomeWin:1-g.pHomeWin)}% likely</div>`;
   return `<div class="g">
-    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev">Leverage <b class="num">${g.lev.toFixed(2)}</b></span></div>
+    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev">Leverage <b class="num" style="${g.clear?"":"color:var(--muted)"}">${g.lev>0?(g.clear?"":"~")+g.lev.toFixed(2):"—"}</b></span></div>
     <div class="g-match">${badge(g.away)} <em>at</em> ${badge(g.home)}</div>
     <div class="g-line">${line}</div>
     <div class="g-odds">${odds}</div>

@@ -47,12 +47,14 @@ regressed 25%) and are treated as uncertain: each simulated season draws a
 Without that, the top-rated team is a near-lock before kickoff.
 
 Ranking is a stand-in for the committee: true strength plus a résumé built from
-opponents' **final records**. A win is worth `winQuality` (0.3) points per game
-the beaten team ends up winning, so beating an 11-1 team is worth far more than
-beating a 3-9 team. A loss costs a flat `lossPenalty` (5) plus `lossQuality`
-(0.35) per game the winner ends up losing, so losing to a bad team hurts more.
-Because opponents' records feed your résumé, your opponents' other games matter
-to you: the model wants your scheduled opponents to win everything else.
+opponents' **final records**. A win over a team that finishes with more than
+`winFloor` (7) wins earns `winCurve` × (wins − 7)² points, so beating a 7-5
+team is worth nothing, a 10-2 team about 0.9, a 12-0 team 2.5. That convexity
+matters: a linear version had the model caring about whether Boston College
+went 7-5 or 6-6, which no committee does. A loss costs a flat `lossPenalty`
+(5) plus `lossQuality` (0.35) per game the winner ends up losing, so losing to
+a bad team hurts more. Because opponents' records feed your résumé, the model
+does want your strong opponents to keep winning, just not your weak ones.
 
 Leverage score on the weekly slate is impact × 4p(1-p): the raw swing in
 playoff odds, discounted by how unlikely a coin-flip-sized surprise is. A 97/3

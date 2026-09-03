@@ -152,7 +152,7 @@ writeFileSync(new URL("../data.json", import.meta.url), JSON.stringify({
     lines: { games: linesRaw.length, matched: lineByGame.size },
     media: { games: mediaRaw.length, matched: tvByGame.size },
   },
-  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, lossPenalty: 5, winQuality: 0.3, lossQuality: 0.35, ratingSd: 8, atLargeSlots: 7 },
+  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, lossPenalty: 5, winCurve: 0.1, winFloor: 7, lossQuality: 0.35, ratingSd: 8, atLargeSlots: 7 },
   conferenceTiers: Object.fromEntries([...new Set(teams.map((t) => t.conference))]
     .map((c) => [c, TIER[c] || "G6"])),
   teams,
