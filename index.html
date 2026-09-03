@@ -285,6 +285,7 @@
       <select id="slateWeek" aria-label="Week"></select>
       <div class="seg" id="slateSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="time" aria-pressed="false">Kickoff</button></div>
       <label class="chk"><input type="checkbox" id="slateRanked"> Ranked teams only</label>
+      <label class="chk">Min leverage <select id="slateMin" aria-label="Minimum leverage score"><option value="0">any</option><option value="5">5</option><option value="10">10</option><option value="25">25</option><option value="50">50</option></select></label>
       <button id="pdfWeek" class="ghost" title="One page: the ten highest-leverage games of this week">Top 10 PDF</button>
     </div>
     <div id="slate"></div>
@@ -308,7 +309,7 @@ const $ = s => document.querySelector(s);
 let D=null, T=null, RES=null;
 // per-device preferences (team, season count, lines toggle, last tab)
 const pref = { get(k){ try{ return localStorage.getItem("lb."+k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem("lb."+k, v); }catch(e){} } };
-const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:false, seasonSort:"lev" };
+const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:false, slateMin:0, seasonSort:"lev" };
 
 const norm = z => { // standard normal CDF
   const t = 1/(1+0.2316419*Math.abs(z));
@@ -359,6 +360,7 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   sel.value = (saved && d.teams.some(t=>t.team===saved)) ? saved : d.teams.some(t=>t.team==="Notre Dame") ? "Notre Dame" : d.teams[0].team;
   const sims = pref.get("sims"); if(sims && [...$("#sims").options].some(o=>o.value===sims)) $("#sims").value = sims;
   const lines = pref.get("lines"); if(lines!==null) $("#useLines").checked = lines==="1";
+  const smin = pref.get("slateMin"); if(smin!==null && [...$("#slateMin").options].some(o=>o.value===smin)){ $("#slateMin").value=smin; UI.slateMin=+smin; }
   const tab = pref.get("tab"); if(tab && document.querySelector(`#tabs button[data-tab="${tab}"]`)) showTab(tab);
   run();
 }).catch(e=>{ $("#stamp").textContent="Couldn't load data.json — run scripts/fetch-data.mjs first."; });
@@ -803,6 +805,7 @@ $("#pdfWeek").onclick=()=>downloadOrPrint("Top-10-Games.pdf","slate","#slateExpl
 $("#slateSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.slateSort=b.dataset.v; renderSlate(RES); });
 $("#seasonSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.seasonSort=b.dataset.v; renderSeason(RES); });
 $("#slateRanked").onchange=()=>{ UI.slateRanked=$("#slateRanked").checked; renderSlate(RES); };
+$("#slateMin").onchange=()=>{ UI.slateMin=+$("#slateMin").value; pref.set("slateMin",String(UI.slateMin)); renderSlate(RES); };
 $("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(RES); };
 
 function render(){
@@ -985,12 +988,14 @@ function renderSlate(r){
   $("#slateExplain").innerHTML = `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
   let list=r.games.filter(g=>g.week===UI.slateWeek);
   if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
+  const hidden = UI.slateMin>0 ? list.filter(g=>!g.involvesMe && !(g.clear && g.levN>=UI.slateMin)).length : 0;
+  if(UI.slateMin>0) list=list.filter(g=>g.involvesMe || (g.clear && g.levN>=UI.slateMin));
   const byTime=(a,b)=>(a.tbd-b.tbd)||((a.start?Date.parse(a.start):9e15)-(b.start?Date.parse(b.start):9e15))||(b.lev-a.lev);
   // the selected team's own game always leads; everything else follows the chosen sort
   const mine=list.filter(g=>g.involvesMe), rest=list.filter(g=>!g.involvesMe);
   rest.sort(UI.slateSort==="time" ? byTime : (a,b)=>b.lev-a.lev);
   const html = mine.map(g=>card(g,false)).join("") + (mine.length&&rest.length?`<div class="sub" style="padding:10px 0 2px">Rest of the slate, by ${UI.slateSort==="time"?"kickoff":"leverage score"}</div>`:"") + rest.map(g=>card(g,false)).join("");
-  $("#slate").innerHTML = html || `<div class="sub" style="padding:10px 0">No games match.</div>`;
+  $("#slate").innerHTML = (html || `<div class="sub" style="padding:10px 0">No games match.</div>`) + (hidden ? `<div class="sub" style="padding:10px 0">${hidden} game${hidden>1?"s":""} below leverage ${UI.slateMin} hidden.</div>` : "");
 }
 
 function renderSeason(r){
