@@ -66,22 +66,16 @@ The AP Top 25 and, once released, the CFP committee rankings are pulled each
 week and shown in the schedule board; the committee ranking drives the "#n"
 badges when it exists. TV outlets and kickoff times come from CFBD's media feed.
 
-## One-page PDF
+## One-page PDFs
 
-`scripts/make-pdf.mjs` runs the simulation headlessly and writes a single
-landscape page with the Top 25 board and the leverage explanation. Print it
-with Chrome:
+The site builds two PDFs on demand, in the browser, from whatever is selected:
+the Top 25 board (landscape) and the ten highest-leverage games of the chosen
+week (portrait), for a team or for the whole field. `pdf.js` draws them with
+jsPDF from the current simulation result, so nothing is pre-built or committed.
 
-    node scripts/make-pdf.mjs board.html
-    chrome --headless=new --no-pdf-header-footer --print-to-pdf=Leverage-Board.pdf board.html
-
-Set `FIELD=1` for the no-team versions (Leverage-Board-Field.pdf and
-Top-10-Games-Field.pdf), where games are scored by how often they change who
-makes the field. Set `PRODUCT=week` for the second product, a portrait page with the ten
-highest-leverage games of the current week (Top-10-Games.pdf). `TEAM` and
-`N` change the team of interest and the number of simulated seasons. The
-daily workflow builds both PDFs and commits them; the site's header buttons
-download them (or fall back to the browser's print-to-PDF for another team).
+`scripts/make-pdf.mjs` is a command-line equivalent that renders the same
+pages as HTML for printing with Chrome (`PRODUCT=week`, `FIELD=1`, `TEAM`,
+`WEEK`, `N`), handy for batch runs.
 
 ## Setup
 

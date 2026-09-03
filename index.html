@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Leverage">
 <link rel="manifest" href="manifest.webmanifest">
+<script src="pdf.js" defer></script>
 <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
@@ -256,7 +257,7 @@
     </select>
     <label class="chk"><input type="checkbox" id="teamColors" checked> Team colors</label>
     <button id="run">Run simulation</button>
-    <button id="pdf" class="ghost" title="One-page board with the leverage explanation">Board PDF</button>
+    <button id="pdf" class="ghost" title="Build a one-page board for the selected team">Board PDF</button>
   </div>
   <div class="prog"><i id="bar"></i></div>
   <div class="sub" id="cacheNote" hidden></div>
@@ -981,25 +982,9 @@ $("#tabs").addEventListener("click",e=>{
   window.scrollTo({top:0});
 });
 // Download PDF: the daily pre-built page when it matches the selected team, otherwise print this board
-function downloadOrPrint(file, tab, explainId){
-  const pdfTeam = (D && D.meta && D.meta.pdfTeam) || "Notre Dame";
-  // the pre-built Top 10 covers the current week only; another week prints from the slate
-  const curWeek = RES ? Math.min(...RES.games.map(g=>g.week)) : null;
-  const prebuilt = (pdfTeam===T || T==="") && !(tab==="slate" && UI.slateWeek!==null && UI.slateWeek!==curWeek);
-  if(prebuilt){
-    const src = T==="" ? file.replace(".pdf","-Field.pdf") : file;
-    // phones: open the PDF in a new tab in the browser's viewer; desktops: download it
-    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (matchMedia("(pointer:coarse)").matches && innerWidth<900);
-    if(mobile){ window.open(src+"?v="+encodeURIComponent(D.updatedAt), "_blank"); return; }
-    const a=document.createElement("a"); a.href=src+"?v="+encodeURIComponent(D.updatedAt); a.download=file.replace(".pdf","-"+T.replace(/s+/g,"-")+".pdf"); document.body.appendChild(a); a.click(); a.remove();
-  } else {
-    showTab(tab); $(explainId).classList.add("open");
-    document.body.className="print-"+tab;
-    setTimeout(()=>window.print(), 50);
-  }
-}
-$("#pdf").onclick=()=>downloadOrPrint("Leverage-Board.pdf","board","#rankExplain");
-$("#pdfWeek").onclick=()=>downloadOrPrint("Top-10-Games.pdf","slate","#slateExplain");
+// PDFs are drawn on demand in the browser (pdf.js) from the current result: any team, any week
+$("#pdf").onclick=()=>window.makePdf("board");
+$("#pdfWeek").onclick=()=>window.makePdf("week");
 $("#slateSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.slateSort=b.dataset.v; renderSlate(RES); });
 $("#boardSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.boardSort=b.dataset.v; pref.set("boardSort",UI.boardSort); renderBoard(RES); });
 $("#boardMin").onchange=()=>{ UI.boardMin=+$("#boardMin").value; pref.set("boardMin",String(UI.boardMin)); renderBoard(RES); };
@@ -1010,13 +995,8 @@ $("#seasonMin").onchange=()=>{ UI.seasonMin=+$("#seasonMin").value; pref.set("se
 $("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(RES); };
 
 function labelPdfButtons(){
-  const pdfTeam = (D && D.meta && D.meta.pdfTeam) || "Notre Dame";
-  const curWeek = RES ? Math.min(...RES.games.map(g=>g.week)) : null;
-  const boardOk = pdfTeam===T || T==="", weekOk = boardOk && (UI.slateWeek===null || UI.slateWeek===curWeek);
-  $("#pdf").textContent = boardOk ? "Board PDF" : "Print board…";
-  $("#pdf").title = boardOk ? "Download today's one-page board" : `The daily PDF is built for ${pdfTeam}; this opens your browser's print dialog for the current view (choose Save as PDF)`;
-  $("#pdfWeek").textContent = (weekOk ? "Top 10 PDF" : "Print Top 10…") + (UI.slateWeek!==null ? ` · Week ${UI.slateWeek}` : "");
-  $("#pdfWeek").title = weekOk ? "Download today's Top 10 page" : "Opens your browser's print dialog for this week's slate (choose Save as PDF)";
+  $("#pdf").textContent="Board PDF"; $("#pdf").title="Build a one-page board for the selected team (or the whole field)";
+  $("#pdfWeek").textContent=`Top 10 PDF · Week ${UI.slateWeek??""}`.trim(); $("#pdfWeek").title="Build the ten highest-leverage games for the selected week";
 }
 function render(){
   const r=RES;
