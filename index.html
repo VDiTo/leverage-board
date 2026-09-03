@@ -644,44 +644,9 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeTeam(); });
 function closeTeam(){ $("#modal").hidden=true; document.body.style.overflow=""; }
-function openWhy(gi, simple){
+function openWhy(gi){
   const g=RES && RES.games.find(x=>x.i===gi); if(!g) return;
-  if(simple) return openWhySimple(g);
-  const st=name=>RES.teamStats.find(x=>x.team===name);
-  const sH=st(g.home), sA=st(g.away);
-  const wantHome=g.swing>0, want=wantHome?g.home:g.away, other=wantHome?g.away:g.home;
-  const pWant=wantHome?g.pHomeWin:1-g.pHomeWin;
-  const impact=Math.abs(g.swing)*100, disc=4*g.pHomeWin*(1-g.pHomeWin);
-  const pctS=x=>(x*100).toFixed(1)+"%";
-  const myGames=D.games.filter(x=>x.home===T||x.away===T);
-  const onSched=name=>myGames.find(x=>x.home===name||x.away===name);
-
-  // 1. the two outcomes
-  const step1=`<li><b>The two outcomes.</b> ${T} makes the field <b class="num">${pctS(g.pH)}</b> of the time when ${g.home} wins and <b class="num">${pctS(g.pA)}</b> when ${g.away} wins. That gap is the impact: <b class="num">${impact.toFixed(2)} points</b>${g.clear?`, which scores <b>${Math.round(g.impN)}</b> on the 0–100 scale`:`, within the simulation's noise (±${(2*g.se*100).toFixed(2)})`}.</li>`;
-  // 2. likelihood discount
-  const step2=`<li><b>How likely the swing is.</b> ${g.home} wins <b class="num">${fmtWin(g.pHomeWin)}%</b> of the time${g.line?" (from the betting line)":" (SP+)"}. Leverage multiplies impact by 4p(1−p) = <b class="num">${disc.toFixed(2)}</b>, so ${disc>0.9?"nearly all":disc>0.5?"about half":disc>0.25?"about a quarter":"only a sliver"} of the impact survives${g.clear?`: leverage <b>${Math.round(g.levN)}</b>`:""}.</li>`;
-  // 3. mechanism
-  let step3="";
-  if(g.why && g.pDecides>0){
-    const parts=[["rank","the winner or loser moves past "+T+" in the final ranking, changing how many non-champions sit above you"],["autobid","a conference auto-bid changes hands, which changes how many at-large spots are left"],["resume", g.involvesMe ? T+"'s own record changes, which is the whole ballgame" : T+"'s own résumé moves, because one of these teams is on your schedule and its final record feeds your strength of schedule"]]
-      .map(([k,txt])=>[g.why[k],txt]).filter(([v])=>v>=0.02).sort((a,b)=>b[0]-a[0]);
-    step3=`<li><b>Why it matters when it matters.</b> This result decides ${T}'s fate in <b class="num">${pctS(g.pDecides)}</b> of simulated seasons. In those seasons:<ul style="margin:6px 0 0 16px;padding:0">${parts.map(([v,txt])=>`<li style="border:0;padding:2px 0"><span class="p">${Math.round(v*100)}%</span> — ${txt}</li>`).join("")}</ul></li>`;
-  } else step3=`<li><b>Why it matters when it matters.</b> In ${RES.N.toLocaleString()} simulated seasons this result never changed whether ${T} made the field.</li>`;
-  // 4. verdict
-  const step4 = g.involvesMe ? `<li><b>Verdict.</b> ${T} controls this one.</li>`
-    : g.clear ? `<li><b>Verdict.</b> Pull for <b style="color:var(--for)">${want}</b>. A ${want} win happens ${fmtWin(pWant)}% of the time and is worth ${impact.toFixed(2)} points to ${T}.</li>`
-    : `<li><b>Verdict.</b> Too close to call. The estimate leans ${want} but the margin of error is bigger than the effect; more simulated seasons would sharpen it.</li>`;
-
-  const ctx=(name,s)=>{ const sc=onSched(name);
-    return `<div><b>${badge(name)}</b> · ${s.conf}<br>Playoff ${Math.round(s.pIn*100)}% · finishes ahead of ${short(T)} ${Math.round(s.ahead*100)}% · blocks you ${Math.round(s.block*100)}%${s.pP4Champ>=0.02?` · wins conference ${Math.round(s.pP4Champ*100)}%`:""}${s.pG6>=0.02?` · takes the G6 bid ${Math.round(s.pG6*100)}%`:""}<br>${sc?`On ${short(T)}'s schedule (week ${sc.week}${sc.completed?", played":""}) — proj. ${s.wins.toFixed(1)}–${(s.games-s.wins).toFixed(1)}, so wins by ${short(name)} ${s.wins>=8?"add to":"barely touch"} your résumé`:`Not on ${short(T)}'s schedule`}</div>`; };
-
-  $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
-    <h2>Why leverage ${g.clear?Math.round(g.levN):"—"}</h2>
-    <div class="kv"><span>${badge(g.away)} at ${badge(g.home)}</span><span>wk ${g.week}</span>${g.spreadText?`<span>${g.spreadText}</span>`:""}</div>
-    <ol class="why-list">${step1}${step2}${step3}${step4}</ol>
-    <h3>The teams</h3>
-    <div class="team-ctx">${ctx(g.away,sA)}${ctx(g.home,sH)}</div>`;
-  $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
+  openWhySimple(g);
 }
 // The same facts, in plain language, for the board
 function openWhySimple(g){
@@ -736,6 +701,9 @@ function openWhySimple(g){
       <p>${oddsLine}</p>
       ${why}
       <p>${favLine}</p>
+      <h3>The teams</h3>
+      ${[g.away,g.home].map(n=>{ const s=st(n), sc=onSched(n);
+        return `<p><b>${badge(n)}</b> makes the playoff ${Math.round(s.pIn*100)}% of the time${s.ahead>=0.02?` and finishes ahead of ${short(T)} ${Math.round(s.ahead*100)}% of the time`:""}${s.pP4Champ>=0.05?`, winning the ${s.conf} ${Math.round(s.pP4Champ*100)}% of the time`:""}. ${sc?`On ${short(T)}'s schedule in week ${sc.week}.`:""}</p>`; }).join("")}
     </div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
 }
