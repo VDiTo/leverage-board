@@ -1,5 +1,5 @@
 // Usage: node scripts/make-pdf.mjs out.html  (then print it: chrome --headless=new --no-pdf-header-footer --print-to-pdf=Leverage-Board.pdf out.html)
-// Env: TEAM="Notre Dame" N=10000
+// Env: TEAM="Notre Dame" N=10000 PRODUCT=board|week   (board = the Top 25 schedule board, week = Top 10 games of the week)
 // Builds a one-page landscape HTML of the Leverage Board for the selected team, ready for Chrome --print-to-pdf.
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,7 @@ const REPO = fileURLToPath(new URL("..", import.meta.url)).replace(/[\/]$/, "");
 const OUT = process.argv[2] || "board.html";
 const TEAM = process.env.TEAM || "Notre Dame";
 const N = +(process.env.N || 10000);
+const PRODUCT = process.env.PRODUCT || "board";
 
 const html = readFileSync(REPO + "/index.html", "utf8");
 let src = html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</script>"));
@@ -73,6 +74,83 @@ const cell = (t, c) => {
 const me = stat.get(TEAM);
 const top = r.games.filter(g => g.clear && !g.involvesMe).sort((a, b) => b.levN - a.levN).slice(0, 6);
 const pollBits = [D.polls?.ap ? `AP wk ${D.polls.ap.week}` : null, D.polls?.cfp ? `CFP wk ${D.polls.cfp.week}` : null].filter(Boolean).join(" · ");
+
+// ---------- Top 10 games of the week ----------
+const fmtKick = g => { if (!g.start) return ""; const d = new Date(g.start); if (isNaN(d)) return "";
+  const day = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" });
+  const hm = g.tbd ? "TBD" : d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/New_York" }).replace(":", "") + " ET";
+  return `${day} · ${hm}`; };
+const fmtWin = p => p < 0.005 ? "<1" : p > 0.995 ? ">99" : Math.round(p * 100);
+const badge = n => { const rk = rankOf(n); return (rk ? `<span class="rk">#${rk}</span> ` : "") + esc(n); };
+const myGames = D.games.filter(x => x.home === TEAM || x.away === TEAM);
+const onSched = n => myGames.find(x => x.home === n || x.away === n);
+function reason(g) {
+  const want = g.swing > 0 ? g.home : g.away, other = g.swing > 0 ? g.away : g.home;
+  if (!g.why) return "";
+  const list = [["rank", g.why.rank], ["autobid", g.why.autobid], ["resume", g.why.resume]].filter(([, v]) => v >= 0.15).sort((a, b) => b[1] - a[1]);
+  const parts = [];
+  for (const [k] of list) {
+    if (k === "rank") { const so = stat.get(other); parts.push(`${other} is competing with ${TEAM} for an at-large spot; a loss makes them likelier to finish behind you${so.block >= 0.05 ? ` (they block you in ${Math.round(so.block * 100)}% of seasons)` : ""}`); }
+    if (k === "autobid") { const c = stat.get(g.home).conf === stat.get(g.away).conf ? stat.get(g.home).conf : "conference"; parts.push(`this affects who wins the ${c}, and a champion takes an auto-bid instead of an at-large spot`); }
+    if (k === "resume") { const sn = onSched(want) ? want : other, ss = stat.get(sn), gm = onSched(sn); parts.push(`${sn} is on ${TEAM}'s schedule (wk ${gm.week}); the better their record, the more your result against them counts${ss.wins >= 8 ? ` (proj. ${Math.round(ss.wins)} wins)` : ""}`); }
+  }
+  if (!parts.length) return "";
+  return (parts.length > 1 ? "Mostly because " : "Because ") + parts[0] + (parts[1] ? "; also " + parts[1] : "") + ".";
+}
+const curWeek = Math.min(...r.games.map(g => g.week));
+const weekGames = r.games.filter(g => g.week === curWeek);
+const own = weekGames.find(g => g.involvesMe);
+const top10 = weekGames.filter(g => !g.involvesMe && g.clear).sort((a, b) => b.lev - a.lev).slice(0, 10);
+const pill = (v, ok = true) => ok ? `<span class="pill" style="background:color-mix(in srgb, #c9a44c ${mixCurve(v / 100)}%, white)">${Math.round(v)}</span>` : `<span class="pill dim">—</span>`;
+const gameRow = (g, n) => {
+  const wantHome = g.swing > 0, want = wantHome ? g.home : g.away, pWant = wantHome ? g.pHomeWin : 1 - g.pHomeWin;
+  const impact = Math.abs(g.swing) * 100;
+  return `<div class="gm">
+    <div class="n">${n}</div>
+    <div class="body">
+      <div class="top"><span class="when">${fmtKick(g)}${g.tv ? " · " + esc(g.tv) : ""}</span><span class="scores">Leverage ${pill(g.levN)} <span class="imp">Impact ${pill(g.impN)}</span></span></div>
+      <div class="match">${badge(g.away)} <small>(${fmtWin(1 - g.pHomeWin)}%)</small> <em>at</em> ${badge(g.home)} <small>(${fmtWin(g.pHomeWin)}%)</small>${g.spreadText ? `<span class="line">${esc(g.spreadText)}${g.overUnder ? " · O/U " + g.overUnder : ""}</span>` : ""}</div>
+      <div class="pull">Pull for <b>${esc(want)}</b> · a ${esc(short(want))} win happens ${fmtWin(pWant)}% of the time and is worth ${impact < 0.95 ? impact.toFixed(2) : impact.toFixed(1)} pts of playoff odds ${TEAM === want ? "" : `(${TEAM} ${(wantHome ? g.pH : g.pA) * 100 > 0 ? ((wantHome ? g.pH : g.pA) * 100).toFixed(1) : ""}% vs ${((wantHome ? g.pA : g.pH) * 100).toFixed(1)}%)`}</div>
+      <div class="why">${reason(g)}</div>
+    </div></div>`;
+};
+const weekPage = `<!doctype html><html><head><meta charset="utf-8"><title>Top 10 games of the week</title>
+<style>
+  @page { size: 8.5in 11in; margin: 0.35in; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; color: #10233a; font: 8.6pt/1.28 "Segoe UI", system-ui, sans-serif; }
+  .sheet { width: 7.8in; max-height: 10.25in; display: flex; flex-direction: column; gap: 0.05in; overflow: hidden; }
+  header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #c9a44c; padding-bottom: 3px; }
+  h1 { font: 600 17pt Georgia, serif; margin: 0; } h1 span { color: #8a6f2e; }
+  .meta { font-size: 7.5pt; color: #5a6b80; text-align: right; } .meta b { color: #10233a; }
+  .rk { color: #8a6f2e; font-weight: 700; font-size: 8pt; }
+  .own { border: 1.5px solid #c9a44c; border-radius: 8px; padding: 6px 10px; background: color-mix(in srgb, #c9a44c 10%, white); }
+  .own .lab { font-size: 7pt; text-transform: uppercase; letter-spacing: .05em; color: #8a6f2e; font-weight: 700; }
+  .own .match { font-size: 12pt; font-weight: 700; margin: 1px 0; } .own .match em { font-style: normal; color: #5a6b80; font-weight: 400; }
+  .own .sub { font-size: 8pt; color: #3a4a60; }
+  h2 { font: 600 11pt Georgia, serif; margin: 4px 0 0; }
+  .gm { display: flex; gap: 8px; padding: 3.5px 0; border-bottom: 1px solid #e6eaf0; break-inside: avoid; }
+  .gm .n { width: 0.28in; font: 700 14pt Georgia, serif; color: #c9a44c; text-align: right; line-height: 1; padding-top: 3px; }
+  .gm .body { flex: 1; min-width: 0; }
+  .gm .top { display: flex; justify-content: space-between; gap: 8px; font-size: 7.2pt; color: #5a6b80; }
+  .scores { font-weight: 600; color: #10233a; white-space: nowrap; } .imp { margin-left: 6px; color: #5a6b80; font-weight: 500; }
+  .pill { display: inline-block; border-radius: 4px; padding: 0 5px; font-weight: 700; min-width: 22px; text-align: center; } .pill.dim { color: #9aa7b8; }
+  .match { font-size: 10.5pt; font-weight: 700; margin-top: 1px; } .match em { font-style: normal; color: #5a6b80; font-weight: 400; }
+  .match small { font-weight: 500; color: #5a6b80; font-size: 8pt; } .match .line { font-weight: 500; font-size: 8pt; color: #3a4a60; margin-left: 8px; }
+  .pull { font-size: 8.2pt; margin-top: 1px; } .pull b { color: #2f7f50; }
+  .why { font-size: 7.5pt; color: #3a4a60; margin-top: 1px; }
+  footer { margin-top: 4px; font-size: 6.4pt; color: #5a6b80; border-top: 1px solid #cfd6e0; padding-top: 3px; }
+</style></head><body><div class="sheet">
+<header><h1>Top 10 games this week <span>· for ${esc(TEAM)} fans</span></h1>
+  <div class="meta">Week ${curWeek} · ${D.season} season · data ${new Date(D.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${esc(D.meta?.ratings || "SP+")}<br><b>${(r.pIn * 100).toFixed(0)}%</b> to make the 12-team field · proj. <b>${me.wins.toFixed(1)}–${(me.games - me.wins).toFixed(1)}</b></div></header>
+${own ? `<div class="own"><div class="lab">Your game · ${fmtKick(own)}${own.tv ? " · " + esc(own.tv) : ""}</div>
+  <div class="match">${badge(own.away)} <small>(${fmtWin(1 - own.pHomeWin)}%)</small> <em>at</em> ${badge(own.home)} <small>(${fmtWin(own.pHomeWin)}%)</small>${own.spreadText ? ` <span class="line" style="font-size:8pt;font-weight:500;color:#3a4a60">${esc(own.spreadText)}</span>` : ""}</div>
+  <div class="sub">Win and ${esc(TEAM)}'s playoff odds are <b>${((own.home === TEAM ? own.pH : own.pA) * 100).toFixed(1)}%</b>; lose and they're <b>${((own.home === TEAM ? own.pA : own.pH) * 100).toFixed(1)}%</b>. A ${(Math.abs(own.swing) * 100).toFixed(1)}-point swing, the biggest thing on this page by far.</div></div>` : `<div class="own"><div class="lab">Bye week</div><div class="sub">${esc(TEAM)} is idle. Every game below is about other teams doing you favours.</div></div>`}
+<h2>Ranked by leverage <span style="font:400 8pt 'Segoe UI',system-ui,sans-serif;color:#5a6b80">· how much the result moves ${esc(TEAM)}'s playoff odds, discounted by how unlikely the swing is</span></h2>
+${top10.map((g, i) => gameRow(g, i + 1)).join("")}
+<footer>Leverage and impact are scaled 0–100 against the biggest remaining game that doesn't involve ${esc(TEAM)}. Win chances from SP+ with home advantage; every number from ${r.N.toLocaleString()} simulated seasons with each game flipped one at a time. Live board, weekly slate and full explanations: vdito.github.io/leverage-board</footer>
+</div></body></html>`;
+if (PRODUCT === "week") { writeFileSync(OUT, weekPage); console.log(`wrote ${OUT}: week ${curWeek}, ${top10.length} games; ${TEAM} ${(r.pIn * 100).toFixed(1)}%`); process.exit(0); }
 
 const page = `<!doctype html><html><head><meta charset="utf-8"><title>Leverage Board</title>
 <style>

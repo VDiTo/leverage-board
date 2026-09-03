@@ -75,8 +75,11 @@ with Chrome:
     node scripts/make-pdf.mjs board.html
     chrome --headless=new --no-pdf-header-footer --print-to-pdf=Leverage-Board.pdf board.html
 
-Set `TEAM` and `N` in the environment to change the team of interest or the
-number of simulated seasons.
+Set `PRODUCT=week` for the second product, a portrait page with the ten
+highest-leverage games of the current week (Top-10-Games.pdf). `TEAM` and
+`N` change the team of interest and the number of simulated seasons. The
+daily workflow builds both PDFs and commits them; the site's header buttons
+download them (or fall back to the browser's print-to-PDF for another team).
 
 ## Setup
 
