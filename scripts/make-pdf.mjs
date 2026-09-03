@@ -197,6 +197,7 @@ const page = `<!doctype html><html><head><meta charset="utf-8"><title>Leverage B
   td { padding: 1px 1.5px; border-bottom: 1px solid #e7ebf0; vertical-align: middle; }
   td.k { font-weight: 700; font-size: 7pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px; }
   td.r { text-align: center; font-size: 6.8pt; color: #4f6079; }
+  .rkn { color: #0c2340; opacity: .7; font-weight: 700; }
   td.r b { color: #0c2340; }
   tr.me td { border-bottom: 2px solid #0c2340; }
   tr.me td.k { color: #0c2340; }
@@ -225,13 +226,13 @@ const page = `<!doctype html><html><head><meta charset="utf-8"><title>Leverage B
 </header>
 <main>
 <table>
-<colgroup><col style="width:0.66in"><col style="width:0.22in"><col style="width:0.24in"><col style="width:0.32in">${weeks.map(() => `<col>`).join("")}</colgroup>
-<tr><th>Team</th><th class="c">AP</th><th class="c">CFP</th><th class="c">Playoff</th>${weeks.map(w => `<th>Wk ${w}</th>`).join("")}</tr>
+<colgroup><col style="width:0.92in"><col style="width:0.34in">${weeks.map(() => `<col>`).join("")}</colgroup>
+<tr><th>Team</th><th class="c">Playoff</th>${weeks.map(w => `<th class="c">Wk ${w}</th>`).join("")}</tr>
 ${rows.map(t => {
   const tm = D.teams[idx.get(t)], m = byTeam.get(t) || new Map(), s = stat.get(t);
-  const rk = (v, hot) => v ? (hot ? `<b>${v}</b>` : v) : "NR";
+  const rkNo = useCfp ? tm.cfpRank : tm.apRank;
   const pf = `<span class="pf" style="background:color-mix(in srgb, #3fa96b ${mixCurve(s.pIn / maxPIn)}%, white)">${Math.round(s.pIn * 100)}%</span>`;
-  return `<tr class="${TEAM && t === TEAM ? "me" : ""}"><td class="k">${esc(short(t))}</td><td class="r">${rk(tm.apRank, !useCfp)}</td><td class="r">${rk(tm.cfpRank, useCfp)}</td><td class="c">${pf}</td>${weeks.map(w => cell(t, m.get(w))).join("")}</tr>`;
+  return `<tr class="${TEAM && t === TEAM ? "me" : ""}"><td class="k">${rkNo ? `<span class="rkn">#${rkNo}</span> ` : ""}${esc(short(t))}</td><td class="c">${pf}</td>${weeks.map(w => cell(t, m.get(w))).join("")}</tr>`;
 }).join("")}
 </table>
 </main>
