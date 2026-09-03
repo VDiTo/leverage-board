@@ -75,6 +75,7 @@
     // header
     doc.setFont("helvetica","bold"); doc.setFontSize(17); doc.setTextColor(...NAVY);
     doc.text("Leverage Board", M, M+14);
+    doc.setProperties({title:clean(`Leverage Board for ${T||"the Playoff Field"}`)});
     const tw=doc.getTextWidth("Leverage Board");
     doc.setTextColor(...MUTED); doc.text(clean(` | ${T||"The playoff field"}`), M+tw+2, M+14);
     const me = T ? stat.get(T) : null;
@@ -183,11 +184,13 @@
     const games=r.games.filter(g=>g.week===week);
     const own=games.find(g=>g.involvesMe);
     const top=games.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,10);
-    doc.setFont("helvetica","bold"); doc.setFontSize(17); doc.setTextColor(...NAVY); doc.text("Top 10 games this week", M, M+14);
-    const tw=doc.getTextWidth("Top 10 games this week"); doc.setTextColor(...MUTED); doc.text(clean(` | ${T?"for "+T+" fans":"for the playoff field"}`), M+tw+2, M+14);
+    const title=`Top 10 games Week ${week}`, sub=T?` for ${T} Fans`:" for the Playoff Field";
+    doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.setTextColor(...NAVY); doc.text(title, M, M+14);
+    const tw=doc.getTextWidth(title); doc.setTextColor(...MUTED); doc.text(clean(sub), M+tw, M+14);
+    doc.setProperties({title:clean(title+sub)});
     const me=T?r.teamStats.find(t=>t.team===T):null, fbs=r.teamStats.filter(t=>!t.fcs);
     doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
-    doc.text(clean(`Week ${week} | ${D.season} season | data ${fmtDate(D.updatedAt)} | ${D.meta&&D.meta.ratings||"SP+"}`), W-M, M+8, {align:"right"});
+    doc.text(clean(`${D.season} season | data ${fmtDate(D.updatedAt)} | ${D.meta&&D.meta.ratings||"SP+"}`), W-M, M+8, {align:"right"});
     doc.text(clean(me?`${Math.round(r.pIn*100)}% to make the 12-team field | proj. ${me.wins.toFixed(1)}-${(me.games-me.wins).toFixed(1)}`:`${fbs.filter(t=>t.pIn>=0.9).length} locks | ${fbs.filter(t=>t.pIn>=0.75&&t.pIn<0.9).length} likely | ${fbs.filter(t=>t.pIn>=0.25&&t.pIn<0.75).length} on the bubble`), W-M, M+18, {align:"right"});
     doc.setDrawColor(...NAVY); doc.setLineWidth(1.2); doc.line(M, M+24, W-M, M+24);
     let y=M+34;
