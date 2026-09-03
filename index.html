@@ -77,6 +77,9 @@
   .g{padding:12px 0;border-bottom:1px solid var(--line)}
   .g.own{padding:12px 12px;margin:4px 0 8px;border-radius:9px;border:1px solid color-mix(in srgb, var(--gold) 55%, transparent)}
   .g.own .g-top, .g.own .g-odds span, .g.own .g-line{color:var(--ink)}
+  .g.dev:not(.own){border-left:3px solid var(--gold);padding-left:10px}
+  .g-dev{font-size:12.5px;color:var(--gold);margin-top:3px}
+  .g-dev b{color:var(--gold)}
   .g-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:12.5px;color:var(--muted)}
   .g-top .lev{color:var(--ink);font-weight:600;white-space:nowrap}
   .g-top .lev b{color:var(--gold);font-size:15px}
@@ -139,7 +142,7 @@
       <option value="10000" selected>10,000 seasons</option>
       <option value="25000">25,000 seasons</option>
     </select>
-    <label class="chk"><input type="checkbox" id="useLines" checked> Use betting lines</label>
+    <label class="chk"><input type="checkbox" id="useLines"> Use betting lines instead of SP+</label>
     <button id="run">Run simulation</button>
   </div>
   <div class="prog"><i id="bar"></i></div>
@@ -252,7 +255,7 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
 
 // ---------- precompute ----------
 let idx, rating, confOf, tierOf, confList, P4=["ACC","Big Ten","Big 12","SEC"];
-let gH,gA,gP,gConf,gDone,gRes,gWeek,gLine,gHfa,nG,nT;
+let gH,gA,gP,gPsp,gPline,gConf,gDone,gRes,gWeek,gLine,gHfa,nG,nT;
 let confIdx, members, isP4, teamGames, gamesPerTeam;
 function build(){
   nT = D.teams.length;
@@ -266,7 +269,7 @@ function build(){
   confList.forEach((c,k)=>{ for(let i=0;i<nT;i++) if(confOf[i]===c){ confIdx[i]=k; members[k].push(i); } });
   isP4 = confList.map(c=>P4.includes(c));
   const g = D.games; nG = g.length;
-  gH=new Int32Array(nG); gA=new Int32Array(nG); gP=new Float64Array(nG); gLine=new Uint8Array(nG); gHfa=new Float64Array(nG);
+  gH=new Int32Array(nG); gA=new Int32Array(nG); gP=new Float64Array(nG); gPsp=new Float64Array(nG); gPline=new Float64Array(nG).fill(NaN); gLine=new Uint8Array(nG); gHfa=new Float64Array(nG);
   gConf=new Uint8Array(nG); gDone=new Uint8Array(nG); gRes=new Uint8Array(nG); gWeek=new Int32Array(nG);
   const {hfa,sdMargin}=D.config, spreadSd=D.config.spreadSd||13.5;
   const useLines = $("#useLines").checked;
@@ -275,12 +278,9 @@ function build(){
     gH[i]=idx.get(x.home); gA[i]=idx.get(x.away); gWeek[i]=x.week;
     gConf[i]=x.conferenceGame?1:0; gDone[i]=x.completed?1:0; gRes[i]=x.homeWin?1:0; gHfa[i]=x.neutral?0:hfa;
     tg[gH[i]].push(i); tg[gA[i]].push(i);
-    if(useLines && typeof x.spread==="number" && isFinite(x.spread)){
-      // Market line beats the rating model when a book has priced the game. Spread is home-perspective, negative = home favoured.
-      gP[i]=norm(-x.spread/spreadSd); gLine[i]=1;
-    } else {
-      gP[i]=norm(((rating[gH[i]]-rating[gA[i]])+gHfa[i])/sdMargin);
-    }
+    gPsp[i]=norm(((rating[gH[i]]-rating[gA[i]])+gHfa[i])/sdMargin);
+    if(typeof x.spread==="number" && isFinite(x.spread)) gPline[i]=norm(-x.spread/spreadSd); // spread is home-perspective, negative = home favoured
+    if(useLines && !isNaN(gPline[i])){ gP[i]=gPline[i]; gLine[i]=1; } else gP[i]=gPsp[i];
   });
   teamGames = tg.map(a=>Int32Array.from(a));
   gamesPerTeam = Int32Array.from(tg.map(a=>a.length));
@@ -487,7 +487,7 @@ function finish(acc,N,ti){
     const p=gP[i];
     games.push({i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,tbd:!!src.tbd,tv:src.tv||null,
       spread:src.spread??null,spreadText:src.spreadText||"",overUnder:src.overUnder??null,
-      pHomeWin:p, line:!!gLine[i], involvesMe: gH[i]===ti||gA[i]===ti,
+      pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe: gH[i]===ti||gA[i]===ti,
       pH,pA,swing,se, clear: Math.abs(swing)>=0.001 && Math.abs(swing)>=2.5*se,
       // Leverage score: impact weighted by how uncertain the game is. A coin flip keeps its full impact;
       // a 97/3 game keeps about 12% of it, because the outcome you want almost never happens.
@@ -547,7 +547,7 @@ function render(){
   const lined=r.games.filter(g=>g.line).length;
   $("#foot").innerHTML = `${r.N.toLocaleString()} simulated seasons. Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining. `
     + (lined?`Win probabilities for the ${lined} upcoming games with a posted line come from the point spread; the rest use the SP+ rating gap with home advantage. `
-            :`Win probabilities come from the SP+ rating gap with home advantage${$("#useLines").checked?" (no betting lines in this data yet)":" (betting lines switched off)"}. `)
+            :`Win probabilities come from the SP+ rating gap with home advantage${$("#useLines").checked?" (no betting lines in this data yet)":"; tick the box at the top to use betting lines instead"}. `)
     + `Final ordering is a strength-plus-résumé stand-in for the committee, not the committee itself.`;
 }
 
@@ -603,7 +603,7 @@ function renderBoard(r){
     ? `Ordered by the <strong>CFP committee ranking</strong> (week ${cfp.week}), which is what actually seeds the bracket, with the AP poll alongside.`
     : `Ordered by the <strong>AP poll</strong> (week ${ap?ap.week:"—"}) until the CFP committee releases its first ranking in early November, then by the committee.`}
     Unranked teams that often finish ahead of ${T} are included too.</p>
-    <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. When a sportsbook has posted a line, the line replaces SP+ for that game (uncheck "Use betting lines" to see pure SP+). Shading shows whether ${T} wants the row team to win or lose that game, and how much: it follows the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.</p>`;
+    <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Tick "Use betting lines" at the top to have posted point spreads replace SP+ where they exist. Shading shows whether ${T} wants the row team to win or lose that game, and how much: it follows the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.</p>`;
 
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
   const stat=new Map(r.teamStats.map(t=>[t.team,t]));
@@ -661,6 +661,13 @@ function renderBoard(r){
 function card(g, showWeek){
   const wantHome=g.swing>0, want=wantHome?g.home:g.away;
   const line=g.spreadText ? `<b>${g.spreadText}</b>${g.overUnder?` · O/U ${g.overUnder}`:""}` : `<b>No line</b>`;
+  // SP+ vs market: flag games where the two disagree by 10+ points of win probability
+  let dev="";
+  if(g.pLine!=null && Math.abs(g.pSp-g.pLine)>=0.10){
+    const spFav = g.pSp>=0.5 ? g.home : g.away, spP = g.pSp>=0.5 ? g.pSp : 1-g.pSp;
+    const mkP = spFav===g.home ? g.pLine : 1-g.pLine;
+    dev=`<div class="g-dev">SP+ and the market disagree: SP+ has <b>${short(spFav)}</b> at ${Math.round(spP*100)}%, the line says ${Math.round(mkP*100)}%${g.line?"":" (sim is using SP+)"}</div>`;
+  }
   const when=fmtKick(g);
   const impact=Math.abs(g.swing)*100;
   const odd=(team,p,win,isWant)=>`<div class="${isWant?"want":""}"><span>If ${short(team)} wins <small class="num">(${fmtWin(win)}%)</small></span> <b class="num">${pct(p)}%</b></div>`;
@@ -679,10 +686,10 @@ function card(g, showWeek){
     const p = g.home===T ? g.pHomeWin : 1-g.pHomeWin, up=p>=0.5, k=Math.min(1,Math.abs(p-0.5)/0.5);
     own=` own" style="background:color-mix(in srgb, ${up?"var(--for)":"var(--against)"} ${Math.round(12+k*50)}%, transparent)`;
   }
-  return `<div class="g${own}">
+  return `<div class="g${own}${dev?" dev":""}">
     <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev">Leverage <b class="num" style="${g.clear?"":"color:var(--muted)"}">${g.lev>0?(g.clear?"":"~")+g.lev.toFixed(2):"—"}</b></span></div>
     <div class="g-match">${badge(g.away)} <em>at</em> ${badge(g.home)}</div>
-    <div class="g-line">${line}</div>
+    <div class="g-line">${line}</div>${dev}
     <div class="g-odds">${odds}</div>
     ${verdict}
   </div>`;
@@ -694,7 +701,7 @@ function renderSlate(r){
   const ws=$("#slateWeek"); ws.innerHTML=weeks.map(w=>`<option value="${w}" ${w===UI.slateWeek?"selected":""}>Week ${w}</option>`).join("");
   document.querySelectorAll("#slateSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.slateSort)));
   $("#slateTitle").textContent=`Week ${UI.slateWeek} slate`;
-  $("#slateExplain").innerHTML = `<p><strong>Leverage score</strong> = impact × how uncertain the game is. Impact is the change in ${T}'s playoff odds between the two outcomes. A coin flip keeps its full impact; a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Sort by kickoff to follow the day.</p>`;
+  $("#slateExplain").innerHTML = `<p><strong>Leverage score</strong> = impact × how uncertain the game is. Impact is the change in ${T}'s playoff odds between the two outcomes. A coin flip keeps its full impact; a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation uses SP+ unless you switch the toggle at the top.</p>`;
   let list=r.games.filter(g=>g.week===UI.slateWeek);
   if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
   const byTime=(a,b)=>(a.tbd-b.tbd)||((a.start?Date.parse(a.start):9e15)-(b.start?Date.parse(b.start):9e15))||(b.lev-a.lev);

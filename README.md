@@ -37,9 +37,9 @@ by less than a tenth of a point are still listed, just not ranked.
 
 Win probabilities come from the posted point spread when a sportsbook has
 priced the game (`P(home) = Φ(-spread / 13.5)`), and from the SP+ rating gap
-plus home advantage otherwise. Lines usually exist only a week or so out, so
-most of the season runs on SP+ until the data refreshes. The "Use betting
-lines" switch turns the override off.
+plus home advantage by default. Ticking "Use betting lines" makes posted point
+spreads replace SP+ where they exist. Either way, the weekly slate flags games
+where the two disagree by 10 or more points of win probability.
 
 Ratings are SP+ (this season's once published, otherwise last season's
 regressed 25%) and are treated as uncertain: each simulated season draws a
@@ -77,6 +77,7 @@ badges when it exists. TV outlets and kickoff times come from CFBD's media feed.
 `scripts/gen-sample.mjs` writes placeholder data so the page renders before you
 have a key. Its schedules are synthetic — do not read anything into them.
 
-The workflow in `.github/workflows/` refreshes `data.json` every Wednesday
-(rankings, results, and betting lines). Trigger it by hand from the Actions tab
-whenever you want fresher numbers.
+The workflow in `.github/workflows/` refreshes `data.json` every morning at
+10:00 UTC (6 AM Eastern): results and records to date, AP and CFP rankings,
+SP+, betting lines, kickoff times and TV. Trigger it by hand from the Actions
+tab whenever you want fresher numbers.
