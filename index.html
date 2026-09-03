@@ -154,6 +154,7 @@
     <button id="run">Run simulation</button>
   </div>
   <div class="prog"><i id="bar"></i></div>
+  <div class="sub" id="cacheNote" hidden></div>
 </div></header>
 
 <nav class="tabs" id="tabs">
@@ -201,7 +202,7 @@
     <div class="controls">
       <select id="slateWeek" aria-label="Week"></select>
       <div class="seg" id="slateSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="time" aria-pressed="false">Kickoff</button></div>
-      <label class="chk"><input type="checkbox" id="slateRanked" checked> Ranked teams only</label>
+      <label class="chk"><input type="checkbox" id="slateRanked"> Ranked teams only</label>
     </div>
     <div id="slate"></div>
   </section>
@@ -221,7 +222,9 @@
 <script>
 const $ = s => document.querySelector(s);
 let D=null, T=null, RES=null;
-const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:true, seasonSort:"lev" };
+// per-device preferences (team, season count, lines toggle, last tab)
+const pref = { get(k){ try{ return localStorage.getItem("lb."+k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem("lb."+k, v); }catch(e){} } };
+const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateRanked:false, seasonSort:"lev" };
 
 const norm = z => { // standard normal CDF
   const t = 1/(1+0.2316419*Math.abs(z));
@@ -258,7 +261,11 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   const sel = $("#team");
   d.teams.filter(t=>!t.fcs).sort((a,b)=>(rankOf(a.team)||99)-(rankOf(b.team)||99) || a.team.localeCompare(b.team))
     .forEach(t=>{ const o=document.createElement("option"); o.value=t.team; const r=rankOf(t.team); o.textContent=(r?`#${r} `:"")+t.team; sel.appendChild(o); });
-  sel.value = d.teams.some(t=>t.team==="Notre Dame") ? "Notre Dame" : d.teams[0].team;
+  const saved = pref.get("team");
+  sel.value = (saved && d.teams.some(t=>t.team===saved)) ? saved : d.teams.some(t=>t.team==="Notre Dame") ? "Notre Dame" : d.teams[0].team;
+  const sims = pref.get("sims"); if(sims && [...$("#sims").options].some(o=>o.value===sims)) $("#sims").value = sims;
+  const lines = pref.get("lines"); if(lines!==null) $("#useLines").checked = lines==="1";
+  const tab = pref.get("tab"); if(tab && document.querySelector(`#tabs button[data-tab="${tab}"]`)) showTab(tab);
   run();
 }).catch(e=>{ $("#stamp").textContent="Couldn't load data.json — run scripts/fetch-data.mjs first."; });
 
@@ -511,23 +518,36 @@ function finish(acc,N,ti){
 }
 
 // ---------- render ----------
-$("#run").onclick=run; $("#team").onchange=run; $("#useLines").onchange=run;
-function run(){
+// The last result is kept on the device and reused until the data file changes or the settings do.
+// The Run button always recomputes.
+const resultKey = () => `${D.updatedAt}|${T}|${$("#sims").value}|${$("#useLines").checked?1:0}`;
+function loadResult(){ try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
+function saveResult(r){ try{ localStorage.setItem("lb.result", JSON.stringify({key:resultKey(), at:Date.now(), res:r})); }catch(e){} }
+$("#run").onclick=()=>run(true); $("#team").onchange=()=>run(false); $("#useLines").onchange=()=>run(false); $("#sims").onchange=()=>run(false);
+function run(force){
   T=$("#team").value; const N=+$("#sims").value;
+  pref.set("team",T); pref.set("sims",String(N)); pref.set("lines",$("#useLines").checked?"1":"0");
   build();
-  $("#run").disabled=true; $("#run").textContent="Simulating…";
+  if(!force){
+    const c=loadResult();
+    if(c){ RES=c.res; RES.cachedAt=c.at; render(); return; }
+  }
+  $("#run").disabled=true; $("#run").textContent="Simulating…"; $("#cacheNote").hidden=true;
   simulate(T,N,p=>{$("#bar").style.width=(p*100)+"%";},r=>{
     RES=r; $("#run").disabled=false; $("#run").textContent="Run simulation"; $("#bar").style.width="0";
-    render();
+    saveResult(r); render();
   });
 }
 
 // tabs
+function showTab(name){
+  UI.tab=name; pref.set("tab",name);
+  document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",String(x.dataset.tab===name)));
+  document.querySelectorAll("section.tab").forEach(s=>{ s.hidden = s.id!=="tab-"+name; });
+}
 $("#tabs").addEventListener("click",e=>{
   const b=e.target.closest("button[data-tab]"); if(!b) return;
-  UI.tab=b.dataset.tab;
-  document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",String(x===b)));
-  document.querySelectorAll("section.tab").forEach(s=>{ s.hidden = s.id!=="tab-"+UI.tab; });
+  showTab(b.dataset.tab);
   window.scrollTo({top:0});
 });
 $("#slateSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.slateSort=b.dataset.v; renderSlate(RES); });
@@ -537,6 +557,9 @@ $("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(
 
 function render(){
   const r=RES;
+  const note=$("#cacheNote");
+  if(r.cachedAt){ note.hidden=false; note.textContent=`Showing the result saved on this device ${new Date(r.cachedAt).toLocaleString(undefined,{weekday:"short",hour:"numeric",minute:"2-digit"})}. It stays until the data refreshes; press Run simulation to recompute now.`; }
+  else note.hidden=true;
   $("#odds").innerHTML = pct(r.pIn)+"<small>%</small>";
   $("#oddsLab").textContent = `chance ${T} makes the 12-team field`;
   $("#pathLab").innerHTML = D.conferenceTiers[D.teams[idx.get(T)].conference]==="IND"
