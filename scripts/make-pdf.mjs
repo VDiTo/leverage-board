@@ -1,12 +1,15 @@
 // Usage: node scripts/make-pdf.mjs out.html  (then print it: chrome --headless=new --no-pdf-header-footer --print-to-pdf=Leverage-Board.pdf out.html)
 // Env: TEAM="Notre Dame" N=10000 PRODUCT=board|week   (board = the Top 25 schedule board, week = Top 10 games of the week)
 //      WEEK=5  picks the week for the Top 10 page (default: the earliest week with games still to play)
+//      FIELD=1 (or TEAM="") builds the no-team version: games scored by how often they change the playoff field
 // Builds a one-page landscape HTML of the Leverage Board for the selected team, ready for Chrome --print-to-pdf.
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const REPO = fileURLToPath(new URL("..", import.meta.url)).replace(/[\/]$/, "");
 const OUT = process.argv[2] || "board.html";
-const TEAM = process.env.TEAM || "Notre Dame";
+const FIELD = process.env.FIELD === "1" || process.env.TEAM === "";
+const TEAM = FIELD ? "" : (process.env.TEAM || "Notre Dame");
+const TN = TEAM || "the playoff field";
 const N = +(process.env.N || 10000);
 const PRODUCT = process.env.PRODUCT || "board";
 
@@ -37,8 +40,8 @@ const mixCurve = v => Math.round(8 + Math.pow(Math.max(0, Math.min(1, v)), 0.7) 
 // ---------- rows ----------
 const stat = new Map(r.teamStats.map(t => [t.team, t]));
 const contenders = new Set(D.teams.filter(t => (t.apRank || t.cfpRank) && !t.fcs).map(t => t.team));
-r.teamStats.filter(t => t.team !== TEAM && !t.fcs).sort((a, b) => b.ahead - a.ahead).slice(0, 20).forEach(t => contenders.add(t.team));
-const rows = [TEAM, ...[...contenders].filter(n => n !== TEAM).map(n => D.teams[idx.get(n)])
+r.teamStats.filter(t => t.team !== TEAM && !t.fcs).sort((a, b) => FIELD ? b.pIn - a.pIn : b.ahead - a.ahead).slice(0, 20).forEach(t => contenders.add(t.team));
+const rows = [...(TEAM ? [TEAM] : []), ...[...contenders].filter(n => n !== TEAM).map(n => D.teams[idx.get(n)])
   .sort((a, b) => (useCfp ? (a.cfpRank || 99) - (b.cfpRank || 99) : 0) || (a.apRank || 99) - (b.apRank || 99) || (stat.get(b.team).ahead) - (stat.get(a.team).ahead))
   .map(t => t.team)].slice(0, 26);
 const rowSet = new Set(rows);
@@ -68,13 +71,18 @@ const cell = (t, c) => {
   if (c.mine) return `<td><div class="cell h2h">${esc(name)}<small>${sub}</small></div></td>`;
   let a = Math.min(1, Math.abs(c.sw) / 100); if (Math.abs(c.sw) < 0.5) a = 0;
   const mix = a === 0 ? 0 : mixCurve(a);
-  const bg = a === 0 ? "transparent" : `color-mix(in srgb, ${c.sw > 0 ? "#3fa96b" : "#c65442"} ${mix}%, white)`;
+  const bg = a === 0 ? "transparent" : `color-mix(in srgb, ${FIELD ? "#c9a44c" : c.sw > 0 ? "#3fa96b" : "#c65442"} ${mix}%, white)`;
   return `<td><div class="cell" style="background:${bg}">${esc(name)}<small>${sub}</small></div></td>`;
 };
 
-const me = stat.get(TEAM);
+const me = TEAM ? stat.get(TEAM) : null;
+const fbs = r.teamStats.filter(t => !t.fcs);
+const nLocks = fbs.filter(t => t.pIn >= 0.9).length, nLikely = fbs.filter(t => t.pIn >= 0.75 && t.pIn < 0.9).length, nBubble = fbs.filter(t => t.pIn >= 0.25 && t.pIn < 0.75).length;
+const fieldPct = g => (g.swing * 100).toFixed(1) + "%";
 const maxPIn = Math.max(0.01, ...rows.map(t => stat.get(t).pIn));
 const top = r.games.filter(g => g.clear && !g.involvesMe).sort((a, b) => b.levN - a.levN).slice(0, 6);
+const teamMeta = me ? `<b>${(r.pIn * 100).toFixed(0)}%</b> to make the 12-team field · proj. <b>${me.wins.toFixed(1)}–${(me.games - me.wins).toFixed(1)}</b>`
+                    : `<b>${nLocks}</b> locks · <b>${nLikely}</b> likely · <b>${nBubble}</b> on the bubble`;
 const pollBits = [D.polls?.ap ? `AP wk ${D.polls.ap.week}` : null, D.polls?.cfp ? `CFP wk ${D.polls.cfp.week}` : null].filter(Boolean).join(" · ");
 
 // ---------- Top 10 games of the week ----------
@@ -107,6 +115,17 @@ const own = weekGames.find(g => g.involvesMe);
 const top10 = weekGames.filter(g => !g.involvesMe && g.clear).sort((a, b) => b.lev - a.lev).slice(0, 10);
 const pill = (v, ok = true) => ok ? `<span class="pill" style="background:color-mix(in srgb, #c9a44c ${mixCurve(v / 100)}%, white)">${Math.round(v)}</span>` : `<span class="pill dim">—</span>`;
 const gameRow = (g, n) => {
+  if (FIELD) {
+    const tops = (g.fieldTop || []).slice(0, 3).map(t => `<b>${esc(t.team)}</b> (${Math.round(t.share * 100)}%)`).join(", ");
+    return `<div class="gm">
+    <div class="n">${n}</div>
+    <div class="body">
+      <div class="top"><span class="when">${fmtKick(g)}${g.tv ? " · " + esc(g.tv) : ""}</span><span class="scores">Leverage ${pill(g.levN)} <span class="imp">Impact ${pill(g.impN)}</span></span></div>
+      <div class="match">${badge(g.away)} <small>(${fmtWin(1 - g.pHomeWin)}%)</small> <em>at</em> ${badge(g.home)} <small>(${fmtWin(g.pHomeWin)}%)</small>${g.spreadText ? `<span class="line">${esc(g.spreadText)}${g.overUnder ? " · O/U " + g.overUnder : ""}</span>` : ""}</div>
+      <div class="pull">Changes who makes the field in <b>${fieldPct(g)}</b> of simulated seasons</div>
+      <div class="why">Teams most often swapped in or out: ${tops}.</div>
+    </div></div>`;
+  }
   const wantHome = g.swing > 0, want = wantHome ? g.home : g.away, pWant = wantHome ? g.pHomeWin : 1 - g.pHomeWin;
   const impact = Math.abs(g.swing) * 100;
   return `<div class="gm">
@@ -146,16 +165,20 @@ const weekPage = `<!doctype html><html><head><meta charset="utf-8"><title>Top 10
   .why { font-size: 7.5pt; color: #3a4a60; margin-top: 1px; }
   footer { margin-top: 4px; font-size: 6.4pt; color: #5a6b80; border-top: 1px solid #cfd6e0; padding-top: 3px; }
 </style></head><body><div class="sheet">
-<header><h1>Top 10 games this week <span>· for ${esc(TEAM)} fans</span></h1>
-  <div class="meta">Week ${curWeek} · ${D.season} season · data ${new Date(D.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${esc(D.meta?.ratings || "SP+")}<br><b>${(r.pIn * 100).toFixed(0)}%</b> to make the 12-team field · proj. <b>${me.wins.toFixed(1)}–${(me.games - me.wins).toFixed(1)}</b></div></header>
-${own ? `<div class="own"><div class="lab">Your game · ${fmtKick(own)}${own.tv ? " · " + esc(own.tv) : ""}</div>
+<header><h1>Top 10 games this week <span>· ${TEAM ? "for " + esc(TEAM) + " fans" : "for the playoff field"}</span></h1>
+  <div class="meta">Week ${curWeek} · ${D.season} season · data ${new Date(D.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${esc(D.meta?.ratings || "SP+")}<br>${teamMeta}</div></header>
+${FIELD ? `<div class="own"><div class="lab">The field right now</div>
+  <div class="sub"><b>${nLocks}</b> lock${nLocks === 1 ? "" : "s"} (90%+), <b>${nLikely}</b> likely (75–90%), <b>${nBubble}</b> on the bubble (25–75%). Projected field: ${(() => { const f = []; const taken = new Set(); const take = (t) => { if (t && !taken.has(t.team)) { taken.add(t.team); f.push(t); } };
+    for (const c of ["ACC", "Big Ten", "Big 12", "SEC"]) take(fbs.filter(t => t.conf === c).sort((a, b) => b.pP4Champ - a.pP4Champ)[0]);
+    take(fbs.slice().sort((a, b) => b.pG6 - a.pG6)[0]); fbs.filter(t => !taken.has(t.team)).sort((a, b) => b.pIn - a.pIn).slice(0, 7).forEach(take);
+    return f.sort((a, b) => a.avgSeed - b.avgSeed).map(t => esc(short(t.team))).join(", "); })()}.</div></div>` : own ? `<div class="own"><div class="lab">Your game · ${fmtKick(own)}${own.tv ? " · " + esc(own.tv) : ""}</div>
   <div class="match">${badge(own.away)} <small>(${fmtWin(1 - own.pHomeWin)}%)</small> <em>at</em> ${badge(own.home)} <small>(${fmtWin(own.pHomeWin)}%)</small>${own.spreadText ? ` <span class="line" style="font-size:8pt;font-weight:500;color:#3a4a60">${esc(own.spreadText)}</span>` : ""}</div>
   <div class="sub">Win and ${esc(TEAM)}'s playoff odds are <b>${((own.home === TEAM ? own.pH : own.pA) * 100).toFixed(1)}%</b>; lose and they're <b>${((own.home === TEAM ? own.pA : own.pH) * 100).toFixed(1)}%</b>. A ${(Math.abs(own.swing) * 100).toFixed(1)}-point swing, the biggest thing on this page by far.</div></div>` : `<div class="own"><div class="lab">Bye week</div><div class="sub">${esc(TEAM)} is idle. Every game below is about other teams doing you favours.</div></div>`}
-<h2>Ranked by leverage <span style="font:400 8pt 'Segoe UI',system-ui,sans-serif;color:#5a6b80">· how much the result moves ${esc(TEAM)}'s playoff odds, discounted by how unlikely the swing is · the boxed team is the one to pull for</span></h2>
+<h2>Ranked by leverage <span style="font:400 8pt 'Segoe UI',system-ui,sans-serif;color:#5a6b80">${FIELD ? "· how often the result changes who makes the 12-team field, discounted by how unlikely the swing is" : `· how much the result moves ${esc(TEAM)}'s playoff odds, discounted by how unlikely the swing is · the boxed team is the one to pull for`}</span></h2>
 ${top10.map((g, i) => gameRow(g, i + 1)).join("")}
-<footer>Leverage and impact are scaled 0–100 against the biggest remaining game that doesn't involve ${esc(TEAM)}. Win chances from SP+ with home advantage; every number from ${r.N.toLocaleString()} simulated seasons with each game flipped one at a time.</footer>
+<footer>Leverage and impact are scaled 0–100 against the biggest remaining game${TEAM ? ` that doesn't involve ${esc(TEAM)}` : ""}. Win chances from SP+ with home advantage; every number from ${r.N.toLocaleString()} simulated seasons with each game flipped one at a time.</footer>
 </div></body></html>`;
-if (PRODUCT === "week") { writeFileSync(OUT, weekPage); console.log(`wrote ${OUT}: week ${curWeek}, ${top10.length} games; ${TEAM} ${(r.pIn * 100).toFixed(1)}%`); process.exit(0); }
+if (PRODUCT === "week") { writeFileSync(OUT, weekPage); console.log(`wrote ${OUT}: week ${curWeek}, ${top10.length} games; ${TN}${TEAM ? " " + (r.pIn * 100).toFixed(1) + "%" : ""}`); process.exit(0); }
 
 const page = `<!doctype html><html><head><meta charset="utf-8"><title>Leverage Board</title>
 <style>
@@ -197,8 +220,8 @@ const page = `<!doctype html><html><head><meta charset="utf-8"><title>Leverage B
   footer { grid-column: 1 / -1; font-size: 6.4pt; color: #5a6b80; border-top: 1px solid #cfd6e0; padding-top: 3px; }
 </style></head><body><div class="sheet">
 <header>
-  <h1>Leverage Board <span>· ${esc(TEAM)}</span></h1>
-  <div class="meta">${D.season} season · data ${new Date(D.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${pollBits} · ${esc(D.meta?.ratings || "SP+")} · <b>${(r.pIn * 100).toFixed(0)}%</b> to make the 12-team field · proj. <b>${me.wins.toFixed(1)}–${(me.games - me.wins).toFixed(1)}</b> · ${r.N.toLocaleString()} simulated seasons</div>
+  <h1>Leverage Board <span>· ${esc(TEAM || "The playoff field")}</span></h1>
+  <div class="meta">${D.season} season · data ${new Date(D.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${pollBits} · ${esc(D.meta?.ratings || "SP+")} · ${teamMeta} · ${r.N.toLocaleString()} simulated seasons</div>
 </header>
 <main>
 <table>
@@ -208,13 +231,23 @@ ${rows.map(t => {
   const tm = D.teams[idx.get(t)], m = byTeam.get(t) || new Map(), s = stat.get(t);
   const rk = (v, hot) => v ? (hot ? `<b>${v}</b>` : v) : "NR";
   const pf = `<span class="pf" style="background:color-mix(in srgb, #3fa96b ${mixCurve(s.pIn / maxPIn)}%, white)">${Math.round(s.pIn * 100)}%</span>`;
-  return `<tr class="${t === TEAM ? "me" : ""}"><td class="k">${esc(short(t))}</td><td class="r">${rk(tm.apRank, !useCfp)}</td><td class="r">${rk(tm.cfpRank, useCfp)}</td><td class="c">${pf}</td>${weeks.map(w => cell(t, m.get(w))).join("")}</tr>`;
+  return `<tr class="${TEAM && t === TEAM ? "me" : ""}"><td class="k">${esc(short(t))}</td><td class="r">${rk(tm.apRank, !useCfp)}</td><td class="r">${rk(tm.cfpRank, useCfp)}</td><td class="c">${pf}</td>${weeks.map(w => cell(t, m.get(w))).join("")}</tr>`;
 }).join("")}
 </table>
 </main>
 <aside>
   <h2>How to read this</h2>
-  <div class="legend">
+  ${FIELD ? `<div class="legend">
+    <span><i style="background:#c9a44c"></i>Shapes the playoff field</span>
+    <span><i style="background:#fff;border-color:#cfd6e0"></i>Doesn't change who gets in</span>
+    <span>"@" = on the road · % = their chance of winning (SP+) · the Playoff column is shaded by playoff chance.</span>
+  </div>
+  <h3>What the shading means</h3>
+  <p>No team of interest here. Darker means the game does more to decide <em>who</em> makes the 12-team field: how often flipping its result changes the twelve teams that get in, weighed against how likely that swing is. A coin flip between two bubble teams shows up stronger than a near-certain blowout.</p>
+  <p>Every shade comes from playing out the rest of the season ${r.N.toLocaleString()} times and flipping each game one at a time to see whether the field changes.</p>
+  <h3>Games that shape the field most</h3>
+  <ol class="topg">${top.map(g => `<li><span>Wk ${g.week}: ${esc(short(g.away))} at ${esc(short(g.home))} — changes the field ${fieldPct(g)} of the time</span></li>`).join("")}</ol>`
+  : `<div class="legend">
     <span><i style="background:#3fa96b"></i>You want this team to win</span>
     <span><i style="background:#c65442"></i>You want this team to lose</span>
     <span><i style="border-color:#c9a44c"></i>Head-to-head with ${esc(TEAM)}</span>
@@ -225,9 +258,9 @@ ${rows.map(t => {
   <p>Darker means the game matters more to ${esc(TEAM)}: it weighs how much the result would move ${esc(short(TEAM))}'s playoff odds together with how likely that swing is, so a coin flip between two contenders shows up stronger than a near-certain blowout. A game can matter because the loser drops behind you in the rankings, because a conference title and its automatic bid change hands, or because a team on your schedule ends up with a better or worse record.</p>
   <p>Every shade comes from playing out the rest of the season ${r.N.toLocaleString()} times and flipping each game one at a time to see whether ${esc(TEAM)} still makes the field.</p>
   <h3>Biggest games not involving ${esc(short(TEAM))}</h3>
-  <ol class="topg">${top.map(g => `<li><span>Wk ${g.week}: ${esc(short(g.away))} at ${esc(short(g.home))} — pull for <b>${esc(short(g.swing > 0 ? g.home : g.away))}</b></span></li>`).join("")}</ol>
+  <ol class="topg">${top.map(g => `<li><span>Wk ${g.week}: ${esc(short(g.away))} at ${esc(short(g.home))} — pull for <b>${esc(short(g.swing > 0 ? g.home : g.away))}</b></span></li>`).join("")}</ol>`}
 </aside>
 <footer>Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining; straight seeding. Win probabilities from the SP+ rating gap with home advantage; final ordering is a strength-plus-résumé stand-in for the committee.</footer>
 </div></body></html>`;
 writeFileSync(OUT, page);
-console.log(`wrote ${OUT}: ${rows.length} rows x ${weeks.length} weeks; ${TEAM} ${(r.pIn * 100).toFixed(1)}%`);
+console.log(`wrote ${OUT}: ${rows.length} rows x ${weeks.length} weeks; ${TN}${TEAM ? " " + (r.pIn * 100).toFixed(1) + "%" : ""}`);

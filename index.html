@@ -946,9 +946,13 @@ function downloadOrPrint(file, tab, explainId){
   const pdfTeam = (D && D.meta && D.meta.pdfTeam) || "Notre Dame";
   // the pre-built Top 10 covers the current week only; another week prints from the slate
   const curWeek = RES ? Math.min(...RES.games.map(g=>g.week)) : null;
-  const prebuilt = pdfTeam===T && !(tab==="slate" && UI.slateWeek!==null && UI.slateWeek!==curWeek);
+  const prebuilt = (pdfTeam===T || T==="") && !(tab==="slate" && UI.slateWeek!==null && UI.slateWeek!==curWeek);
   if(prebuilt){
-    const a=document.createElement("a"); a.href=file+"?v="+encodeURIComponent(D.updatedAt); a.download=file.replace(".pdf","-"+T.replace(/s+/g,"-")+".pdf"); document.body.appendChild(a); a.click(); a.remove();
+    const src = T==="" ? file.replace(".pdf","-Field.pdf") : file;
+    // phones: open the PDF in a new tab in the browser's viewer; desktops: download it
+    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (matchMedia("(pointer:coarse)").matches && innerWidth<900);
+    if(mobile){ window.open(src+"?v="+encodeURIComponent(D.updatedAt), "_blank"); return; }
+    const a=document.createElement("a"); a.href=src+"?v="+encodeURIComponent(D.updatedAt); a.download=file.replace(".pdf","-"+T.replace(/s+/g,"-")+".pdf"); document.body.appendChild(a); a.click(); a.remove();
   } else {
     showTab(tab); $(explainId).classList.add("open");
     document.body.className="print-"+tab;
@@ -967,7 +971,7 @@ $("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(
 function labelPdfButtons(){
   const pdfTeam = (D && D.meta && D.meta.pdfTeam) || "Notre Dame";
   const curWeek = RES ? Math.min(...RES.games.map(g=>g.week)) : null;
-  const boardOk = pdfTeam===T, weekOk = boardOk && (UI.slateWeek===null || UI.slateWeek===curWeek);
+  const boardOk = pdfTeam===T || T==="", weekOk = boardOk && (UI.slateWeek===null || UI.slateWeek===curWeek);
   $("#pdf").textContent = boardOk ? "Board PDF" : "Print board…";
   $("#pdf").title = boardOk ? "Download today's one-page board" : `The daily PDF is built for ${pdfTeam}; this opens your browser's print dialog for the current view (choose Save as PDF)`;
   $("#pdfWeek").textContent = (weekOk ? "Top 10 PDF" : "Print Top 10…") + (UI.slateWeek!==null ? ` · Week ${UI.slateWeek}` : "");

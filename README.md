@@ -75,7 +75,9 @@ with Chrome:
     node scripts/make-pdf.mjs board.html
     chrome --headless=new --no-pdf-header-footer --print-to-pdf=Leverage-Board.pdf board.html
 
-Set `PRODUCT=week` for the second product, a portrait page with the ten
+Set `FIELD=1` for the no-team versions (Leverage-Board-Field.pdf and
+Top-10-Games-Field.pdf), where games are scored by how often they change who
+makes the field. Set `PRODUCT=week` for the second product, a portrait page with the ten
 highest-leverage games of the current week (Top-10-Games.pdf). `TEAM` and
 `N` change the team of interest and the number of simulated seasons. The
 daily workflow builds both PDFs and commits them; the site's header buttons

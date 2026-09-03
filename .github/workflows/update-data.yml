@@ -23,12 +23,15 @@ jobs:
         run: |
           node scripts/make-pdf.mjs board.html
           PRODUCT=week node scripts/make-pdf.mjs week.html
-          google-chrome --headless=new --no-sandbox --disable-gpu --no-pdf-header-footer --print-to-pdf=Leverage-Board.pdf "file://$PWD/board.html"
-          google-chrome --headless=new --no-sandbox --disable-gpu --no-pdf-header-footer --print-to-pdf=Top-10-Games.pdf "file://$PWD/week.html"
-          rm -f board.html week.html
+          FIELD=1 node scripts/make-pdf.mjs board-field.html
+          FIELD=1 PRODUCT=week node scripts/make-pdf.mjs week-field.html
+          for p in board:Leverage-Board week:Top-10-Games board-field:Leverage-Board-Field week-field:Top-10-Games-Field; do
+            google-chrome --headless=new --no-sandbox --disable-gpu --no-pdf-header-footer --print-to-pdf="${p#*:}.pdf" "file://$PWD/${p%%:*}.html"
+          done
+          rm -f board.html week.html board-field.html week-field.html
       - run: |
           git config user.name "leverage-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add data.json Leverage-Board.pdf Top-10-Games.pdf
+          git add data.json Leverage-Board.pdf Top-10-Games.pdf Leverage-Board-Field.pdf Top-10-Games-Field.pdf
           git diff --staged --quiet || git commit -m "data: daily refresh"
           git push
