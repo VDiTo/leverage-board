@@ -141,6 +141,7 @@
   /* ---- tables ---- */
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  @media (min-width:1100px){ #tab-board .scroll{margin:0 calc(50% - 50vw);padding:0 16px;width:100vw} }
   th,td{padding:6px 7px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
   th{color:var(--muted);font-weight:500;font-size:11.5px;position:sticky;top:0;background:var(--field)}
   td.k{position:sticky;left:0;background:var(--field);font-weight:600;min-width:104px;z-index:1;box-shadow:2px 0 0 var(--line)}
@@ -188,7 +189,7 @@
   <button data-tab="overview" aria-selected="true">Overview</button>
   <button data-tab="board" aria-selected="false">Top 25 board</button>
   <button data-tab="slate" aria-selected="false">This week</button>
-  <button data-tab="season" aria-selected="false">Rest of season</button>
+  <button data-tab="season" aria-selected="false">Season</button>
 </nav>
 
 <div class="wrap">
@@ -234,7 +235,7 @@
   </section>
 
   <section class="tab" id="tab-season" hidden>
-    <h2>Rest of season</h2>
+    <h2>Season</h2>
     <div class="explain" id="seasonExplain"></div>
     <div class="controls">
       <div class="seg" id="seasonSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="impact" aria-pressed="false">Impact</button></div>
@@ -750,11 +751,11 @@ function renderBoard(r){
     }
   });
 
-  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">AP</th><th class="c">CFP</th><th class="c">Proj.</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+
+  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">AP</th><th class="c">CFP</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+
     rows.map(t=>{
       const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
-      return (t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+5}"></td></tr>` : "") + `<tr class="${t===T?"me":""}"><td class="k">${tn(t,short(t))}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r num">${st?`${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}`:""}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)")};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
+      return (t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+4}"></td></tr>` : "") + `<tr class="${t===T?"me":""}"><td class="k">${tn(t,short(t))}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)")};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
         const c=m.get(w); if(!c) return `<td><span class="cell"><small>bye</small></span></td>`;
         const sub = c.result ? c.result.text : `${Math.round(c.pWin*100)}%`;
         const res = c.result ? (c.result.won?" w":" l") : "";
