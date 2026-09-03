@@ -75,6 +75,8 @@
 
   /* ---- game cards ---- */
   .g{padding:12px 0;border-bottom:1px solid var(--line)}
+  .g.own{padding:12px 12px;margin:4px 0 8px;border-radius:9px;border:1px solid color-mix(in srgb, var(--gold) 55%, transparent)}
+  .g.own .g-top, .g.own .g-odds span, .g.own .g-line{color:var(--ink)}
   .g-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:12.5px;color:var(--muted)}
   .g-top .lev{color:var(--ink);font-weight:600;white-space:nowrap}
   .g-top .lev b{color:var(--gold);font-size:15px}
@@ -671,7 +673,13 @@ function card(g, showWeek){
       : `<div class="g-verdict flat">Leans <strong style="color:var(--muted)">${want}</strong> · ${impact.toFixed(2)} ± ${(2*g.se*100).toFixed(2)} pt swing, too close to call with this many seasons</div>`)
     : g.involvesMe ? `<div class="g-verdict mine"><strong>${T}</strong> controls this one · ${impact.toFixed(1)} pt swing</div>`
     : `<div class="g-verdict">Pull for <strong>${want}</strong> · ${impact<0.95?impact.toFixed(2):impact.toFixed(1)} pt swing, ${fmtWin(wantHome?g.pHomeWin:1-g.pHomeWin)}% likely</div>`;
-  return `<div class="g">
+  // the selected team's own game: tint the card by its chance of winning, same ramp as the board
+  let own="";
+  if(g.involvesMe){
+    const p = g.home===T ? g.pHomeWin : 1-g.pHomeWin, up=p>=0.5, k=Math.min(1,Math.abs(p-0.5)/0.5);
+    own=` own" style="background:color-mix(in srgb, ${up?"var(--for)":"var(--against)"} ${Math.round(12+k*50)}%, transparent)`;
+  }
+  return `<div class="g${own}">
     <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev">Leverage <b class="num" style="${g.clear?"":"color:var(--muted)"}">${g.lev>0?(g.clear?"":"~")+g.lev.toFixed(2):"—"}</b></span></div>
     <div class="g-match">${badge(g.away)} <em>at</em> ${badge(g.home)}</div>
     <div class="g-line">${line}</div>
