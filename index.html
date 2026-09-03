@@ -17,7 +17,9 @@
     --field:#ffffff; --panel:#f2f5f9; --panel2:#e4eaf2; --line:#c9d3df;
     --ink:#0c2340; --muted:#4f6079; --gold:#0c2340;
     --for:#3fa96b; --against:#c65442; --flat:#b4c0cf;
+    --pillhue:#3fa96b;
   }
+  body:not(.light){--pillhue:var(--gold)}
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--field);color:var(--ink);
     font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -220,8 +222,8 @@
   tr.me td.k, td.me{color:var(--gold)}
   #rankings tr.me td{border-bottom:3px solid var(--gold);padding-bottom:9px}
   #rankings tr.sep td{height:10px;padding:0;border-bottom:0}
-  #rankings tr.sum td{border-top:2px solid var(--line);padding-top:8px;padding-bottom:8px;vertical-align:middle}
-  #rankings tr.sum + tr.sum td{border-top:0;padding-top:2px}
+  #rankings tr.sum td{padding-top:6px;padding-bottom:4px;vertical-align:middle;border-bottom:0}
+  #rankings tr.sum + tr.sum td{padding-top:2px;padding-bottom:8px;border-bottom:2px solid var(--line)}
   #rankings tr.sum td.k{font-weight:600;color:var(--muted)}
   #rankings tr.sep.lab td{height:auto;padding:10px 6px 4px;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
   .cell.own{border:1px solid color-mix(in srgb, var(--gold) 45%, transparent)}
@@ -1084,7 +1086,7 @@ function renderBracket(r){
 
 // 0-100 score -> gold pill whose intensity follows the score
 const scorePill = (v, ok=true) => { const mix=Math.round(8+Math.pow(Math.max(0,Math.min(100,v||0))/100,0.7)*82); return ok
-  ? `<span class="pill" style="background:color-mix(in srgb, var(--gold) ${mix}%, transparent);${mix>=45?"color:#fff":""}">${Math.round(v)}</span>`
+  ? `<span class="pill" style="background:color-mix(in srgb, var(--pillhue) ${mix}%, transparent);${mix>=45?"color:#fff":""}">${Math.round(v)}</span>`
   : `<span class="pill dim">${v==null?"—":"~"+Math.round(v)}</span>`; };
 // percentage ramp with the same intensity curve as the score pills
 const ramp = (v,color,max=1) => `background:color-mix(in srgb, ${color} ${Math.round(8+Math.pow(Math.max(0,Math.min(1,v/max)),0.7)*82)}%, transparent)`;
@@ -1157,7 +1159,13 @@ function renderBoard(r){
     }
   });
 
-  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">AP</th><th class="c">CFP</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+
+  const summary=(()=>{ // weekly summary rows: highest and average leverage of every game that week (own games excluded)
+      const byWeek=new Map(); r.games.filter(g=>!g.involvesMe).forEach(g=>{ if(!byWeek.has(g.week)) byWeek.set(g.week,[]); byWeek.get(g.week).push(g.clear?g.levN:0); });
+      const cellFor=v=>v==null?`<td class="r sub">—</td>`:`<td class="c">${scorePill(v,true)}</td>`;
+      const row=(label,f)=>`<tr class="sum"><td class="k">${label}</td><td colspan="3" class="sub" style="font-size:11px">all games that week</td>${weeks.map(w=>{ const L=byWeek.get(w); return cellFor(L&&L.length?f(L):null); }).join("")}</tr>`;
+      return row("Highest leverage", L=>Math.max(...L)) + row("Average leverage", L=>L.reduce((a,b)=>a+b,0)/L.length);
+    })();
+  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">AP</th><th class="c">CFP</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+ summary +
     rows.map(t=>{
       const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
@@ -1181,13 +1189,7 @@ function renderBoard(r){
         const bg = a===0 ? "transparent" : `color-mix(in srgb, ${!T?"var(--fieldhue)":c.sw>0?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
         return `<td><span class="cell${res}${mix>=60?" hot":""}"${c.gi!=null?` data-game="${c.gi}" role="button"`:""} style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
       }).join("")+`</tr>`;
-    }).join("")
-    + (()=>{ // weekly summary rows
-      const byWeek=new Map(); r.games.filter(g=>!g.involvesMe).forEach(g=>{ if(!byWeek.has(g.week)) byWeek.set(g.week,[]); byWeek.get(g.week).push(g.clear?g.levN:0); });
-      const cellFor=v=>v==null?`<td class="r sub">—</td>`:`<td class="c">${scorePill(v,true)}</td>`;
-      const row=(label,f)=>`<tr class="sum"><td class="k">${label}</td><td colspan="3" class="sub" style="font-size:11px">all games that week</td>${weeks.map(w=>{ const L=byWeek.get(w); return cellFor(L&&L.length?f(L):null); }).join("")}</tr>`;
-      return row("Highest leverage", L=>Math.max(...L)) + row("Average leverage", L=>L.reduce((a,b)=>a+b,0)/L.length);
-    })();
+    }).join("");
 }
 
 // One card renderer for both the weekly slate and the season list
