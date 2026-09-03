@@ -71,7 +71,7 @@ const cell = (t, c) => {
   if (c.mine) return `<td><div class="cell h2h">${esc(name)}<small>${sub}</small></div></td>`;
   let a = Math.min(1, Math.abs(c.sw) / 100); if (Math.abs(c.sw) < 0.5) a = 0;
   const mix = a === 0 ? 0 : mixCurve(a);
-  const bg = a === 0 ? "transparent" : `color-mix(in srgb, ${FIELD ? "#c9a44c" : c.sw > 0 ? "#3fa96b" : "#c65442"} ${mix}%, white)`;
+  const bg = a === 0 ? "transparent" : `color-mix(in srgb, ${FIELD ? "#3fa96b" : c.sw > 0 ? "#3fa96b" : "#c65442"} ${mix}%, white)`;
   return `<td><div class="cell" style="background:${bg}">${esc(name)}<small>${sub}</small></div></td>`;
 };
 
@@ -113,7 +113,7 @@ if (process.env.WEEK && !weeksLeft.includes(+process.env.WEEK)) console.error(`W
 const weekGames = r.games.filter(g => g.week === curWeek);
 const own = weekGames.find(g => g.involvesMe);
 const top10 = weekGames.filter(g => !g.involvesMe && g.clear).sort((a, b) => b.lev - a.lev).slice(0, 10);
-const pill = (v, ok = true) => ok ? `<span class="pill" style="background:color-mix(in srgb, #c9a44c ${mixCurve(v / 100)}%, white)">${Math.round(v)}</span>` : `<span class="pill dim">—</span>`;
+const pill = (v, ok = true) => ok ? `<span class="pill" style="background:color-mix(in srgb, #5f6f82 ${mixCurve(v / 100)}%, white)">${Math.round(v)}</span>` : `<span class="pill dim">—</span>`;
 const gameRow = (g, n) => {
   if (FIELD) {
     const tops = (g.fieldTop || []).slice(0, 3).map(t => `<b>${esc(t.team)}</b> (${Math.round(t.share * 100)}%)`).join(", ");
@@ -143,17 +143,17 @@ const weekPage = `<!doctype html><html><head><meta charset="utf-8"><title>Top 10
   * { box-sizing: border-box; }
   html, body { margin: 0; background: #fff; color: #10233a; font: 8.6pt/1.28 Arial, "Liberation Sans", Helvetica, sans-serif; }
   .sheet { width: 7.8in; max-height: 10.25in; display: flex; flex-direction: column; gap: 0.04in; overflow: hidden; }
-  header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #c9a44c; padding-bottom: 3px; }
-  h1 { font: 600 17pt Georgia, serif; margin: 0; } h1 span { color: #8a6f2e; }
+  header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #5f6f82; padding-bottom: 3px; }
+  h1 { font: 600 17pt Georgia, serif; margin: 0; } h1 span { color: #3f4c5c; }
   .meta { font-size: 7.5pt; color: #5a6b80; text-align: right; } .meta b { color: #10233a; }
-  .rk { color: #8a6f2e; font-weight: 700; font-size: 8pt; }
-  .own { border: 1.5px solid #c9a44c; border-radius: 8px; padding: 6px 10px; background: color-mix(in srgb, #c9a44c 10%, white); }
-  .own .lab { font-size: 7pt; text-transform: uppercase; letter-spacing: .05em; color: #8a6f2e; font-weight: 700; }
+  .rk { color: #3f4c5c; font-weight: 700; font-size: 8pt; }
+  .own { border: 1.5px solid #5f6f82; border-radius: 8px; padding: 6px 10px; background: #f3f5f8; }
+  .own .lab { font-size: 7pt; text-transform: uppercase; letter-spacing: .05em; color: #3f4c5c; font-weight: 700; }
   .own .match { font-size: 12pt; font-weight: 700; margin: 1px 0; } .own .match em { font-style: normal; color: #5a6b80; font-weight: 400; }
   .own .sub { font-size: 8pt; color: #3a4a60; }
   h2 { font: 600 11pt Georgia, serif; margin: 4px 0 0; }
-  .gm { display: flex; gap: 8px; padding: 3.5px 0; border-bottom: 1px solid #e6eaf0; break-inside: avoid; }
-  .gm .n { width: 0.28in; font: 700 14pt Georgia, serif; color: #c9a44c; text-align: right; line-height: 1; padding-top: 3px; }
+  .gm { display: flex; gap: 8px; padding: 3.5px 0; border-bottom: 1px solid #e7ebf0; break-inside: avoid; }
+  .gm .n { width: 0.28in; font: 700 14pt Georgia, serif; color: #5f6f82; text-align: right; line-height: 1; padding-top: 3px; }
   .gm .body { flex: 1; min-width: 0; }
   .gm .top { display: flex; justify-content: space-between; gap: 8px; font-size: 7.2pt; color: #5a6b80; }
   .scores { font-weight: 600; color: #10233a; white-space: nowrap; } .imp { margin-left: 6px; color: #5a6b80; font-weight: 500; }
@@ -163,7 +163,7 @@ const weekPage = `<!doctype html><html><head><meta charset="utf-8"><title>Top 10
   .match .box { border: 1.5px solid #2f7f50; border-radius: 5px; padding: 0 5px; } .match .line { font-weight: 500; font-size: 8pt; color: #3a4a60; margin-left: 8px; }
   .pull { font-size: 8pt; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .pull b { color: #2f7f50; }
   .why { font-size: 7.4pt; color: #3a4a60; margin-top: 1px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  footer { margin-top: 4px; font-size: 6.4pt; color: #5a6b80; border-top: 1px solid #cfd6e0; padding-top: 3px; }
+  footer { margin-top: 4px; font-size: 6.4pt; color: #5a6b80; border-top: 1px solid #d3d9e0; padding-top: 3px; }
 </style></head><body><div class="sheet">
 <header><h1>Top 10 games this week <span>· ${TEAM ? "for " + esc(TEAM) + " fans" : "for the playoff field"}</span></h1>
   <div class="meta">Week ${curWeek} · ${D.season} season · data ${new Date(D.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${esc(D.meta?.ratings || "SP+")}<br>${teamMeta}</div></header>
@@ -186,38 +186,38 @@ const page = `<!doctype html><html><head><meta charset="utf-8"><title>Leverage B
   * { box-sizing: border-box; }
   html, body { margin: 0; background: #fff; color: #10233a; font: 8pt/1.25 Arial, "Liberation Sans", Helvetica, sans-serif; }
   .sheet { width: 10.4in; height: 7.9in; display: grid; grid-template-columns: 1fr 2.1in; grid-template-rows: auto 1fr auto; gap: 0.08in 0.18in; }
-  header { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #c9a44c; padding-bottom: 3px; }
+  header { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #5f6f82; padding-bottom: 3px; }
   h1 { font: 600 17pt Georgia, serif; margin: 0; }
-  h1 span { color: #8a6f2e; }
+  h1 span { color: #3f4c5c; }
   .meta { font-size: 7.5pt; color: #5a6b80; }
   .meta b { color: #10233a; }
   table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-  th { font-size: 6.2pt; color: #5a6b80; font-weight: 600; text-align: left; padding: 0 2px 2px; border-bottom: 1px solid #cfd6e0; }
+  th { font-size: 6.2pt; color: #5a6b80; font-weight: 600; text-align: left; padding: 0 2px 2px; border-bottom: 1px solid #d3d9e0; }
   th.c, td.c { text-align: center; }
-  td { padding: 1px 1.5px; border-bottom: 1px solid #e6eaf0; vertical-align: middle; }
+  td { padding: 1px 1.5px; border-bottom: 1px solid #e7ebf0; vertical-align: middle; }
   td.k { font-weight: 700; font-size: 7pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px; }
   td.r { text-align: center; font-size: 6.8pt; color: #5a6b80; }
-  td.r b { color: #8a6f2e; }
-  tr.me td { border-bottom: 2px solid #c9a44c; }
-  tr.me td.k { color: #8a6f2e; }
+  td.r b { color: #3f4c5c; }
+  tr.me td { border-bottom: 2px solid #5f6f82; }
+  tr.me td.k { color: #3f4c5c; }
   .pf { display: inline-block; min-width: 26px; text-align: center; border-radius: 3px; padding: 1px 3px; font-weight: 700; font-size: 6.6pt; }
   .cell { border-radius: 3px; padding: 1.5px 2px; font-size: 5.6pt; letter-spacing: -0.01em; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid transparent; }
   .cell small { display: block; font-size: 5.3pt; color: #4a5a70; }
   .cell.bye { color: #9aa7b8; font-size: 5.8pt; }
-  .cell.h2h { border-color: #c9a44c; color: #8a6f2e; }
-  .cell.h2h small { color: #8a6f2e; }
-  .cell.own { border-color: color-mix(in srgb, #c9a44c 60%, white); }
-  aside { font-size: 7.2pt; line-height: 1.33; border-left: 1px solid #cfd6e0; padding-left: 0.16in; }
+  .cell.h2h { border-color: #5f6f82; color: #3f4c5c; }
+  .cell.h2h small { color: #3f4c5c; }
+  .cell.own { border-color: color-mix(in srgb, #5f6f82 60%, white); }
+  aside { font-size: 7.2pt; line-height: 1.33; border-left: 1px solid #d3d9e0; padding-left: 0.16in; }
   aside h2 { font: 600 10pt Georgia, serif; margin: 0 0 3px; }
   aside h3 { font-size: 7.8pt; margin: 8px 0 2px; text-transform: uppercase; letter-spacing: .04em; color: #5a6b80; }
   aside p { margin: 0 0 5px; }
   .legend span { display: block; margin: 2px 0; }
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; border: 1px solid transparent; }
-  .big { font-size: 15pt; font-weight: 700; color: #8a6f2e; line-height: 1; }
+  .big { font-size: 15pt; font-weight: 700; color: #3f4c5c; line-height: 1; }
   .topg { margin: 0; padding: 0; list-style: none; }
-  .topg li { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; border-bottom: 1px solid #e6eaf0; }
-  .topg .lv { font-weight: 700; color: #8a6f2e; white-space: nowrap; }
-  footer { grid-column: 1 / -1; font-size: 6.4pt; color: #5a6b80; border-top: 1px solid #cfd6e0; padding-top: 3px; }
+  .topg li { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; border-bottom: 1px solid #e7ebf0; }
+  .topg .lv { font-weight: 700; color: #3f4c5c; white-space: nowrap; }
+  footer { grid-column: 1 / -1; font-size: 6.4pt; color: #5a6b80; border-top: 1px solid #d3d9e0; padding-top: 3px; }
 </style></head><body><div class="sheet">
 <header>
   <h1>Leverage Board <span>· ${esc(TEAM || "The playoff field")}</span></h1>
@@ -238,8 +238,8 @@ ${rows.map(t => {
 <aside>
   <h2>How to read this</h2>
   ${FIELD ? `<div class="legend">
-    <span><i style="background:#c9a44c"></i>Shapes the playoff field</span>
-    <span><i style="background:#fff;border-color:#cfd6e0"></i>Doesn't change who gets in</span>
+    <span><i style="background:#3fa96b"></i>Shapes the playoff field</span>
+    <span><i style="background:#fff;border-color:#d3d9e0"></i>Doesn't change who gets in</span>
     <span>"@" = on the road · % = their chance of winning (SP+) · the Playoff column is shaded by playoff chance.</span>
   </div>
   <h3>What the shading means</h3>
@@ -250,7 +250,7 @@ ${rows.map(t => {
   : `<div class="legend">
     <span><i style="background:#3fa96b"></i>You want this team to win</span>
     <span><i style="background:#c65442"></i>You want this team to lose</span>
-    <span><i style="border-color:#c9a44c"></i>Head-to-head with ${esc(TEAM)}</span>
+    <span><i style="border-color:#5f6f82"></i>Head-to-head with ${esc(TEAM)}</span>
     <span>"@" = on the road · % = their chance of winning (SP+)</span>
     <span>${esc(TEAM)}'s own row is shaded by each game's leverage on its own schedule; the Playoff column by playoff chance.</span>
   </div>

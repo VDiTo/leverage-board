@@ -220,6 +220,9 @@
   tr.me td.k, td.me{color:var(--gold)}
   #rankings tr.me td{border-bottom:3px solid var(--gold);padding-bottom:9px}
   #rankings tr.sep td{height:10px;padding:0;border-bottom:0}
+  #rankings tr.sum td{border-top:2px solid var(--line);padding-top:8px;padding-bottom:8px;vertical-align:middle}
+  #rankings tr.sum + tr.sum td{border-top:0;padding-top:2px}
+  #rankings tr.sum td.k{font-weight:600;color:var(--muted)}
   #rankings tr.sep.lab td{height:auto;padding:10px 6px 4px;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
   .cell.own{border:1px solid color-mix(in srgb, var(--gold) 45%, transparent)}
   .ramp{display:block;border-radius:5px;padding:3px 7px;text-align:right;font-weight:700;color:var(--ink);text-shadow:0 0 3px rgba(3,10,20,.55)}
@@ -1178,7 +1181,13 @@ function renderBoard(r){
         const bg = a===0 ? "transparent" : `color-mix(in srgb, ${!T?"var(--fieldhue)":c.sw>0?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
         return `<td><span class="cell${res}${mix>=60?" hot":""}"${c.gi!=null?` data-game="${c.gi}" role="button"`:""} style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
       }).join("")+`</tr>`;
-    }).join("");
+    }).join("")
+    + (()=>{ // weekly summary rows
+      const byWeek=new Map(); r.games.filter(g=>!g.involvesMe).forEach(g=>{ if(!byWeek.has(g.week)) byWeek.set(g.week,[]); byWeek.get(g.week).push(g.clear?g.levN:0); });
+      const cellFor=v=>v==null?`<td class="r sub">—</td>`:`<td class="c">${scorePill(v,true)}</td>`;
+      const row=(label,f)=>`<tr class="sum"><td class="k">${label}</td><td colspan="3" class="sub" style="font-size:11px">all games that week</td>${weeks.map(w=>{ const L=byWeek.get(w); return cellFor(L&&L.length?f(L):null); }).join("")}</tr>`;
+      return row("Highest leverage", L=>Math.max(...L)) + row("Average leverage", L=>L.reduce((a,b)=>a+b,0)/L.length);
+    })();
 }
 
 // One card renderer for both the weekly slate and the season list
