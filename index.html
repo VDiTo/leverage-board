@@ -663,11 +663,11 @@ function renderBoard(r){
     }
   });
 
-  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">AP</th><th class="c">CFP</th><th class="c">Proj.</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+
+  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">AP</th><th class="c">CFP</th><th class="c">Proj.</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+
     rows.map(t=>{
       const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
-      return (t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+4}"></td></tr>` : "") + `<tr class="${t===T?"me":""}"><td class="k">${short(t)}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r num">${st?`${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}`:""}</td>`+weeks.map(w=>{
+      return (t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+5}"></td></tr>` : "") + `<tr class="${t===T?"me":""}"><td class="k">${short(t)}</td><td class="r num">${rk(tm.apRank,!useCfp())}</td><td class="r num">${rk(tm.cfpRank,useCfp())}</td><td class="r num">${st?`${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}`:""}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)")};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
         const c=m.get(w); if(!c) return `<td><span class="cell"><small>bye</small></span></td>`;
         const sub = c.result ? c.result.text : `${Math.round(c.pWin*100)}%`;
         const res = c.result ? (c.result.won?" w":" l") : "";
