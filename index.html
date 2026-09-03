@@ -97,12 +97,13 @@
   .g-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:12.5px;color:var(--muted)}
   .g-top .lev{color:var(--ink);font-weight:600;white-space:nowrap}
   .g-top .lev b{color:var(--gold);font-size:15px}
-  .g-match{font-size:16px;font-weight:600;margin-top:3px}
+  .g-match{font-size:16px;font-weight:600;margin-top:4px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
   .g-match em{font-style:normal;color:var(--muted);font-weight:400}
   .rk{color:var(--gold);font-weight:600;font-size:12.5px}
   .g-line{font-size:12.5px;color:var(--muted)}
   .g-line b{color:var(--ink);font-weight:500}
-  .chip{display:inline-block;padding:1px 7px;border-radius:6px;border:1.5px solid transparent;margin:0 -7px}
+  .chip{display:inline-block;padding:2px 8px;border-radius:6px;border:1.5px solid transparent;margin:0;line-height:1.3}
+  .chip:not(.want):not(.mine){padding-left:0;padding-right:0}
   .chip small{color:var(--muted);font-weight:500;font-size:12px}
   .chip.want{border-color:var(--for)}
   .chip.mine{border-color:var(--gold)}
