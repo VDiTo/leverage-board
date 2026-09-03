@@ -134,7 +134,7 @@ writeFileSync(new URL("../data.json", import.meta.url), JSON.stringify({
     ap: polls.ap ? { name: polls.ap.name, week: polls.ap.week } : null,
     cfp: polls.cfp ? { name: polls.cfp.name, week: polls.cfp.week } : null,
   },
-  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, atLargeSlots: 7 },
+  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, lossPenalty: 4, ratingSd: 7, atLargeSlots: 7 },
   conferenceTiers: Object.fromEntries([...new Set(teams.map((t) => t.conference))]
     .map((c) => [c, TIER[c] || "G6"])),
   teams,

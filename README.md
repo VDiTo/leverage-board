@@ -19,28 +19,42 @@ an auto-bid, and the good teams it leapfrogged stay in the at-large pile.
 ## How leverage is computed
 
 Every simulated season plays out all remaining games, resolves conference races
-and title games, ranks all 136 teams, and fills the bracket. Games are then
-bucketed by outcome, so `P(in field | home wins)` and `P(in field | away wins)`
-fall out of a single run. The difference is the leverage, and its sign tells you
+and title games, ranks all 136 teams, and fills the bracket. Then, still inside
+that season, each remaining game is flipped on its own and the target team's
+fate is re-evaluated with everything else held fixed. A game's leverage is the
+average change in "makes the field" across all seasons, and its sign tells you
 who to pull for.
 
-Because both of those are estimates from a finite number of simulated seasons,
-each one carries sampling noise. A 25-point favourite loses in maybe 70 of
-15,000 seasons, and the target team's odds inside those 70 are basically a coin
-flip. The page therefore only reports a game as having an effect when the gap
-is at least two standard errors wide; everything else is listed as "no clear
-effect" rather than shown with a made-up number.
+That paired comparison matters. The naive approach (split the seasons by who
+won, compare the two piles) is hopelessly noisy for lopsided games: a 25-point
+favourite loses in maybe 70 of 15,000 seasons, and the target's odds inside
+those 70 are a coin flip. Flipping the game in place instead contributes exactly
+zero unless the flip actually changes the target's outcome, so every game gets
+a tight estimate and there are no phantom "big" games. Games that move the odds
+by less than a tenth of a point are still listed, just not ranked.
+
+## The model
 
 Win probabilities come from the posted point spread when a sportsbook has
 priced the game (`P(home) = Φ(-spread / 13.5)`), and from the rating gap plus
 home advantage otherwise. Lines usually exist only a week or so out, so most of
 the season runs on ratings until the data refreshes.
 
-Ranking is a stand-in for the committee: team rating plus a résumé term that
-rewards beating good teams and punishes losing to bad ones. Tune
-`ratingWeight` / `resumeWeight` in `data.json` if it feels off. The AP Top 25
-and, once released, the CFP committee rankings are pulled each week and shown
-side by side; the committee ranking drives the "#n" badges when it exists.
+Ratings are regressed SP+ and are treated as uncertain: each simulated season
+draws a "true strength" for every team around its rating (`ratingSd`, 7
+points). Without that, the top-rated team is a near-lock before kickoff.
+
+Ranking is a stand-in for the committee: true strength plus a résumé term.
+Beating a good team helps a little; every loss costs a flat `lossPenalty`
+(4 points) plus extra when the opponent was weak. The flat penalty is what makes
+a two-loss team a bubble team. Preseason the model gives Ohio State about 84%,
+Notre Dame about 74%, Texas about 48%, Ole Miss about 22% and Louisville about
+17%, which is in the neighbourhood of how the markets price them. All of these
+knobs live in `config` in `data.json`.
+
+The AP Top 25 and, once released, the CFP committee rankings are pulled each
+week and shown in the schedule grid; the committee ranking drives the "#n"
+badges when it exists.
 
 ## Setup
 
