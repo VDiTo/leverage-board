@@ -363,6 +363,16 @@ function applyTheme(team){
   const clear=()=>["--gold","--field","--panel","--panel2","--line"].forEach(k=>root.removeProperty(k));
   const tm=team && D ? D.teams[idx.get(team)] : null;
   const on=$("#teamColors").checked;
+  const setAll=(field,accent)=>{
+    root.setProperty("--field", css(field));
+    root.setProperty("--panel", css(mixRgb(field,[255,255,255],0.05)));
+    root.setProperty("--panel2", css(mixRgb(field,[255,255,255],0.10)));
+    root.setProperty("--line", css(mixRgb(field,[255,255,255],0.16)));
+    root.setProperty("--gold", css(accent));
+    document.querySelector('meta[name="theme-color"]').content=css(mixRgb(field,[255,255,255],0.05));
+  };
+  // no team: neutral charcoal ground with a warm silver accent, so no school's colours are implied
+  if(team===""){ setAll([22,25,30],[207,202,191]); return; }
   if(!on || !tm || (!tm.color && !tm.altColor)){ clear(); document.querySelector('meta[name="theme-color"]').content="#0e2740"; return; }
   const cols=[tm.color,tm.altColor].map(hexRgb).filter(Boolean);
   if(!cols.length){ clear(); return; }
@@ -377,12 +387,7 @@ function applyTheme(team){
   const others = cols.filter(c=>c!==dark);
   for(const c of others){ accent=tryCol(c); if(accent) break; }
   if(!accent) accent=GOLD;
-  root.setProperty("--field", css(field));
-  root.setProperty("--panel", css(mixRgb(field,[255,255,255],0.05)));
-  root.setProperty("--panel2", css(mixRgb(field,[255,255,255],0.10)));
-  root.setProperty("--line", css(mixRgb(field,[255,255,255],0.16)));
-  root.setProperty("--gold", css(accent));
-  document.querySelector('meta[name="theme-color"]').content=css(mixRgb(field,[255,255,255],0.05));
+  setAll(field, accent);
 }
 $("#teamColors").onchange=()=>{ pref.set("teamColors",$("#teamColors").checked?"1":"0"); applyTheme(T); };
 
