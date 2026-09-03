@@ -680,8 +680,11 @@ function renderSlate(r){
   let list=r.games.filter(g=>g.week===UI.slateWeek);
   if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
   const byTime=(a,b)=>(a.tbd-b.tbd)||((a.start?Date.parse(a.start):9e15)-(b.start?Date.parse(b.start):9e15))||(b.lev-a.lev);
-  list.sort(UI.slateSort==="time" ? byTime : (a,b)=>b.lev-a.lev);
-  $("#slate").innerHTML = list.length ? list.map(g=>card(g,false)).join("") : `<div class="sub" style="padding:10px 0">No games match.</div>`;
+  // the selected team's own game always leads; everything else follows the chosen sort
+  const mine=list.filter(g=>g.involvesMe), rest=list.filter(g=>!g.involvesMe);
+  rest.sort(UI.slateSort==="time" ? byTime : (a,b)=>b.lev-a.lev);
+  const html = mine.map(g=>card(g,false)).join("") + (mine.length&&rest.length?`<div class="sub" style="padding:10px 0 2px">Rest of the slate, by ${UI.slateSort==="time"?"kickoff":"leverage score"}</div>`:"") + rest.map(g=>card(g,false)).join("");
+  $("#slate").innerHTML = html || `<div class="sub" style="padding:10px 0">No games match.</div>`;
 }
 
 function renderSeason(r){
