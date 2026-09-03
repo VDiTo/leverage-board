@@ -210,6 +210,7 @@
   .cell.own{border:1px solid color-mix(in srgb, var(--gold) 45%, transparent)}
   .ramp{display:block;border-radius:5px;padding:3px 7px;text-align:right;font-weight:700;color:var(--ink);text-shadow:0 0 3px rgba(3,10,20,.55)}
   .pill{text-shadow:0 0 3px rgba(3,10,20,.45)}
+  button{color:#10233a}
   .legend{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center;margin:0 0 8px;font-size:12.5px;color:var(--muted)}
   .legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
   .foot{margin-top:30px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:12px}
@@ -229,6 +230,7 @@
       <option value="25000">25,000 seasons</option>
     </select>
     <label class="chk"><input type="checkbox" id="useLines"> Use betting lines instead of SP+</label>
+    <label class="chk"><input type="checkbox" id="teamColors" checked> Team colors</label>
     <button id="run">Run simulation</button>
     <button id="pdf" class="ghost" title="One-page board with the leverage explanation">Board PDF</button>
   </div>
@@ -347,6 +349,40 @@ const fmtKickShort = g => {
 };
 const fmtWin = p => p<0.005?"<1":p>0.995?">99":Math.round(p*100);
 
+// ---------- team colour palette ----------
+// The accent (--gold) becomes the school colour with the better contrast on the dark ground, lightened if needed;
+// the ground itself takes a tint of the other colour. Rooting green/red stay fixed so they keep their meaning.
+const hexRgb = x => { const m=/^#?([0-9a-f]{6})$/i.exec(String(x||"").trim()); if(!m) return null; const n=parseInt(m[1],16); return [n>>16&255,n>>8&255,n&255]; };
+const lum = ([r,g,b]) => { const f=c=>{ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); }; return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b); };
+const contrast = (a,b) => { const la=lum(a), lb=lum(b); return (Math.max(la,lb)+0.05)/(Math.min(la,lb)+0.05); };
+const mixRgb = (a,b,t) => a.map((v,i)=>Math.round(v+(b[i]-v)*t));
+const css = ([r,g,b]) => `rgb(${r},${g},${b})`;
+const BASE_FIELD=[8,24,43];
+function applyTheme(team){
+  const root=document.documentElement.style;
+  const clear=()=>["--gold","--field","--panel","--panel2","--line"].forEach(k=>root.removeProperty(k));
+  const tm=team && D ? D.teams[idx.get(team)] : null;
+  const on=$("#teamColors").checked;
+  if(!on || !tm || (!tm.color && !tm.altColor)){ clear(); document.querySelector('meta[name="theme-color"]').content="#0e2740"; return; }
+  let cols=[tm.color,tm.altColor].map(hexRgb).filter(Boolean);
+  if(!cols.length){ clear(); return; }
+  // ground: navy tinted toward the darker school colour
+  const dark = cols.slice().sort((a,b)=>lum(a)-lum(b))[0];
+  const field = mixRgb(BASE_FIELD, dark, 0.35);
+  // accent: the colour with the best contrast on that ground, lightened until it reads (>= 4.5:1)
+  let accent = cols.slice().sort((a,b)=>contrast(b,field)-contrast(a,field))[0];
+  let guard=0; while(contrast(accent,field)<4.5 && guard++<12) accent=mixRgb(accent,[255,255,255],0.15);
+  // near-white accents lose the "accent" feel on pills; pull them toward the school colour a touch
+  if(lum(accent)>0.8) accent=mixRgb(accent,dark,0.15);
+  root.setProperty("--field", css(field));
+  root.setProperty("--panel", css(mixRgb(field,[255,255,255],0.05)));
+  root.setProperty("--panel2", css(mixRgb(field,[255,255,255],0.10)));
+  root.setProperty("--line", css(mixRgb(field,[255,255,255],0.16)));
+  root.setProperty("--gold", css(accent));
+  document.querySelector('meta[name="theme-color"]').content=css(mixRgb(field,[255,255,255],0.05));
+}
+$("#teamColors").onchange=()=>{ pref.set("teamColors",$("#teamColors").checked?"1":"0"); applyTheme(T); };
+
 // ---------- load ----------
 fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   D = d; build();
@@ -363,6 +399,7 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   sel.value = saved==="" ? "" : (saved && d.teams.some(t=>t.team===saved)) ? saved : d.teams.some(t=>t.team==="Notre Dame") ? "Notre Dame" : d.teams[0].team;
   const sims = pref.get("sims"); if(sims && [...$("#sims").options].some(o=>o.value===sims)) $("#sims").value = sims;
   const lines = pref.get("lines"); if(lines!==null) $("#useLines").checked = lines==="1";
+  const tc = pref.get("teamColors"); if(tc!==null) $("#teamColors").checked = tc==="1";
   const smin = pref.get("slateMin"); if(smin!==null && [...$("#slateMin").options].some(o=>o.value===smin)){ $("#slateMin").value=smin; UI.slateMin=+smin; }
   const nmin = pref.get("seasonMin"); if(nmin!==null && [...$("#seasonMin").options].some(o=>o.value===nmin)){ $("#seasonMin").value=nmin; UI.seasonMin=+nmin; }
   const tab = pref.get("tab"); if(tab && document.querySelector(`#tabs button[data-tab="${tab}"]`)) showTab(tab);
@@ -747,6 +784,7 @@ function saveResult(r){ try{ localStorage.setItem("lb.result", JSON.stringify({k
 $("#run").onclick=()=>run(true); $("#team").onchange=()=>run(false); $("#useLines").onchange=()=>run(false); $("#sims").onchange=()=>run(false);
 function run(force){
   T=$("#team").value; const N=+$("#sims").value;
+  applyTheme(T);
   pref.set("team",T); pref.set("sims",String(N)); pref.set("lines",$("#useLines").checked?"1":"0");
   build();
   if(!force){

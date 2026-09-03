@@ -72,6 +72,8 @@ const teams = fbs.map((t) => ({
   apRank: polls.ap?.ranks.get(t.school) ?? null,
   cfpRank: polls.cfp?.ranks.get(t.school) ?? null,
   sp: spInfo.get(t.school) ?? null,
+  color: t.color || null,
+  altColor: pick(t, "alt_color", "altColor") || null,
 }));
 const fbsSet = new Set(teams.map((t) => t.team));
 const known = new Set(fbsSet);
