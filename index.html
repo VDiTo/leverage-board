@@ -30,9 +30,15 @@
   h3{font-size:14.5px;margin:22px 0 6px;font-weight:600}
   .sub{color:var(--muted);font-size:13px}
   .num{font-variant-numeric:tabular-nums}
-  .explain{color:var(--muted);font-size:13.5px;max-width:760px;margin:0 0 12px}
+  /* section descriptions live behind an "i" button; tap to open */
+  .explain{color:var(--muted);font-size:13.5px;max-width:760px;margin:0 0 12px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+  .explain:not(.open){display:none}
   .explain strong{color:var(--ink);font-weight:600}
-  .explain p{margin:0 0 8px}
+  .explain p{margin:0 0 8px} .explain p:last-child{margin-bottom:0}
+  h2{display:flex;align-items:center;gap:9px}
+  .info{width:20px;height:20px;border-radius:50%;padding:0;background:transparent;color:var(--gold);border:1.5px solid var(--gold);
+    font:italic 600 12px/1 Georgia,serif;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+  .info[aria-expanded=true]{background:var(--gold);color:#10233a}
 
   header{border-bottom:1px solid var(--line);padding:14px 0 12px;background:linear-gradient(180deg,#0b2038,var(--field))}
   .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
@@ -124,6 +130,7 @@
   .cell{border-radius:5px;padding:3px 6px;display:block;line-height:1.25;min-width:64px;color:var(--ink)}
   .cell small{display:block;color:var(--muted);font-size:11px}
   .cell.hot small{color:#e9eef5;opacity:.85}
+  .cell small.tv{font-size:10px;opacity:.75;white-space:nowrap}
   .cell.w small{color:var(--for)} .cell.l small{color:var(--against)}
   .cell.h2h{border:1.5px solid var(--gold);color:var(--gold);background:transparent}
   .cell.h2h small{color:var(--gold);opacity:.8}
@@ -192,12 +199,12 @@
   <section class="tab" id="tab-board" hidden>
     <h2>Top 25 schedule board</h2>
     <div class="explain" id="rankExplain"></div>
-    <div class="legend"><span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by your chance of winning</span><span>Darker = higher leverage score · "@" = on the road · % = their chance of winning</span></div>
+    <div class="legend"><span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by your chance of winning</span><span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff in your local time</span></div>
     <div class="scroll"><table id="rankings"></table></div>
   </section>
 
   <section class="tab" id="tab-slate" hidden>
-    <h2 id="slateTitle">This week</h2>
+    <h2><span id="slateTitle">This week</span></h2>
     <div class="explain" id="slateExplain"></div>
     <div class="controls">
       <select id="slateWeek" aria-label="Week"></select>
@@ -247,6 +254,14 @@ const fmtKick = g => {
   const day=d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
   if(g.tbd) return `${day} · TBD`;
   return `${day} · ${d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}`;
+};
+// compact kickoff for board cells: "Sat 3:30p · ABC"
+const fmtKickShort = g => {
+  if(!g.start) return "";
+  const d=new Date(g.start); if(isNaN(d)) return "";
+  const day=d.toLocaleDateString(undefined,{weekday:"short"});
+  const time = g.tbd ? "TBD" : d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}).replace(/[s  ]*([AP]).?M.?/i,(m,p)=>p.toLowerCase()).replace(":00","");
+  return `${day} ${time}${g.tv?" · "+g.tv:""}`;
 };
 const fmtWin = p => p<0.005?"<1":p>0.995?">99":Math.round(p*100);
 
@@ -539,6 +554,15 @@ function run(force){
   });
 }
 
+// every section description collapses behind an "i" button next to its heading
+document.querySelectorAll(".explain").forEach(el=>{
+  const hd=el.previousElementSibling; if(!hd || hd.tagName!=="H2") return;
+  const b=document.createElement("button"); b.type="button"; b.className="info"; b.textContent="i";
+  b.setAttribute("aria-label","What is this?"); b.setAttribute("aria-expanded","false");
+  b.onclick=()=>{ const open=el.classList.toggle("open"); b.setAttribute("aria-expanded",String(open)); };
+  hd.appendChild(b);
+});
+
 // tabs
 function showTab(name){
   UI.tab=name; pref.set("tab",name);
@@ -659,7 +683,7 @@ function renderBoard(r){
       if(g.completed){ const won = isHome ? g.homeWin : !g.homeWin;
         const mine = isHome ? g.homeScore : g.awayScore, theirs = isHome ? g.awayScore : g.homeScore;
         result={won, text:(won?"W":"L")+(mine!=null&&theirs!=null?` ${mine}-${theirs}`:"")}; }
-      byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw,mine:t===T||opp===T});
+      byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw,mine:t===T||opp===T,kick:g.completed?"":fmtKickShort(g)});
     }
   });
 
@@ -676,15 +700,15 @@ function renderBoard(r){
           const p=c.pWin, up=p>=0.5, k=Math.min(1,Math.abs(p-0.5)/0.5);
           const mix=Math.round(15+k*75);
           const bg=c.result ? "transparent" : `color-mix(in srgb, ${up?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
-          return `<td><span class="cell own${res}${mix>=55?" hot":""}" style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small></span></td>`;
+          return `<td><span class="cell own${res}${mix>=55?" hot":""}" style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
         }
         // head-to-head with the selected team in another row: marked, not ramped. You already know you want to win it.
-        if(c.mine) return `<td><span class="cell h2h${res}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small></span></td>`;
+        if(c.mine) return `<td><span class="cell h2h${res}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
         let a = Math.min(1, Math.abs(c.sw)/scale);
         if(Math.abs(c.sw)<0.005) a=0;
         const mix = a===0 ? 0 : Math.round(10+Math.pow(a,0.7)*85);
         const bg = a===0 ? "transparent" : `color-mix(in srgb, ${c.sw>0?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
-        return `<td><span class="cell${res}${mix>=60?" hot":""}" style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small></span></td>`;
+        return `<td><span class="cell${res}${mix>=60?" hot":""}" style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
       }).join("")+`</tr>`;
     }).join("");
 }
