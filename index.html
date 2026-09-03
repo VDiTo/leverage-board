@@ -417,7 +417,8 @@ function applyTheme(team){
   const tryCol = c => { if(!c || c===dark && cols.length>1) return null; let x=c; for(let i=0;i<4 && contrast(x,field)<4.5;i++) x=mixRgb(x,[255,255,255],0.15); if(contrast(x,field)<4.5) return null; if(lum(x)>0.75) return null; return x; };
   const others = cols.filter(c=>c!==dark);
   for(const c of others){ accent=tryCol(c); if(accent) break; }
-  if(!accent) accent=GOLD;
+  // single-colour school (or an alternate that doesn't read): lighten the school's own colour until it does
+  if(!accent){ let x=dark; for(let i=0;i<8 && contrast(x,field)<4.5;i++) x=mixRgb(x,[255,255,255],0.18); accent=x; }
   setAll(field, accent);
 }
 $("#teamColors").onchange=()=>{ pref.set("teamColors",$("#teamColors").checked?"1":"0"); applyTheme(T); };
