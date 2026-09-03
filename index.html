@@ -168,7 +168,14 @@
   td.r b{color:var(--gold);font-weight:600}
   th.c{text-align:center}
   .cell{border-radius:5px;padding:3px 6px;display:block;line-height:1.25;min-width:64px;color:var(--ink)}
+  .cell[data-game]{cursor:pointer}
+  .cell[data-game]:hover{outline:1.5px solid var(--gold)}
   .cell small{display:block;color:var(--muted);font-size:11px}
+  .plain{font-size:14.5px;line-height:1.55}
+  .plain p{margin:0 0 10px}
+  .plain .big{font-size:18px;font-weight:600;color:var(--ink);margin:6px 0 10px}
+  .plain .big.for{color:var(--for)} .plain .big.mine{color:var(--gold)}
+  .plain .scores{display:flex;gap:16px;margin:0 0 12px;color:var(--muted);font-size:13px;align-items:center}
   .cell.hot small{color:#e9eef5;opacity:.85}
   .cell small.tv{font-size:10px;opacity:.75;white-space:nowrap}
   .cell.w small{color:var(--for)} .cell.l small{color:var(--against)}
@@ -630,13 +637,15 @@ function run(force){
 // team popup: full schedule with results, plus SP+ by unit
 document.addEventListener("click",e=>{
   const w=e.target.closest(".lev.why"); if(w){ openWhy(+w.dataset.game); return; }
+  const cell=e.target.closest(".cell[data-game]"); if(cell){ openWhy(+cell.dataset.game, true); return; }
   const t=e.target.closest(".tn"); if(t){ openTeam(t.dataset.team); return; }
   if(e.target.closest(".close") || e.target.id==="modal") closeTeam();
 });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeTeam(); });
 function closeTeam(){ $("#modal").hidden=true; document.body.style.overflow=""; }
-function openWhy(gi){
+function openWhy(gi, simple){
   const g=RES && RES.games.find(x=>x.i===gi); if(!g) return;
+  if(simple) return openWhySimple(g);
   const st=name=>RES.teamStats.find(x=>x.team===name);
   const sH=st(g.home), sA=st(g.away);
   const wantHome=g.swing>0, want=wantHome?g.home:g.away, other=wantHome?g.away:g.home;
@@ -671,6 +680,62 @@ function openWhy(gi){
     <ol class="why-list">${step1}${step2}${step3}${step4}</ol>
     <h3>The teams</h3>
     <div class="team-ctx">${ctx(g.away,sA)}${ctx(g.home,sH)}</div>`;
+  $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
+}
+// The same facts, in plain language, for the board
+function openWhySimple(g){
+  const st=name=>RES.teamStats.find(x=>x.team===name);
+  const wantHome=g.swing>0, want=wantHome?g.home:g.away, other=wantHome?g.away:g.home;
+  const pWant=wantHome?g.pHomeWin:1-g.pHomeWin;
+  const impact=Math.abs(g.swing)*100;
+  const fav = g.pHomeWin>=0.5 ? g.home : g.away, pFav = Math.max(g.pHomeWin,1-g.pHomeWin);
+  const myGames=D.games.filter(x=>x.home===T||x.away===T);
+  const onSched=name=>myGames.find(x=>x.home===name||x.away===name);
+  const size = v => v>=75?"a big":v>=40?"a solid":v>=15?"a small":"a tiny";
+  const oddsLine = wantHome
+    ? `If <b>${g.home}</b> wins, ${T}'s playoff odds are <b class="num">${pct(g.pH)}%</b>. If <b>${g.away}</b> wins, <b class="num">${pct(g.pA)}%</b>.`
+    : `If <b>${g.away}</b> wins, ${T}'s playoff odds are <b class="num">${pct(g.pA)}%</b>. If <b>${g.home}</b> wins, <b class="num">${pct(g.pH)}%</b>.`;
+  const favLine = g.involvesMe
+    ? (pFav>=0.9 ? `${fav===T?"You're":fav+" is"} a heavy favourite (${fmtWin(pFav)}%), so this game rarely decides anything, which keeps its leverage modest even though losing it would cost a lot.`
+      : pFav>=0.65 ? `${fav===T?"You're":fav+" is"} favoured (${fmtWin(pFav)}%), but there's real risk here, so it carries real leverage.`
+      : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so it carries nearly all of its impact as leverage.`)
+    : pFav>=0.9 ? `<b>${fav}</b> is a heavy favourite (${fmtWin(pFav)}%), so the upset you'd need almost never happens. That's why the leverage is low even if the impact isn't.`
+    : pFav>=0.65 ? `<b>${fav}</b> is favoured (${fmtWin(pFav)}%), so the result is fairly predictable and that trims the leverage.`
+    : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so nearly all of the impact counts as leverage.`;
+
+  let headline, why="";
+  if(g.involvesMe){
+    headline=`<div class="big mine">Your game. Win it.</div>`;
+    why=`<p>Winning is worth <b class="num">${impact.toFixed(1)} points</b> of playoff odds to ${T}: ${size(g.impN)} swing on your own schedule.</p>`;
+  } else if(!g.clear){
+    headline=`<div class="big">Doesn't really move the needle for ${T}.</div>`;
+    why=`<p>Across ${RES.N.toLocaleString()} simulated seasons this result ${Math.abs(g.swing)<0.001?"never changed":"almost never changed"} whether ${T} made the field.</p>`;
+  } else {
+    headline=`<div class="big for">Pull for ${want}.</div>`;
+    const parts=[];
+    if(g.why){
+      const list=[["rank",g.why.rank],["autobid",g.why.autobid],["resume",g.why.resume]].filter(([,v])=>v>=0.15).sort((a,b)=>b[1]-a[1]);
+      const sOther=st(other), sWant=st(want), sched=onSched(want)||onSched(other);
+      for(const [k] of list){
+        if(k==="rank") parts.push(`<b>${other}</b> is competing with ${T} for an at-large spot. When they lose, they're more likely to finish behind you in the rankings${sOther.block>=0.05?` (right now they block you in ${Math.round(sOther.block*100)}% of seasons)`:""}.`);
+        if(k==="autobid") parts.push(`This game affects who wins the ${st(g.home).conf===st(g.away).conf?st(g.home).conf:"conference"}. A conference champion takes an automatic bid instead of an at-large spot, which changes how many at-large spots are left for teams like ${T}.`);
+        if(k==="resume"){ const s=onSched(want)?want:other, ss=st(s), gm=onSched(s);
+          parts.push(`<b>${s}</b> is on ${T}'s schedule (week ${gm.week}). The better their final record, the more your result against them counts with the committee${ss.wins>=8?`, and they project to about ${Math.round(ss.wins)} wins`:""}.`); }
+      }
+    }
+    why = (parts.length ? `<p>${parts.length>1?"Mostly because ":"Because "}${parts[0]}</p>${parts.slice(1).map(p=>`<p>Also: ${p}</p>`).join("")}` : "")
+      + `<p>A ${want} win happens about ${fmtWin(pWant)}% of the time and is worth <b class="num">${impact<0.95?impact.toFixed(2):impact.toFixed(1)} points</b> of playoff odds: ${size(g.impN)} swing compared with other games on the schedule.</p>`;
+  }
+  $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
+    <h2>${badge(g.away)} at ${badge(g.home)}</h2>
+    <div class="kv"><span>wk ${g.week}</span>${g.start?`<span>${fmtKick(g)}${g.tv?" · "+g.tv:""}</span>`:""}${g.spreadText?`<span>${g.spreadText}</span>`:""}</div>
+    <div class="plain">
+      ${headline}
+      <div class="scores"><span>Leverage ${scorePill(g.lev>0?g.levN:null,g.clear)}</span><span>Impact ${scorePill(g.lev>0?g.impN:null,g.clear)}</span></div>
+      <p>${oddsLine}</p>
+      ${why}
+      <p>${favLine}</p>
+    </div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
 }
 function openTeam(name){
@@ -841,7 +906,7 @@ function renderBoard(r){
       if(g.completed){ const won = isHome ? g.homeWin : !g.homeWin;
         const mine = isHome ? g.homeScore : g.awayScore, theirs = isHome ? g.awayScore : g.homeScore;
         result={won, text:(won?"W":"L")+(mine!=null&&theirs!=null?` ${mine}-${theirs}`:"")}; }
-      byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw,mine:t===T||opp===T,kick:g.completed?"":fmtKickShort(g)});
+      byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw,mine:t===T||opp===T,kick:g.completed?"":fmtKickShort(g),gi:g.completed?null:i});
     }
   });
 
@@ -858,15 +923,15 @@ function renderBoard(r){
           const p=c.pWin, up=p>=0.5, k=Math.min(1,Math.abs(p-0.5)/0.5);
           const mix=Math.round(15+k*75);
           const bg=c.result ? "transparent" : `color-mix(in srgb, ${up?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
-          return `<td><span class="cell own${res}${mix>=55?" hot":""}" style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
+          return `<td><span class="cell own${res}${mix>=55?" hot":""}"${c.gi!=null?` data-game="${c.gi}" role="button"`:""} style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
         }
         // head-to-head with the selected team in another row: marked, not ramped. You already know you want to win it.
-        if(c.mine) return `<td><span class="cell h2h${res}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
+        if(c.mine) return `<td><span class="cell h2h${res}"${c.gi!=null?` data-game="${c.gi}" role="button"`:""}>${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
         let a = Math.min(1, Math.abs(c.sw)/scale);
         if(Math.abs(c.sw)<0.5) a=0;
         const mix = a===0 ? 0 : Math.round(8+Math.pow(a,0.7)*82); // identical curve to the score pills
         const bg = a===0 ? "transparent" : `color-mix(in srgb, ${c.sw>0?"var(--for)":"var(--against)"} ${mix}%, transparent)`;
-        return `<td><span class="cell${res}${mix>=60?" hot":""}" style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
+        return `<td><span class="cell${res}${mix>=60?" hot":""}"${c.gi!=null?` data-game="${c.gi}" role="button"`:""} style="background:${bg}">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${c.kick?`<small class="tv">${c.kick}</small>`:""}</span></td>`;
       }).join("")+`</tr>`;
     }).join("");
 }
