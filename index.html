@@ -1300,9 +1300,17 @@ function renderSeason(r){
   $("#seasonExplain").innerHTML = !T ? `<p>Every remaining game, ranked by how much it shapes the playoff field: how often flipping the result changes who gets in, discounted by how unlikely the swing is.</p>` : `<p>Every remaining game <strong>not involving ${T}</strong>, ranked by how much it matters to ${T}. Your own games are left out because they obviously dwarf everything else; they're on the Top 25 board and the weekly slate. <strong>Impact</strong> is the swing in playoff odds between the two outcomes; <strong>leverage</strong> discounts that by how unlikely the swing is to happen. Both are scaled 0–100 against the biggest of these games, and darker gold means a higher score.</p>`;
   const all=r.games.filter(g=>g.clear&&!g.involvesMe);
   const kept=all.filter(g=>g.levN>=UI.seasonMin);
-  const list=kept.sort(UI.seasonSort==="impact" ? (a,b)=>Math.abs(b.swing)-Math.abs(a.swing) : (a,b)=>b.lev-a.lev).slice(0,60);
+  const sorter = UI.seasonSort==="impact" ? (a,b)=>Math.abs(b.swing)-Math.abs(a.swing) : (a,b)=>b.lev-a.lev;
+  const list=kept.sort(sorter).slice(0,60);
+  const curWeek=Math.min(...r.games.map(g=>g.week));
+  // the same labelled sections as the weekly slate: live now, this week, later
+  const div=(label,cls)=>`<div class="slate-div${cls?" "+cls:""}">${label}</div>`;
+  const liveNow=list.filter(g=>g.live), thisWeek=list.filter(g=>!g.live && g.week===curWeek), later=list.filter(g=>!g.live && g.week!==curWeek);
+  const sections = (liveNow.length ? div('<span class="dot on"></span>Live now',"live") + liveNow.map(g=>card(g,true)).join("") : "")
+    + (thisWeek.length ? div(`This week · week ${curWeek}`) + thisWeek.map(g=>card(g,true)).join("") : "")
+    + (later.length ? div("Later in the season") + later.map(g=>card(g,true)).join("") : "");
   const below=all.length-kept.length, quiet=r.games.filter(g=>!g.clear&&!g.involvesMe).length;
-  $("#season").innerHTML = (list.map(g=>card(g,true)).join("") || `<div class="sub" style="padding:10px 0">No games at or above leverage ${UI.seasonMin}.</div>`)
+  $("#season").innerHTML = (sections || `<div class="sub" style="padding:10px 0">No games at or above leverage ${UI.seasonMin}.</div>`)
     + (below?`<div class="sub" style="padding:10px 0">${below} game${below>1?"s":""} below leverage ${UI.seasonMin} hidden.</div>`:"")
     + (quiet?`<details class="quiet"><summary>${quiet} more games with no measurable effect on ${T}</summary><div class="sub" style="margin-top:6px">They move the odds by less than a tenth of a point either way.</div></details>`:"");
 }
