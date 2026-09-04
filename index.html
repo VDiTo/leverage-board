@@ -814,7 +814,7 @@ function smoothWithPrevious(r, prev){
     if(o.pH!=null&&g.pH!=null){ g.pH=0.5*(o.pH+g.pH); g.pA=0.5*(o.pA+g.pA); }
     g.pDecides=0.5*(o.pDecides+g.pDecides);
     g.se=Math.sqrt((o.se*o.se+g.se*g.se)/4);
-    g.clear=Math.abs(g.swing)>=0.001 && Math.abs(g.swing)>=2*g.se;
+    g.clear=Math.abs(g.swing)>=0.001; g.sure=Math.abs(g.swing)>=2*g.se;
   });
   normalizeGames(r.games);
   r.smoothed=(prev.smoothed||0)+1;
@@ -831,7 +831,7 @@ function finish(acc,N,ti){
       games.push({i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,tbd:!!src.tbd,tv:src.tv||null,
         spread:src.spread??null,spreadText:src.spreadText||"",overUnder:src.overUnder??null,
         pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe:false, live:src.live||null,
-        pH:null,pA:null, swing:chg, se, clear: chg>=0.001 && chg>=2*se, pDecides:chg, why:null,
+        pH:null,pA:null, swing:chg, se, clear: chg>=0.001, sure: chg>=2*se, pDecides:chg, why:null,
         swapsAvg: acc.fieldChg[i]?acc.fieldSwaps[i]/acc.fieldChg[i]:0, fieldTop: top.slice(0,3),
         lev: chg*100 * 4*p*(1-p)});
       continue;
@@ -845,7 +845,7 @@ function finish(acc,N,ti){
     games.push({i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,tbd:!!src.tbd,tv:src.tv||null,
       spread:src.spread??null,spreadText:src.spreadText||"",overUnder:src.overUnder??null,
       pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe: gH[i]===ti||gA[i]===ti, live:src.live||null,
-      pH,pA,swing,se, clear: Math.abs(swing)>=0.001 && Math.abs(swing)>=2*se, pDecides:nDiff/N, why,
+      pH,pA,swing,se, clear: Math.abs(swing)>=0.001, sure: Math.abs(swing)>=2*se, pDecides:nDiff/N, why,
       // Leverage score: impact weighted by how uncertain the game is. A coin flip keeps its full impact;
       // a 97/3 game keeps about 12% of it, because the outcome you want almost never happens.
       lev: Math.abs(swing)*100 * 4*p*(1-p)});
@@ -881,7 +881,7 @@ function run(force, opts){
   $("#run").disabled=true; $("#run").textContent="Simulating…"; $("#cacheNote").hidden=true;
   const prev = RES;
   simulate(T,N,p=>{$("#bar").style.width=(p*100)+"%";},r=>{
-    RES = fromLive ? smoothWithPrevious(r, prev) : r;
+    RES = r; // live reruns are fresh estimates; the aligned random stream keeps them comparable
     $("#run").disabled=false; $("#run").textContent="Run simulation"; $("#bar").style.width="0";
     saveResult(RES); render();
   });
@@ -945,9 +945,10 @@ function openWhySimple(g){
   if(g.involvesMe){
     headline=`<div class="big mine">Your game. Win it.</div>`;
     why=`<p>Winning is worth <b class="num">${impact.toFixed(1)} points</b> of playoff odds to ${T}: ${size(g.impN)} swing on your own schedule.</p>`;
-  } else if(!g.clear){
-    headline=`<div class="big">Doesn't really move the needle for ${T}.</div>`;
-    why=`<p>Across ${RES.N.toLocaleString()} simulated seasons this result ${Math.abs(g.swing)<0.001?"never changed":"almost never changed"} whether ${T} made the field.</p>`;
+  } else if(!g.clear || !g.sure){
+    headline=`<div class="big">${!g.clear?"Doesn't really move the needle for "+T+".":"Leans "+want+", but it's within the noise."}</div>`;
+    why=!g.clear ? `<p>Across ${RES.N.toLocaleString()} simulated seasons this result almost never changed whether ${T} made the field.</p>`
+      : `<p>The estimate is a ${impact.toFixed(2)}-point swing toward ${want}, but the margin of error is ±${(2*g.se*100).toFixed(2)}, so the direction isn't settled. More simulated seasons would sharpen it.</p>`;
   } else {
     headline=`<div class="big for">Pull for ${want}.</div>`;
     const parts=[];
@@ -1180,7 +1181,7 @@ function renderBoard(r){
   const maxPIn=Math.max(0.01,...rows.map(n=>stat.get(n).pIn));
 
   // shading = the same 0-100 leverage score as the pills, signed by who the target wants
-  const lev=new Map(); r.games.forEach(g=>lev.set(g.i, g.clear ? Math.sign(g.swing)*g.levN : 0));
+  const lev=new Map(); r.games.forEach(g=>lev.set(g.i, g.clear ? Math.sign(g.swing)*g.levN*(g.sure?1:0.5) : 0));
   const scale=100;
   const byTeam=new Map();
   D.games.forEach((g,i)=>{
@@ -1261,7 +1262,7 @@ function card(g, showWeek){
   // the selected team's own game: tint the card by its chance of winning, same ramp as the board
   const own = g.involvesMe ? " own" : "";
   return `<div class="g${own}${dev?" dev":""}">
-    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.clear)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.clear)}</small>${g.clear?"":`<small>${noise}</small>`}</span></div>
+    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
     <div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>
     <div class="g-line">${line}${!T && g.clear ? ` · <span class="num">changes the field in ${pct(g.swing)}% of seasons</span>${g.fieldTop&&g.fieldTop.length?` · mostly ${g.fieldTop.slice(0,2).map(t=>short(t.team)).join(", ")}`:""}` : ""}</div>${dev}
   </div>`;
