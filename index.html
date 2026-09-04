@@ -786,6 +786,34 @@ function simulate(target, N, onProgress, done){
   chunk();
 }
 
+// Normalise to 0-100 on two separate scales: other teams' games against the biggest of those,
+// and the target's own games against the biggest game on its own schedule.
+function normalizeGames(games){
+  const ext=games.filter(g=>g.clear&&!g.involvesMe), own=games.filter(g=>g.clear&&g.involvesMe);
+  const levMax=Math.max(1e-6,...ext.map(g=>g.lev)), impMax=Math.max(1e-6,...ext.map(g=>Math.abs(g.swing)));
+  const ownLevMax=Math.max(1e-6,...own.map(g=>g.lev)), ownImpMax=Math.max(1e-6,...own.map(g=>Math.abs(g.swing)));
+  games.forEach(g=>{
+    const lm=g.involvesMe?ownLevMax:levMax, im=g.involvesMe?ownImpMax:impMax;
+    g.levN=Math.min(100,g.lev/lm*100); g.impN=Math.min(100,Math.abs(g.swing)/im*100);
+  });
+}
+// Live reruns are nearly the same model with slightly different inputs, so each new run is blended 50/50 with the
+// previous one. That halves the run-to-run noise on games in the middle of the list without hiding real moves.
+function smoothWithPrevious(r, prev){
+  if(!prev || prev.mode!==r.mode || prev.forTeam!==r.forTeam || prev.N!==r.N) return r;
+  const old=new Map(prev.games.map(g=>[g.i,g]));
+  r.games.forEach(g=>{
+    const o=old.get(g.i); if(!o || !!o.live!==!!g.live) return;   // a game that just started or ended is taken fresh
+    g.swing=0.5*(o.swing+g.swing); g.lev=0.5*(o.lev+g.lev);
+    if(o.pH!=null&&g.pH!=null){ g.pH=0.5*(o.pH+g.pH); g.pA=0.5*(o.pA+g.pA); }
+    g.pDecides=0.5*(o.pDecides+g.pDecides);
+    g.se=Math.sqrt((o.se*o.se+g.se*g.se)/4);
+    g.clear=Math.abs(g.swing)>=0.001 && Math.abs(g.swing)>=2*g.se;
+  });
+  normalizeGames(r.games);
+  r.smoothed=(prev.smoothed||0)+1;
+  return r;
+}
 function finish(acc,N,ti){
   const games=[];
   for(let i=0;i<nG;i++){
@@ -816,20 +844,12 @@ function finish(acc,N,ti){
       // a 97/3 game keeps about 12% of it, because the outcome you want almost never happens.
       lev: Math.abs(swing)*100 * 4*p*(1-p)});
   }
-  // Normalise to 0-100 on two separate scales: other teams' games against the biggest of those,
-  // and the target's own games against the biggest game on its own schedule.
-  const ext=games.filter(g=>g.clear&&!g.involvesMe), own=games.filter(g=>g.clear&&g.involvesMe);
-  const levMax=Math.max(1e-6,...ext.map(g=>g.lev)), impMax=Math.max(1e-6,...ext.map(g=>Math.abs(g.swing)));
-  const ownLevMax=Math.max(1e-6,...own.map(g=>g.lev)), ownImpMax=Math.max(1e-6,...own.map(g=>Math.abs(g.swing)));
-  games.forEach(g=>{
-    const lm=g.involvesMe?ownLevMax:levMax, im=g.involvesMe?ownImpMax:impMax;
-    g.levN=Math.min(100,g.lev/lm*100); g.impN=Math.min(100,Math.abs(g.swing)/im*100);
-  });
+  normalizeGames(games);
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
   const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
     pIn:acc.fieldN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N}));
-  return { mode: ti<0?"field":"team", pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
+  return { mode: ti<0?"field":"team", forTeam:T, pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
            avgWins:acc.winSum/N, myGames:ti>=0?gamesPerTeam[ti]:0, games, teamStats, N };
 }
 
@@ -842,8 +862,9 @@ const liveActive = () => !!(window.LIVE && LIVE.on && LIVE.hash);
 function loadResult(){ if(liveActive()) return null; try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
 function saveResult(r){ if(liveActive()) return; try{ localStorage.setItem("lb.result", JSON.stringify({key:resultKey(), at:Date.now(), res:r})); }catch(e){} }
 $("#run").onclick=()=>run(true); $("#team").onchange=()=>run(false); $("#sims").onchange=()=>run(false);
-function run(force){
+function run(force, opts){
   T=$("#team").value; const N=+$("#sims").value;
+  const fromLive = !!(opts && opts.live);
   applyTheme(T);
   pref.set("team",T); pref.set("sims",String(N)); 
   build();
@@ -852,9 +873,11 @@ function run(force){
     if(c){ RES=c.res; RES.cachedAt=c.at; render(); return; }
   }
   $("#run").disabled=true; $("#run").textContent="Simulating…"; $("#cacheNote").hidden=true;
+  const prev = RES;
   simulate(T,N,p=>{$("#bar").style.width=(p*100)+"%";},r=>{
-    RES=r; $("#run").disabled=false; $("#run").textContent="Run simulation"; $("#bar").style.width="0";
-    saveResult(r); render();
+    RES = fromLive ? smoothWithPrevious(r, prev) : r;
+    $("#run").disabled=false; $("#run").textContent="Run simulation"; $("#bar").style.width="0";
+    saveResult(RES); render();
   });
 }
 

@@ -78,7 +78,7 @@
     if(!h) return;                                   // nothing live or final today
     const due = Date.now()-LIVE.lastSim >= RESIM_MIN_MS;
     const running = document.querySelector("#run").disabled;
-    if((changed||force) && !running && (due||force)){ LIVE.lastSim=Date.now(); LIVE.pendingSim=false; run(true); status(); }
+    if((changed||force) && !running && (due||force)){ LIVE.lastSim=Date.now(); LIVE.pendingSim=false; run(true,{live:true}); status(); }
     else if(changed) { LIVE.pendingSim=true; status(); }
   }
 
