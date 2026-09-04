@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Leverage">
 <link rel="manifest" href="manifest.webmanifest">
 <script src="pdf.js" defer></script>
+<script src="live.js" defer></script>
 <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
@@ -74,6 +75,10 @@
   }
   select:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
   label.chk{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:1px}
+  .dot.on{background:var(--against);box-shadow:0 0 0 3px color-mix(in srgb, var(--against) 25%, transparent)}
+  .dot.err{background:#c9a44c}
+  .livetag{color:var(--against);font-weight:700}
   .prog{height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;margin-top:10px}
   .prog i{display:block;height:100%;background:var(--gold);width:0;transition:width .12s}
 
@@ -256,11 +261,13 @@
       <option value="25000">25,000 seasons</option>
     </select>
     <label class="chk"><input type="checkbox" id="teamColors" checked> Team colors</label>
+    <label class="chk"><input type="checkbox" id="liveOn" checked> Live scores</label>
     <button id="run">Run simulation</button>
     <button id="pdf" class="ghost" title="Build a one-page board for the selected team">Board PDF</button>
   </div>
   <div class="prog"><i id="bar"></i></div>
   <div class="sub" id="cacheNote" hidden></div>
+  <div class="sub" id="liveNote" hidden></div>
 </div></header>
 
 <nav class="tabs" id="tabs">
@@ -445,6 +452,7 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   const nmin = pref.get("seasonMin"); if(nmin!==null && [...$("#seasonMin").options].some(o=>o.value===nmin)){ $("#seasonMin").value=nmin; UI.seasonMin=+nmin; }
   const tab = pref.get("tab"); if(tab && document.querySelector(`#tabs button[data-tab="${tab}"]`)) showTab(tab);
   run();
+  if(window.liveStart && $("#liveOn").checked) window.liveStart();
 }).catch(e=>{ $("#stamp").textContent="Couldn't load data.json — run scripts/fetch-data.mjs first."; });
 
 // ---------- precompute ----------
@@ -452,6 +460,7 @@ let idx, rating, confOf, tierOf, confList, P4=["ACC","Big Ten","Big 12","SEC"];
 let gH,gA,gP,gPsp,gPline,gConf,gDone,gRes,gWeek,gLine,gHfa,nG,nT;
 let confIdx, members, isP4, teamGames, gamesPerTeam;
 function build(){
+  if(window.applyLive) window.applyLive();
   nT = D.teams.length;
   idx = new Map(D.teams.map((t,i)=>[t.team,i]));
   rating = Float64Array.from(D.teams.map(t=>t.rating));
@@ -475,6 +484,11 @@ function build(){
     gPsp[i]=norm(((rating[gH[i]]-rating[gA[i]])+gHfa[i])/sdMargin);
     if(typeof x.spread==="number" && isFinite(x.spread)) gPline[i]=norm(-x.spread/spreadSd); // spread is home-perspective, negative = home favoured
     if(useLines && !isNaN(gPline[i])){ gP[i]=gPline[i]; gLine[i]=1; } else gP[i]=gPsp[i];
+    // a game in progress: pregame SP+ edge, current margin and time left give a live win probability
+    if(x.live && !x.completed && window.inGameP){
+      const f=Math.max(0.02, Math.min(1, (x.live.period>=5 ? 0.02 : ((4-Math.max(1,x.live.period))*900 + (/^(d+):(dd)$/.test(x.live.clock)?(+RegExp.$1)*60+(+RegExp.$2):0))/3600)));
+      gP[i]=window.inGameP((rating[gH[i]]-rating[gA[i]])+gHfa[i], x.live.hs-x.live.as, f, sdMargin); gLine[i]=0;
+    }
   });
   teamGames = tg.map(a=>Int32Array.from(a));
   gamesPerTeam = Int32Array.from(tg.map(a=>a.length));
@@ -778,7 +792,7 @@ function finish(acc,N,ti){
       const top=[]; if(acc.fieldChg[i]>0){ for(let j=0;j<nT;j++){ const c=acc.teamFlip[i*nT+j]; if(c>0) top.push({team:D.teams[j].team, share:c/acc.fieldChg[i]}); } top.sort((a,b)=>b.share-a.share); }
       games.push({i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,tbd:!!src.tbd,tv:src.tv||null,
         spread:src.spread??null,spreadText:src.spreadText||"",overUnder:src.overUnder??null,
-        pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe:false,
+        pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe:false, live:src.live||null,
         pH:null,pA:null, swing:chg, se, clear: chg>=0.001 && chg>=2*se, pDecides:chg, why:null,
         swapsAvg: acc.fieldChg[i]?acc.fieldSwaps[i]/acc.fieldChg[i]:0, fieldTop: top.slice(0,3),
         lev: chg*100 * 4*p*(1-p)});
@@ -792,7 +806,7 @@ function finish(acc,N,ti){
     const why = nDiff ? {resume:acc.why[0][i]/nDiff, autobid:acc.why[1][i]/nDiff, rank:acc.why[2][i]/nDiff} : null;
     games.push({i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,tbd:!!src.tbd,tv:src.tv||null,
       spread:src.spread??null,spreadText:src.spreadText||"",overUnder:src.overUnder??null,
-      pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe: gH[i]===ti||gA[i]===ti,
+      pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe: gH[i]===ti||gA[i]===ti, live:src.live||null,
       pH,pA,swing,se, clear: Math.abs(swing)>=0.001 && Math.abs(swing)>=2*se, pDecides:nDiff/N, why,
       // Leverage score: impact weighted by how uncertain the game is. A coin flip keeps its full impact;
       // a 97/3 game keeps about 12% of it, because the outcome you want almost never happens.
@@ -820,8 +834,9 @@ function finish(acc,N,ti){
 // The Run button always recomputes.
 const RESULT_VERSION = 6; // bump when the result shape changes so stale saved results are recomputed
 const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|${T}|${$("#sims").value}|${false?1:0}`;
-function loadResult(){ try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
-function saveResult(r){ try{ localStorage.setItem("lb.result", JSON.stringify({key:resultKey(), at:Date.now(), res:r})); }catch(e){} }
+const liveActive = () => !!(window.LIVE && LIVE.on && LIVE.hash);
+function loadResult(){ if(liveActive()) return null; try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
+function saveResult(r){ if(liveActive()) return; try{ localStorage.setItem("lb.result", JSON.stringify({key:resultKey(), at:Date.now(), res:r})); }catch(e){} }
 $("#run").onclick=()=>run(true); $("#team").onchange=()=>run(false); $("#sims").onchange=()=>run(false);
 function run(force){
   T=$("#team").value; const N=+$("#sims").value;
@@ -1142,7 +1157,8 @@ function renderBoard(r){
       if(g.completed){ const won = isHome ? g.homeWin : !g.homeWin;
         const mine = isHome ? g.homeScore : g.awayScore, theirs = isHome ? g.awayScore : g.homeScore;
         result={won, text:(won?"W":"L")+(mine!=null&&theirs!=null?` ${mine}-${theirs}`:"")}; }
-      byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw,mine:t===T||opp===T,kick:g.completed?"":fmtKickShort(g),gi:g.completed?null:i});
+      const liveTxt = g.live ? `LIVE ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period:""} ${isHome?g.live.hs:g.live.as}-${isHome?g.live.as:g.live.hs}` : "";
+      byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw,mine:t===T||opp===T,kick:g.completed?"":(liveTxt||fmtKickShort(g)),gi:g.completed?null:i});
     }
   });
 
@@ -1191,7 +1207,7 @@ function card(g, showWeek){
     const mkP = spFav===g.home ? g.pLine : 1-g.pLine;
     dev=`<div class="g-dev">SP+ and the market disagree: SP+ has <b>${short(spFav)}</b> at ${Math.round(spP*100)}%, the line says ${Math.round(mkP*100)}%</div>`;
   }
-  const when=fmtKick(g);
+  const when = g.live ? `<span class="livetag">LIVE</span> ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period+" "+g.live.clock:"starting"} · ${short(g.away)} ${g.live.as}, ${short(g.home)} ${g.live.hs}` : fmtKick(g);
   const impact=Math.abs(g.swing)*100;
   // the team you're pulling for is boxed; each team carries its win chance
   const chip=(team,win)=>{ const boxed = !T ? false : g.involvesMe ? team===T : (g.clear && team===want);
@@ -1222,12 +1238,17 @@ function renderSlate(r){
   if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
   const hidden = UI.slateMin>0 ? list.filter(g=>!g.involvesMe && !(g.clear && g.levN>=UI.slateMin)).length : 0;
   if(UI.slateMin>0) list=list.filter(g=>g.involvesMe || (g.clear && g.levN>=UI.slateMin));
+  // games in progress that pass the filters are grouped first
+  const liveNow=list.filter(g=>g.live && !g.involvesMe).sort((a,b)=>b.lev-a.lev); list=list.filter(g=>!(g.live && !g.involvesMe));
   const byTime=(a,b)=>(a.tbd-b.tbd)||((a.start?Date.parse(a.start):9e15)-(b.start?Date.parse(b.start):9e15))||(b.lev-a.lev);
   // the selected team's own game always leads; everything else follows the chosen sort
   const mine=list.filter(g=>g.involvesMe), rest=list.filter(g=>!g.involvesMe);
   rest.sort(UI.slateSort==="time" ? byTime : (a,b)=>b.lev-a.lev);
-  const html = mine.map(g=>card(g,false)).join("") + (mine.length&&rest.length?`<div class="sub" style="padding:10px 0 2px">Rest of the slate, by ${UI.slateSort==="time"?"kickoff":"leverage score"}</div>`:"") + rest.map(g=>card(g,false)).join("");
-  $("#slate").innerHTML = (html || `<div class="sub" style="padding:10px 0">No games match.</div>`) + (hidden ? `<div class="sub" style="padding:10px 0">${hidden} game${hidden>1?"s":""} below leverage ${UI.slateMin} hidden.</div>` : "");
+  const liveHtml = liveNow.length ? `<h3 style="margin:4px 0 2px"><span class="dot on"></span>Live now</h3>` + liveNow.map(g=>card(g,false)).join("") : "";
+  const html = liveHtml + (liveNow.length&&(mine.length||rest.length)?`<h3 style="margin:14px 0 2px">Coming up</h3>`:"") + mine.map(g=>card(g,false)).join("") + (mine.length&&rest.length?`<div class="sub" style="padding:10px 0 2px">Rest of the slate, by ${UI.slateSort==="time"?"kickoff":"leverage score"}</div>`:"") + rest.map(g=>card(g,false)).join("");
+  const finals=D.games.filter(g=>g.week===UI.slateWeek && g.completed && (!UI.slateRanked || g.home===T || g.away===T || isRanked(g.home) || isRanked(g.away)));
+  const finalsHtml = finals.length ? `<h3 style="margin:16px 0 4px">Final</h3>` + finals.map(g=>`<div class="g" style="padding:8px 0"><div class="g-match" style="font-size:14.5px">${badge(g.away)} <small class="num" style="font-weight:500">${g.awayScore??""}</small> <em>at</em> ${badge(g.home)} <small class="num" style="font-weight:500">${g.homeScore??""}</small> <small class="sub">· final</small></div></div>`).join("") : "";
+  $("#slate").innerHTML = (html || `<div class="sub" style="padding:10px 0">No games match.</div>`) + (hidden ? `<div class="sub" style="padding:10px 0">${hidden} game${hidden>1?"s":""} below leverage ${UI.slateMin} hidden.</div>` : "") + finalsHtml;
 }
 
 function renderSeason(r){
