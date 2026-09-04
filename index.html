@@ -874,6 +874,8 @@ function openWhySimple(g){
   const pWant=wantHome?g.pHomeWin:1-g.pHomeWin;
   const impact=Math.abs(g.swing)*100;
   const fav = g.pHomeWin>=0.5 ? g.home : g.away, pFav = Math.max(g.pHomeWin,1-g.pHomeWin);
+  const shiftLine = !g.live ? "" : (()=>{ const arrow=(pre,now)=>`${fmtWin(pre)}% → <b class="${now>pre+0.005?"good":now<pre-0.005?"bad":""}">${fmtWin(now)}%</b>`;
+    return `<p><span class="livetag">LIVE</span> ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period+" "+g.live.clock:"starting"}, <b>${g.away} ${g.live.as}, ${g.home} ${g.live.hs}</b>. Win chance since kickoff: ${g.away} ${arrow(1-g.pSp,1-g.pHomeWin)}, ${g.home} ${arrow(g.pSp,g.pHomeWin)}. Leverage below is based on the live chance.</p>`; })();
   const myGames=D.games.filter(x=>x.home===T||x.away===T);
   const onSched=name=>myGames.find(x=>x.home===name||x.away===name);
   const size = v => v>=75?"a big":v>=40?"a solid":v>=15?"a small":"a tiny";
@@ -900,7 +902,7 @@ function openWhySimple(g){
       <div class="kv"><span>wk ${g.week}</span>${g.start?`<span>${fmtKick(g)}${g.tv?" · "+g.tv:""}</span>`:""}${g.spreadText?`<span>${g.spreadText}</span>`:""}</div>
       <div class="plain">${headline}
         <div class="scores"><span>Leverage ${scorePill(g.lev>0?g.levN:null,g.clear)}</span><span>Impact ${scorePill(g.lev>0?g.impN:null,g.clear)}</span></div>
-        ${why}<p>${favLine}</p>
+        ${shiftLine}${why}<p>${favLine}</p>
         <h3>The teams</h3>
         ${[g.away,g.home].map(n=>{ const s=st(n); return `<p><b>${badge(n)}</b> makes the playoff ${Math.round(s.pIn*100)}% of the time${s.pP4Champ>=0.05?`, winning the ${s.conf} ${Math.round(s.pP4Champ*100)}% of the time`:""}${s.pG6>=0.05?`, taking the Group of Six bid ${Math.round(s.pG6*100)}% of the time`:""}.</p>`; }).join("")}
       </div>`;
@@ -935,7 +937,7 @@ function openWhySimple(g){
     <div class="plain">
       ${headline}
       <div class="scores"><span>Leverage ${scorePill(g.lev>0?g.levN:null,g.clear)}</span><span>Impact ${scorePill(g.lev>0?g.impN:null,g.clear)}</span></div>
-      <p>${oddsLine}</p>
+      ${shiftLine}<p>${oddsLine}</p>
       ${why}
       <p>${favLine}</p>
       <h3>The teams</h3>
