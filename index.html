@@ -170,6 +170,9 @@
   .g-odds b{font-weight:600}
   .g-odds .want b{color:var(--for)}
   .g-odds .want span{color:var(--ink)}
+  .slate-div{display:flex;align-items:center;gap:10px;margin:18px 0 4px;font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .slate-div::after{content:"";flex:1;height:2px;background:var(--line)}
+  .slate-div.live{color:var(--against)} .slate-div.live::after{background:color-mix(in srgb, var(--against) 45%, var(--line))}
   .g-verdict{font-size:13px;margin-top:5px;color:var(--muted)}
   .g-verdict strong{color:var(--for)}
   .g-verdict.mine strong{color:var(--gold)}
@@ -1280,8 +1283,10 @@ function renderSlate(r){
   const mine=list.filter(g=>g.involvesMe), rest=list.filter(g=>!g.involvesMe);
   rest.sort(UI.slateSort==="time" ? byTime : (a,b)=>b.lev-a.lev);
   // your own game is always pinned first, live or not; then games in progress; then the rest
-  const liveHtml = liveNow.length ? `<h3 style="margin:10px 0 2px"><span class="dot on"></span>Live now</h3>` + liveNow.map(g=>card(g,false)).join("") : "";
-  const restHtml = rest.length ? (liveNow.length ? `<h3 style="margin:14px 0 2px">Coming up</h3>` : (mine.length ? `<div class="sub" style="padding:10px 0 2px">Rest of the slate, by ${UI.slateSort==="time"?"kickoff":"leverage score"}</div>` : "")) + rest.map(g=>card(g,false)).join("") : "";
+  const div=(label,cls)=>`<div class="slate-div${cls?" "+cls:""}">${label}</div>`;
+  const liveHtml = liveNow.length ? div('<span class="dot on"></span>Live now',"live") + liveNow.map(g=>card(g,false)).join("") : "";
+  const restLabel = liveNow.length ? "Coming up" : `Rest of the slate · by ${UI.slateSort==="time"?"kickoff":"leverage score"}`;
+  const restHtml = rest.length ? ((liveNow.length||mine.length) ? div(restLabel) : "") + rest.map(g=>card(g,false)).join("") : "";
   const html = mine.map(g=>card(g,false)).join("") + liveHtml + restHtml;
   // finals: only your team's game and games with a ranked team, collapsed by default
   const finals=D.games.filter(g=>g.week===UI.slateWeek && g.completed && (g.home===T || g.away===T || isRanked(g.home) || isRanked(g.away)))
