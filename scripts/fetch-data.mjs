@@ -165,6 +165,15 @@ const games = gamesRaw
     };
   });
 
+// CFBD files the opening weekend under week 1 together with Labor Day weekend. Split week 1 by
+// Tuesday-to-Monday window; if it spans two, the earlier window becomes week 0.
+{
+  const win = (g) => { const d = new Date(g.start); const back = (d.getUTCDay() + 5) % 7; return Math.floor((d.getTime() - back * 864e5) / 864e5); };
+  const wk1 = games.filter((g) => g.week === 1 && g.start);
+  const wins = [...new Set(wk1.map(win))].sort((a, b) => a - b);
+  if (wins.length > 1) wk1.forEach((g) => { if (win(g) === wins[0]) g.week = 0; });
+}
+
 const played = games.filter((g) => g.completed);
 const currentWeek = played.length ? Math.max(...played.map((g) => g.week)) + 1 : 1;
 const withLines = games.filter((g) => g.spread != null && !g.completed).length;

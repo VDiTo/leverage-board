@@ -186,7 +186,7 @@
   .g-verdict.mine strong{color:var(--gold)}
   .g-verdict.flat{color:var(--muted)}
   .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 6px}
-  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden} .seg[hidden]{display:none}
   .seg button{background:var(--panel2);color:var(--muted);border:0;border-radius:0;padding:6px 11px;font-size:13px;font-weight:500}
   .seg button[aria-pressed=true]{background:var(--gold);color:#10233a;font-weight:650}
   details.quiet{margin-top:12px;color:var(--muted);font-size:13px}
@@ -485,8 +485,18 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
 let idx, rating, confOf, tierOf, confList, P4=["ACC","Big Ten","Big 12","SEC"];
 let gH,gA,gP,gPsp,gPline,gConf,gDone,gRes,gWeek,gLine,gHfa,nG,nT;
 let confIdx, members, isP4, teamGames, gamesPerTeam;
+// CFBD labels the opening weekend (Aug 29-30) as week 1 along with the Labor Day weekend. Split week 1 by
+// Tuesday-to-Monday window: if it spans two, the earlier window becomes week 0.
+function splitWeekZero(){
+  const win=g=>{ const d=new Date(g.start); const back=(d.getUTCDay()+5)%7; return Math.floor((d.getTime()-back*864e5)/864e5); };
+  const wk1=D.games.filter(g=>g.week===1 && g.start);
+  const wins=[...new Set(wk1.map(win))].sort((a,b)=>a-b);
+  if(wins.length<2) return;
+  wk1.forEach(g=>{ if(win(g)===wins[0]) g.week=0; });
+}
 function build(){
   if(window.applyLive) window.applyLive();
+  splitWeekZero();
   nT = D.teams.length;
   idx = new Map(D.teams.map((t,i)=>[t.team,i]));
   rating = Float64Array.from(D.teams.map(t=>t.rating));
@@ -819,7 +829,8 @@ function normalizeGames(games, played){
   const ownLevMax=Math.max(1e-6,...own.map(g=>g.lev)), ownImpMax=Math.max(1e-6,...own.map(g=>Math.abs(g.swing)));
   const apply=g=>{
     const lm=g.involvesMe?ownLevMax:levMax, im=g.involvesMe?ownImpMax:impMax;
-    g.levN=Math.min(100,g.lev/lm*100); g.impN=Math.min(100,Math.abs(g.swing)/im*100);
+    const mag = g.done ? Math.abs(g.realized) : Math.abs(g.swing);
+    g.levN=Math.min(100,g.lev/lm*100); g.impN=Math.min(100,mag/im*100);
   };
   games.forEach(apply); (played||[]).forEach(apply);
 }
@@ -871,9 +882,15 @@ function finish(acc,N,ti){
       // a 97/3 game keeps about 12% of it, because the outcome you want almost never happens.
       lev: Math.abs(swing)*100 * 4*p*(1-p)});
   }
-  // realised effect of a finished game: the target's odds with the actual result minus its odds had the result flipped
-  // (no-team mode: how often the flip would have changed the field)
-  played.forEach(g=>{ g.realized = ti<0 ? g.swing : (g.homeWin ? g.swing : -g.swing); });
+  // Realised effect of a finished game: how far the result moved the target's odds from where they stood at kickoff,
+  // weighing both possible results by their pregame chance. An expected win barely moves the odds; an upset moves them
+  // by nearly the whole counterfactual swing. (No-team mode: the field-change rate weighted by how unexpected the result was.)
+  played.forEach(g=>{
+    const pAct = g.homeWin ? g.pSp : 1-g.pSp;               // pregame chance of the result that happened
+    if(ti<0){ g.pBefore=null; g.realized=(1-pAct)*g.swing; g.se=(1-pAct)*g.se; }
+    else { g.pBefore = g.pSp*g.pH + (1-g.pSp)*g.pA; g.realized = (g.homeWin?g.pH:g.pA) - g.pBefore; g.se=(1-pAct)*g.se; }
+    g.clear = Math.abs(g.realized)>=0.001; g.sure = Math.abs(g.realized)>=2*g.se;
+  });
   normalizeGames(games, played);
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
   const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
@@ -886,7 +903,7 @@ function finish(acc,N,ti){
 // ---------- render ----------
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
-const RESULT_VERSION = 7; // bump when the result shape changes so stale saved results are recomputed
+const RESULT_VERSION = 8; // bump when the result shape changes so stale saved results are recomputed
 const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|${T}|${$("#sims").value}|${false?1:0}`;
 const liveActive = () => !!(window.LIVE && LIVE.on && LIVE.hash);
 function loadResult(){ if(liveActive()) return null; try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
@@ -1018,32 +1035,36 @@ function openWhyPlayed(g){
   const winner=g.homeWin?g.home:g.away, loser=g.homeWin?g.away:g.home;
   const wS=g.homeWin?g.homeScore:g.awayScore, lS=g.homeWin?g.awayScore:g.homeScore;
   const score = wS!=null&&lS!=null ? ` ${wS}-${lS}` : "";
+  const pWinPre = g.homeWin ? g.pSp : 1-g.pSp;                 // the winner's pregame chance
   const size = v => v>=75?"a big":v>=40?"a solid":v>=15?"a small":"a tiny";
-  const pts=Math.abs(g.realized)*100;
+  const pts=Math.abs(g.realized)*100, ptsTxt=pts<0.95?pts.toFixed(2):pts.toFixed(1);
+  const cf=Math.abs(g.swing)*100, cfTxt=cf<0.95?cf.toFixed(2):cf.toFixed(1);
+  const opener=`<p><b>${winner}</b> beat <b>${loser}</b>${score} in week ${g.week}${pWinPre>=0.75?` as a ${fmtWin(pWinPre)}% favourite`:pWinPre<0.4?` as a ${fmtWin(pWinPre)}% underdog`:""}.</p>`;
   let headline, body;
   if(!T){
     headline=`<div class="big">${g.clear?"Reshaped the playoff field.":"Didn't change who gets in."}</div>`;
     const tops=(g.fieldTop||[]).map(t=>`<b>${t.team}</b> (${Math.round(t.share*100)}%)`);
-    body=`<p><b>${winner}</b> beat <b>${loser}</b>${score} in week ${g.week}.</p>`
-      + (g.clear ? `<p>Had ${loser} won instead, the twelve-team field would look different in <b class="num">${pct(g.swing)}%</b> of simulated seasons${g.swapsAvg>1.5?", usually moving more than one spot":""}. The teams most often swapped in or out: ${tops.join(", ")}.</p>`
-                 : `<p>Across ${RES.N.toLocaleString()} simulated seasons, flipping this result ${Math.abs(g.swing)<0.001?"never":"almost never"} changes the twelve teams in the field.</p>`);
+    body=opener + (g.swing>=0.001 ? `<p>Had ${loser} won instead, the twelve-team field would look different in <b class="num">${pct(g.swing)}%</b> of simulated seasons${g.swapsAvg>1.5?", usually moving more than one spot":""}. The teams most often swapped in or out: ${tops.join(", ")}.</p>`
+        + `<p>${pWinPre>=0.75?`Because ${winner} was expected to win, most of that was already priced in; the result itself moved the picture only a little.`:pWinPre<0.4?`Because ${winner} was the underdog, this result genuinely changed the picture.`:`This was close to a coin flip, so the result carried most of that weight.`}</p>`
+      : `<p>Across ${RES.N.toLocaleString()} simulated seasons, flipping this result ${Math.abs(g.swing)<0.001?"never":"almost never"} changes the twelve teams in the field.</p>`);
   } else {
     const pActual=g.homeWin?g.pH:g.pA, pOther=g.homeWin?g.pA:g.pH;
-    const helped=g.realized>0;
+    const helped=g.realized>0, cls=helped?"good":"bad";
+    const oddsLine=`At kickoff ${T}'s playoff odds stood at <b class="num">${pct(g.pBefore)}%</b>, weighing both possible results. With this one they're <b class="num ${cls}">${pct(pActual)}%</b>${g.clear?`: a <b class="num ${cls}">${ptsTxt}-point</b> ${helped?"gain":"hit"}`:""}. Had ${loser} won, they'd be <b class="num">${pct(pOther)}%</b>.`;
     if(g.involvesMe){
       const won=winner===T;
       headline=`<div class="big ${won?"for":"bad"}">${won?"You won.":"You lost."}</div>`;
-      body=`<p><b>${winner}</b> beat <b>${loser}</b>${score} in week ${g.week}. With that result ${T}'s playoff odds are <b class="num">${pct(pActual)}%</b>; had it gone the other way they'd be <b class="num">${pct(pOther)}%</b>. That's a <b class="num">${pts.toFixed(1)}-point</b> ${won?"gain":"hit"}: ${size(g.impN)} swing on your own schedule.</p>`;
+      body=opener+`<p>${oddsLine}</p>`+(won&&pWinPre>=0.75?`<p>You were expected to win, so most of that was already in your odds; the loss would have cost you ${cfTxt} points.</p>`:"");
     } else if(!g.clear || !g.sure){
       headline=`<div class="big">${!g.clear?"Didn't move the needle for "+T+".":(helped?"Leaned your way, but it's within the noise.":"Leaned against you, but it's within the noise.")}</div>`;
-      body=`<p><b>${winner}</b> beat <b>${loser}</b>${score} in week ${g.week}.</p>`
-        + (!g.clear ? `<p>Across ${RES.N.toLocaleString()} simulated seasons this result almost never changes whether ${T} makes the field.</p>`
-                    : `<p>The estimate is a ${pts.toFixed(2)}-point ${helped?"gain":"hit"}, but the margin of error is ±${(2*g.se*100).toFixed(2)}, so the direction isn't settled. More simulated seasons would sharpen it.</p>`);
+      body=opener+`<p>${oddsLine}</p>`
+        + (!g.clear ? (pWinPre>=0.75 && cf>=0.1 ? `<p>${winner} was expected to win, so the result was already priced in. The upset would have been worth about ${cfTxt} points ${g.swing>0===g.homeWin?"against":"to"} you.</p>` : `<p>Across ${RES.N.toLocaleString()} simulated seasons this result barely changes whether ${T} makes the field.</p>`)
+                    : `<p>The margin of error is ±${(2*g.se*100).toFixed(2)}, so the direction isn't settled. More simulated seasons would sharpen it.</p>`);
     } else {
       const want=g.swing>0?g.home:g.away, other=g.swing>0?g.away:g.home;
       headline=`<div class="big ${helped?"for":"bad"}">${helped?"Went your way.":"Went against you."}</div>`;
       const parts=reasonParts(g,want,other);
-      body=`<p><b>${winner}</b> beat <b>${loser}</b>${score} in week ${g.week}. With that result ${T}'s playoff odds are <b class="num">${pct(pActual)}%</b>; had ${loser} won, they'd be <b class="num">${pct(pOther)}%</b>. That's a <b class="num">${pts<0.95?pts.toFixed(2):pts.toFixed(1)}-point</b> ${helped?"gain":"hit"}: ${size(g.impN)} swing compared with the games still to be played.</p>`
+      body=opener+`<p>${oddsLine} That's ${size(g.impN)} move compared with the games still to be played.</p>`
         + (parts.length ? `<p>${parts.length>1?"Mostly because ":"Because "}${parts[0]}</p>${parts.slice(1).map(p=>`<p>Also: ${p}</p>`).join("")}` : "");
     }
   }
@@ -1052,7 +1073,7 @@ function openWhyPlayed(g){
     <div class="kv"><span>wk ${g.week}</span><span>Final</span>${g.start?`<span>${fmtKick(g)}</span>`:""}${g.spreadText?`<span>closed ${g.spreadText}</span>`:""}</div>
     <div class="plain">
       ${headline}
-      <div class="scores"><span>Impact ${scorePill(g.clear?g.impN:null,g.sure)}</span>${T&&g.clear?`<span class="${g.realized>0?"good":"bad"}"><b class="num">${g.realized>0?"+":"−"}${pts<0.95?pts.toFixed(2):pts.toFixed(1)}</b> pts for ${short(T)}</span>`:""}</div>
+      <div class="scores"><span>Impact ${scorePill(g.clear?g.impN:null,g.sure)}</span>${T&&g.clear?`<span class="${g.realized>0?"good":"bad"}"><b class="num">${g.realized>0?"+":"−"}${ptsTxt}</b> pts for ${short(T)}</span>`:""}</div>
       ${body}
       <h3>The teams</h3>
       ${[g.away,g.home].map(n=>{ const s=st(n); return `<p><b>${badge(n)}</b> makes the playoff ${Math.round(s.pIn*100)}% of the time${T&&s.ahead>=0.02?` and finishes ahead of ${short(T)} ${Math.round(s.ahead*100)}% of the time`:""}${s.pP4Champ>=0.05?`, winning the ${s.conf} ${Math.round(s.pP4Champ*100)}% of the time`:""}.</p>`; }).join("")}
@@ -1242,7 +1263,7 @@ function renderBoard(r){
     ? `Ordered by the <strong>CFP committee ranking</strong> (week ${cfp.week}), which is what actually seeds the bracket, with the AP poll alongside.`
     : `Ordered by the <strong>AP poll</strong> (week ${ap?ap.week:"—"}) until the CFP committee releases its first ranking in early November, then by the committee.`}
     ${T?`Unranked teams that often finish ahead of ${T} are included too.`:"Unranked teams with a real playoff chance are included too."}</p>
-    <div class="legend">${T?`<span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by each game's leverage on your own schedule</span>`:`<span><i style="background:var(--fieldhue)"></i>Shapes the playoff field</span><span><i style="background:var(--panel2)"></i>Doesn't change who gets in</span>`}<span><i style="border:1.5px solid var(--against);background:transparent"></i>In progress (red LIVE line, pregame → live chance)</span><span><i style="background:var(--panel2);border:1px solid var(--line)"></i>Final (W/L, score, and the result's impact score${T?": green helped you, red hurt":""})</span><span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
+    <div class="legend">${T?`<span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by each game's leverage on your own schedule</span>`:`<span><i style="background:var(--fieldhue)"></i>Shapes the playoff field</span><span><i style="background:var(--panel2)"></i>Doesn't change who gets in</span>`}<span><i style="border:1.5px solid var(--against);background:transparent"></i>In progress (red LIVE line, pregame → live chance)</span><span><i style="background:var(--panel2);border:1px solid var(--line)"></i>Final (W/L, score, and how much the result moved ${T?"your odds":"the field"} from kickoff${T?": green helped, red hurt":""})</span><span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
     <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Posted point spreads are shown for reference; the simulation uses SP+. ${T?`Shading shows whether ${T} wants the row team to win or lose that game, and how much: it follows the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.`:"With no team selected, gold shading shows how much each game shapes the whole playoff field: how often flipping its result changes who gets in, discounted by how unlikely that is."}</p>`;
 
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
@@ -1267,7 +1288,7 @@ function renderBoard(r){
   const realCell=g=>{ if(!g||!g.clear) return null;
     if(!T) return {txt:String(Math.round(g.impN)), cls:"field"+(g.sure?"":" soft")};
     return {txt:(g.realized>0?"+":"−")+Math.round(g.impN), cls:(g.realized>0?"good":"bad")+(g.sure?"":" soft")}; };
-  const cellFoot=c=> c.kick ? `<small class="tv">${c.kick}</small>` : c.real ? `<small class="real ${c.real.cls}" title="Impact score of this result${T?", green if it helped "+short(T)+", red if it hurt":""}">${c.real.txt}</small>` : "";
+  const cellFoot=c=> c.kick ? `<small class="tv">${c.kick}</small>` : c.real ? `<small class="real ${c.real.cls}" title="How much this result moved ${T?short(T)+"'s":"the field's"} odds from kickoff, on the impact scale${T?": green helped, red hurt":""}">${c.real.txt}</small>` : "";
   const scale=100;
   const byTeam=new Map();
   D.games.forEach((g,i)=>{
@@ -1398,19 +1419,20 @@ function renderSlate(r){
 function cardPlayed(g){
   const winner=g.homeWin?g.home:g.away, loser=g.homeWin?g.away:g.home;
   const want = T && g.clear ? (g.swing>0?g.home:g.away) : null;
-  const helped = T ? g.realized>0 : null;
-  const pts=Math.abs(g.realized)*100;
+  const helped = T ? g.realized>0 : null, cls=helped?"good":"bad";
+  const pts=Math.abs(g.realized)*100, ptsTxt=pts<0.95?pts.toFixed(2):pts.toFixed(1);
   const weeksAll=[...new Set(D.games.map(x=>x.week))].sort((a,b)=>a-b);
   const curWk = RES && RES.games.length ? Math.min(...RES.games.map(x=>x.week)) : null;
-  const chip=(team,sc)=>{ const cls = team===T ? " mine" : (want && g.clear && g.sure) ? (team===want ? " want" : " against") : "";
-    return `<span class="chip${cls}">${badge(team)} <b class="num" style="font-weight:600">${sc??""}</b></span>`; };
-  const pActual=g.homeWin?g.pH:g.pA, pOther=g.homeWin?g.pA:g.pH;
+  const chip=(team,sc)=>{ const c = team===T ? " mine" : (want && g.clear && g.sure) ? (team===want ? " want" : " against") : "";
+    return `<span class="chip${c}">${badge(team)} <b class="num" style="font-weight:600">${sc??""}</b></span>`; };
+  const pActual=g.homeWin?g.pH:g.pA;
+  const pWinPre = g.homeWin ? g.pSp : 1-g.pSp;
   const line = !T ? (g.clear ? `<span class="num">had ${short(loser)} won, the field would differ in ${pct(g.swing)}% of seasons</span>${g.fieldTop&&g.fieldTop.length?` · mostly ${g.fieldTop.slice(0,2).map(t=>short(t.team)).join(", ")}`:""}` : "no effect on who gets in")
-    : !g.clear ? `No measurable effect on ${short(T)}.`
-    : `<span class="num">${short(T)} ${pct(pActual)}% with this result, ${pct(pOther)}% had ${short(loser)} won</span>`;
+    : !g.clear ? `<span class="num">${short(T)} ${pct(pActual)}% after, ${pct(g.pBefore)}% at kickoff</span>${pWinPre>=0.75?" · expected result, already priced in":""}`
+    : `<span class="num">${short(T)} <b class="${cls}">${pct(pActual)}%</b> after this result, ${pct(g.pBefore)}% at kickoff</span>`;
   const verdict = !T ? "" : g.involvesMe ? (winner===T?"You won":"You lost") : !g.clear ? "Didn't matter" : !g.sure ? (helped?"Leaned your way":"Leaned against you") : (helped?"Went your way":"Went against you");
   return `<div class="g played${g.involvesMe?" own":""}">
-    <div class="g-top"><div><span>${g.start?fmtKick(g):""}${g.tv?` · ${g.tv}`:""}</span><div class="wkrow" title="Week ${g.week}" aria-label="Week ${g.week}">${weeksAll.map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}" title="Week ${w}">${w}</span>`).join("")}<small class="sub" style="margin-left:6px">wk ${g.week}</small></div></div><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Impact ${scorePill(g.clear?g.impN:null, g.sure)}</span>${T&&g.clear?`<small class="${helped?"good":"bad"}"><b class="num">${helped?"+":"−"}${pts<0.95?pts.toFixed(2):pts.toFixed(1)}</b> pts${g.sure?"":" (±"+(2*g.se*100).toFixed(2)+")"}</small>`:`<small>${verdict||(g.clear?"":"no effect on the field")}</small>`}</span></div>
+    <div class="g-top"><div><span>${g.start?fmtKick(g):""}${g.tv?` · ${g.tv}`:""}</span><div class="wkrow" title="Week ${g.week}" aria-label="Week ${g.week}">${weeksAll.map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}" title="Week ${w}">${w}</span>`).join("")}<small class="sub" style="margin-left:6px">wk ${g.week}</small></div></div><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Impact ${scorePill(g.clear?g.impN:null, g.sure)}</span>${T&&g.clear?`<small class="${cls}"><b class="num">${helped?"+":"−"}${ptsTxt}</b> pts${g.sure?"":" (±"+(2*g.se*100).toFixed(2)+")"}</small>`:`<small>${verdict||(g.clear?"":"no effect on the field")}</small>`}</span></div>
     <div class="g-match">${chip(g.away,g.awayScore)} <em>at</em> ${chip(g.home,g.homeScore)}</div>
     <div class="g-line">${verdict&&T&&g.clear?`<b>${verdict}.</b> `:""}${line}</div>
   </div>`;
@@ -1420,11 +1442,11 @@ function renderPlayed(r){
   const clear=played.filter(g=>g.clear);
   const kept=clear.filter(g=>g.impN>=UI.seasonMin).sort((a,b)=>Math.abs(b.realized)-Math.abs(a.realized));
   const below=clear.length-kept.length, quiet=played.length-clear.length;
-  $("#seasonExplain").innerHTML = !T ? `<p>Every game already played, ranked by how much the result reshaped the playoff field: how often the twelve teams would differ had it gone the other way.</p>`
-    : `<p>Every game already played, ranked by how much the result moved <strong>${T}</strong>'s playoff odds. Green means it went your way, red means it went against you. <strong>Impact</strong> is the swing between the actual result and the other one, on the same 0–100 scale as the games still to come, so you can compare what has happened with what's left.</p>`;
+  $("#seasonExplain").innerHTML = !T ? `<p>Every game already played, ranked by how much the result reshaped the playoff field: how often the twelve teams would differ had it gone the other way, weighed by how unexpected the result was.</p>`
+    : `<p>Every game already played, ranked by how much the result moved <strong>${T}</strong>'s playoff odds from where they stood at kickoff. An expected win barely moves them; an upset does. Green went your way, red went against you. <strong>Impact</strong> is on the same 0–100 scale as the games still to come, so what has happened compares directly with what's left.</p>`;
   $("#season").innerHTML = (played.length ? (kept.map(cardPlayed).join("") || `<div class="sub" style="padding:10px 0">No played games at or above impact ${UI.seasonMin}.</div>`) : `<div class="sub" style="padding:10px 0">No games have been played yet.</div>`)
     + (below?`<div class="sub" style="padding:10px 0">${below} game${below>1?"s":""} below impact ${UI.seasonMin} hidden.</div>`:"")
-    + (quiet?`<details class="quiet"><summary>${quiet} more played game${quiet>1?"s":""} with no measurable effect${T?" on "+T:" on the field"}</summary><div class="sub" style="margin-top:6px">${T?"They moved the odds by less than a tenth of a point either way.":"Flipping them almost never changes the twelve teams in the field."}</div></details>`:"");
+    + (quiet?`<details class="quiet"><summary>${quiet} more played game${quiet>1?"s":""} that barely moved ${T?T+"'s odds":"the field"}</summary><div class="sub" style="margin-top:6px">${T?"Mostly expected results, already priced into the odds before kickoff.":"Mostly expected results that leave the twelve-team field as it was."}</div></details>`:"");
 }
 function renderSeason(r){
   document.querySelectorAll("#seasonView button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.seasonView)));
