@@ -242,7 +242,11 @@
       const wantHome=g.swing>0, want=wantHome?g.home:g.away, pWant=wantHome?g.pHomeWin:1-g.pHomeWin, impact=Math.abs(g.swing)*100;
       doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(...NAVY); doc.text(String(n+1), M+14, y+13, {align:"right"});
       const x=M+22;
-      doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...MUTED); doc.text(clean(kick(g)), x, y+8);
+      doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...MUTED); const kt=clean(kick(g)); doc.text(kt, x, y+8);
+      { // week circles: hollow for other weeks, filled for this game's week
+        let cx0 = x + doc.getTextWidth(kt) + 10; const weeksAll=[...new Set(r.games.map(z=>z.week))].sort((p,q)=>p-q);
+        for(const wk of weeksAll){ if(wk===g.week){ doc.setFillColor(...NAVY); doc.circle(cx0+2.6, y+5.6, 2.6, "F"); } else { doc.setDrawColor(...MUTED); doc.setLineWidth(0.5); doc.circle(cx0+2.6, y+5.6, 2.1, "S"); } cx0+=7.5; }
+        doc.setFontSize(6.5); doc.setTextColor(...MUTED); doc.text(`wk ${g.week}`, cx0+2, y+8); }
       pill(W-M-88, y+8, "Leverage", g.levN); pill(W-M-30, y+8, "Impact", g.impN);
       // matchup with a box around the team to pull for
       doc.setFontSize(10.5); doc.setFont("helvetica","bold"); doc.setTextColor(...NAVY);

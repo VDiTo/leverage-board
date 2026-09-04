@@ -174,7 +174,7 @@
   .slate-div::after{content:"";flex:1;height:2px;background:var(--line)}
   .slate-div.live{color:var(--against)} .slate-div.live::after{background:color-mix(in srgb, var(--against) 45%, var(--line))}
   .g.thisweek{border-left:3px solid var(--gold);padding-left:10px}
-  .wkrow{display:flex;gap:4px;margin:6px 0 2px;flex-wrap:wrap;align-items:center}
+  .wkrow{display:flex;gap:4px;margin:4px 0 0;flex-wrap:wrap;align-items:center;height:18px}
   .wkrow span{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--muted);box-sizing:border-box;font-size:0;color:transparent;opacity:.6}
   .wkrow span.now{opacity:1;border-color:var(--gold)}
   .wkrow span.on{background:var(--gold);border-color:var(--gold);opacity:1;width:13px;height:13px}
@@ -1274,8 +1274,7 @@ function card(g, showWeek){
   const curWk = RES ? Math.min(...RES.games.map(x=>x.week)) : null;
   const thisWeek = showWeek && g.week===curWk;
   return `<div class="g${own}${dev?" dev":""}${thisWeek?" thisweek":""}">
-    <div class="g-top"><span>${thisWeek?`<span class="wktag">This week</span> `:""}${when}${g.tv?` · ${g.tv}`:""}</span><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
-    ${showWeek ? `<div class="wkrow" title="Week ${g.week}" aria-label="Week ${g.week}">${[...new Set(RES.games.map(x=>x.week))].sort((a,b)=>a-b).map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}" title="Week ${w}">${w}</span>`).join("")}<small class="sub" style="margin-left:6px">wk ${g.week}</small></div>` : ""}
+    <div class="g-top"><div><span>${thisWeek?`<span class="wktag">This week</span> `:""}${when}${g.tv?` · ${g.tv}`:""}</span>${showWeek ? `<div class="wkrow" title="Week ${g.week}" aria-label="Week ${g.week}">${[...new Set(RES.games.map(x=>x.week))].sort((a,b)=>a-b).map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}" title="Week ${w}">${w}</span>`).join("")}<small class="sub" style="margin-left:6px">wk ${g.week}</small></div>` : ""}</div><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
     <div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>
     <div class="g-line">${line}${!T && g.clear ? ` · <span class="num">changes the field in ${pct(g.swing)}% of seasons</span>${g.fieldTop&&g.fieldTop.length?` · mostly ${g.fieldTop.slice(0,2).map(t=>short(t.team)).join(", ")}`:""}` : ""}</div>${dev}
   </div>`;
