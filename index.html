@@ -1247,8 +1247,10 @@ function renderSlate(r){
   // the selected team's own game always leads; everything else follows the chosen sort
   const mine=list.filter(g=>g.involvesMe), rest=list.filter(g=>!g.involvesMe);
   rest.sort(UI.slateSort==="time" ? byTime : (a,b)=>b.lev-a.lev);
-  const liveHtml = liveNow.length ? `<h3 style="margin:4px 0 2px"><span class="dot on"></span>Live now</h3>` + liveNow.map(g=>card(g,false)).join("") : "";
-  const html = liveHtml + (liveNow.length&&(mine.length||rest.length)?`<h3 style="margin:14px 0 2px">Coming up</h3>`:"") + mine.map(g=>card(g,false)).join("") + (mine.length&&rest.length?`<div class="sub" style="padding:10px 0 2px">Rest of the slate, by ${UI.slateSort==="time"?"kickoff":"leverage score"}</div>`:"") + rest.map(g=>card(g,false)).join("");
+  // your own game is always pinned first, live or not; then games in progress; then the rest
+  const liveHtml = liveNow.length ? `<h3 style="margin:10px 0 2px"><span class="dot on"></span>Live now</h3>` + liveNow.map(g=>card(g,false)).join("") : "";
+  const restHtml = rest.length ? (liveNow.length ? `<h3 style="margin:14px 0 2px">Coming up</h3>` : (mine.length ? `<div class="sub" style="padding:10px 0 2px">Rest of the slate, by ${UI.slateSort==="time"?"kickoff":"leverage score"}</div>` : "")) + rest.map(g=>card(g,false)).join("") : "";
+  const html = mine.map(g=>card(g,false)).join("") + liveHtml + restHtml;
   // finals: only your team's game and games with a ranked team, collapsed by default
   const finals=D.games.filter(g=>g.week===UI.slateWeek && g.completed && (g.home===T || g.away===T || isRanked(g.home) || isRanked(g.away)))
     .sort((a,b)=>(b.home===T||b.away===T)-(a.home===T||a.away===T));
