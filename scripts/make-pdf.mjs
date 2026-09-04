@@ -10,7 +10,7 @@ const OUT = process.argv[2] || "board.html";
 const FIELD = process.env.FIELD === "1" || process.env.TEAM === "";
 const TEAM = FIELD ? "" : (process.env.TEAM || "Notre Dame");
 const TN = TEAM || "the playoff field";
-const N = +(process.env.N || 10000);
+const N = +(process.env.N || 25000);
 const PRODUCT = process.env.PRODUCT || "board";
 
 const html = readFileSync(REPO + "/index.html", "utf8");

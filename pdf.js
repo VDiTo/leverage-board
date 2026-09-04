@@ -273,15 +273,26 @@
   }
 
   // ---- wiring ----
+  const PDF_SEASONS = 25000;
+  // PDFs always come from at least 25,000 seasons: reuse the on-screen result if it is that big, otherwise run a fresh one
+  function resultForPdf(btn){
+    if(RES && RES.N>=PDF_SEASONS) return Promise.resolve(RES);
+    return new Promise((res,rej)=>{
+      try{ build(); simulate(T, PDF_SEASONS, p=>{ btn.textContent=`Simulating ${PDF_SEASONS.toLocaleString()} seasons… ${Math.round(p*100)}%`; }, r=>res(r)); }
+      catch(e){ rej(e); }
+    });
+  }
   async function make(kind){
     if(!RES){ alert("Run the simulation first."); return; }
     const btn = kind==="board" ? document.querySelector("#pdf") : document.querySelector("#pdfWeek");
     const label = btn.textContent; btn.disabled=true; btn.textContent="Building…";
     try{
       const jsPDF = await loadJsPDF();
-      const slug = (T||"Field").replace(/\s+/g,"-");
-      if(kind==="board"){ await deliver(buildBoard(jsPDF, RES), `Top-25-Board-${slug}.pdf`); }
-      else { const wk = UI.slateWeek ?? Math.min(...RES.games.map(g=>g.week)); await deliver(buildWeek(jsPDF, RES, wk), `Top-10-Games-Week-${wk}-${slug}.pdf`); }
+      const r = await resultForPdf(btn);
+      btn.textContent="Building…";
+      const slug = (T||"Field").replace(/s+/g,"-");
+      if(kind==="board"){ await deliver(buildBoard(jsPDF, r), `Top-25-Board-${slug}.pdf`); }
+      else { const wk = UI.slateWeek ?? Math.min(...r.games.map(g=>g.week)); await deliver(buildWeek(jsPDF, r, wk), `Top-10-Games-Week-${wk}-${slug}.pdf`); }
     } catch(e){ alert("Could not build the PDF: "+e.message); }
     finally{ btn.disabled=false; btn.textContent=label; }
   }
