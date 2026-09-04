@@ -119,8 +119,8 @@
 
   /* ---- game cards ---- */
   .g{padding:12px 0;border-bottom:1px solid var(--line)}
-  .g.own{padding:12px 12px;margin:4px 0 8px;border-radius:9px;border:1px solid color-mix(in srgb, var(--gold) 55%, transparent)}
-  .g.own .g-top, .g.own .g-odds span, .g.own .g-line{color:var(--ink)}
+  .g.own{padding:12px 12px;margin:4px 0 8px;border-radius:9px;border:1.5px solid color-mix(in srgb, var(--gold) 70%, transparent)}
+  .winpill{display:inline-block;border-radius:6px;padding:1px 7px;font-weight:700;font-size:12.5px;color:var(--ink)}
   .g.dev:not(.own){border-left:3px solid var(--gold);padding-left:10px}
   .g-dev{font-size:12.5px;color:var(--gold);margin-top:3px}
   .g-dev b{color:var(--gold)}
@@ -1214,14 +1214,14 @@ function card(g, showWeek){
   const chip=(team,win)=>{ const boxed = !T ? false : g.involvesMe ? team===T : (g.clear && team===want);
     const pre = g.live ? (team===g.home ? g.pSp : 1-g.pSp) : null;
     const pctTxt = g.live ? `${fmtWin(pre)}% → <b class="${win>pre+0.005?"good":win<pre-0.005?"bad":""}">${fmtWin(win)}%</b>` : `${fmtWin(win)}%`;
+    if(g.involvesMe && team===T){
+      const mix=Math.round(8+Math.pow(win,0.7)*82);
+      return `<span class="chip mine">${badge(team)} <span class="winpill num" style="background:color-mix(in srgb, var(--for) ${mix}%, transparent);${mix>=45?"color:#fff":""}">${pctTxt}</span></span>`;
+    }
     return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <small class="num">(${pctTxt})</small></span>`; };
   const noise = Math.abs(g.swing)<0.001 ? (T?"no measurable effect":"never changes the field") : `too close to call (±${(2*g.se*100).toFixed(2)}${T?" pts":"%"})`;
   // the selected team's own game: tint the card by its chance of winning, same ramp as the board
-  let own="";
-  if(g.involvesMe){
-    const p = g.home===T ? g.pHomeWin : 1-g.pHomeWin, up=p>=0.5, k=Math.min(1,Math.abs(p-0.5)/0.5);
-    own=` own" style="background:color-mix(in srgb, ${up?"var(--for)":"var(--against)"} ${Math.round(12+k*50)}%, transparent)`;
-  }
+  const own = g.involvesMe ? " own" : "";
   return `<div class="g${own}${dev?" dev":""}">
     <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.clear)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.clear)}</small>${g.clear?"":`<small>${noise}</small>`}</span></div>
     <div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>
