@@ -1223,11 +1223,13 @@ function card(g, showWeek){
   const chip=(team,win)=>{ const boxed = !T ? false : g.involvesMe ? team===T : (g.clear && team===want);
     const pre = g.live ? (team===g.home ? g.pSp : 1-g.pSp) : null;
     const pctTxt = g.live ? `${fmtWin(pre)}% → <b class="${win>pre+0.005?"good":win<pre-0.005?"bad":""}">${fmtWin(win)}%</b>` : `${fmtWin(win)}%`;
-    if(g.involvesMe && team===T){
+    // the rooting-interest team carries its win chance in a green pill; the other team's is implied
+    const pillFor = boxed || (!T && !g.clear ? false : (!boxed && !g.clear && !g.involvesMe && team===(g.pHomeWin>=0.5?g.home:g.away)));
+    if(pillFor){
       const mix=Math.round(8+Math.pow(win,0.7)*82);
-      return `<span class="chip mine">${badge(team)} <span class="winpill num" style="background:color-mix(in srgb, var(--for) ${mix}%, transparent);${mix>=45?"color:#fff":""}">${pctTxt}</span></span>`;
+      return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <span class="winpill num" style="background:color-mix(in srgb, var(--for) ${mix}%, transparent);${mix>=45?"color:#fff":""}">${pctTxt}</span></span>`;
     }
-    return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <small class="num">(${pctTxt})</small></span>`; };
+    return `<span class="chip">${badge(team)}</span>`; };
   const noise = Math.abs(g.swing)<0.001 ? (T?"no measurable effect":"never changes the field") : `too close to call (±${(2*g.se*100).toFixed(2)}${T?" pts":"%"})`;
   // the selected team's own game: tint the card by its chance of winning, same ramp as the board
   const own = g.involvesMe ? " own" : "";
