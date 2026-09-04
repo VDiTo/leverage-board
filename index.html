@@ -451,6 +451,8 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
     .forEach(t=>{ const o=document.createElement("option"); o.value=t.team; const r=rankOf(t.team); o.textContent=(r?`#${r} `:"")+t.team; sel.appendChild(o); });
   const saved = pref.get("team");
   sel.value = saved==="" ? "" : (saved && d.teams.some(t=>t.team===saved)) ? saved : d.teams.some(t=>t.team==="Notre Dame") ? "Notre Dame" : d.teams[0].team;
+  const phone = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (matchMedia("(pointer:coarse)").matches && innerWidth<900);
+  $("#sims").value = phone ? "10000" : "25000";
   const sims = pref.get("sims"); if(sims && [...$("#sims").options].some(o=>o.value===sims)) $("#sims").value = sims;
   const tc = pref.get("teamColors"); if(tc!==null) $("#teamColors").checked = tc==="1";
   const smin = pref.get("slateMin"); if(smin!==null && [...$("#slateMin").options].some(o=>o.value===smin)){ $("#slateMin").value=smin; UI.slateMin=+smin; }
