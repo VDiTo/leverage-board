@@ -1158,7 +1158,8 @@ function renderBoard(r){
         const mine = isHome ? g.homeScore : g.awayScore, theirs = isHome ? g.awayScore : g.homeScore;
         result={won, text:(won?"W":"L")+(mine!=null&&theirs!=null?` ${mine}-${theirs}`:"")}; }
       const liveTxt = g.live ? `LIVE ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period:""} ${isHome?g.live.hs:g.live.as}-${isHome?g.live.as:g.live.hs}` : "";
-      byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw,mine:t===T||opp===T,kick:g.completed?"":(liveTxt||fmtKickShort(g)),gi:g.completed?null:i});
+      const pPre = isHome ? gPsp[i] : 1-gPsp[i];
+      byTeam.get(t).set(g.week,{opp,isHome,pWin,pPre,live:!!g.live,result,sw:isHome?sw:-sw,mine:t===T||opp===T,kick:g.completed?"":(liveTxt||fmtKickShort(g)),gi:g.completed?null:i});
     }
   });
 
@@ -1177,7 +1178,7 @@ function renderBoard(r){
         + (sepBefore===t ? `<tr class="sep lab"><td colspan="${weeks.length+2}">Unranked · playoff chance ${UI.boardMin<=1?"≥ "+Math.round(UI.boardMin*100)+"%":""}</td></tr>` : "")
         + `<tr class="${t===T?"me":""}"><td class="k">${rkNo?`<span class="rk">#${rkNo}</span> `:""}${tn(t,short(t))}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
         const c=m.get(w); if(!c) return `<td><span class="cell"><small>bye</small></span></td>`;
-        const sub = c.result ? c.result.text : `${Math.round(c.pWin*100)}%`;
+        const sub = c.result ? c.result.text : c.live ? `${Math.round(c.pPre*100)}%→<b class="${c.pWin>c.pPre+0.005?"good":c.pWin<c.pPre-0.005?"bad":""}">${Math.round(c.pWin*100)}%</b>` : `${Math.round(c.pWin*100)}%`;
         const res = c.result ? (c.result.won?" w":" l") : "";
         // the selected team's own row: shade by each game's leverage on its own 0-100 schedule scale
         if(t===T){
