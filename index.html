@@ -173,6 +173,9 @@
   .slate-div{display:flex;align-items:center;gap:10px;margin:18px 0 4px;font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
   .slate-div::after{content:"";flex:1;height:2px;background:var(--line)}
   .slate-div.live{color:var(--against)} .slate-div.live::after{background:color-mix(in srgb, var(--against) 45%, var(--line))}
+  .g.thisweek{border-left:3px solid var(--gold);padding-left:10px}
+  .wktag{display:inline-block;background:var(--gold);color:#fff;font-weight:700;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:1px 6px;margin-right:2px}
+  body.light .wktag{color:#fff}
   .g-verdict{font-size:13px;margin-top:5px;color:var(--muted)}
   .g-verdict strong{color:var(--for)}
   .g-verdict.mine strong{color:var(--gold)}
@@ -1263,8 +1266,10 @@ function card(g, showWeek){
   const noise = Math.abs(g.swing)<0.001 ? (T?"no measurable effect":"never changes the field") : `too close to call (±${(2*g.se*100).toFixed(2)}${T?" pts":"%"})`;
   // the selected team's own game: tint the card by its chance of winning, same ramp as the board
   const own = g.involvesMe ? " own" : "";
-  return `<div class="g${own}${dev?" dev":""}">
-    <div class="g-top"><span>${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
+  const curWk = RES ? Math.min(...RES.games.map(x=>x.week)) : null;
+  const thisWeek = showWeek && g.week===curWk;
+  return `<div class="g${own}${dev?" dev":""}${thisWeek?" thisweek":""}">
+    <div class="g-top"><span>${thisWeek?`<span class="wktag">This week</span> `:""}${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
     <div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>
     <div class="g-line">${line}${!T && g.clear ? ` · <span class="num">changes the field in ${pct(g.swing)}% of seasons</span>${g.fieldTop&&g.fieldTop.length?` · mostly ${g.fieldTop.slice(0,2).map(t=>short(t.team)).join(", ")}`:""}` : ""}</div>${dev}
   </div>`;
@@ -1308,13 +1313,8 @@ function renderSeason(r){
   const kept=all.filter(g=>g.levN>=UI.seasonMin);
   const sorter = UI.seasonSort==="impact" ? (a,b)=>Math.abs(b.swing)-Math.abs(a.swing) : (a,b)=>b.lev-a.lev;
   const list=kept.sort(sorter).slice(0,60);
-  const curWeek=Math.min(...r.games.map(g=>g.week));
-  // the same labelled sections as the weekly slate: live now, this week, later
-  const div=(label,cls)=>`<div class="slate-div${cls?" "+cls:""}">${label}</div>`;
-  const liveNow=list.filter(g=>g.live), thisWeek=list.filter(g=>!g.live && g.week===curWeek), later=list.filter(g=>!g.live && g.week!==curWeek);
-  const sections = (liveNow.length ? div('<span class="dot on"></span>Live now',"live") + liveNow.map(g=>card(g,true)).join("") : "")
-    + (thisWeek.length ? div(`This week · week ${curWeek}`) + thisWeek.map(g=>card(g,true)).join("") : "")
-    + (later.length ? div("Later in the season") + later.map(g=>card(g,true)).join("") : "");
+  // one list in rank order; games in the current week are tagged, not moved
+  const sections = list.map(g=>card(g,true)).join("");
   const below=all.length-kept.length, quiet=r.games.filter(g=>!g.clear&&!g.involvesMe).length;
   $("#season").innerHTML = (sections || `<div class="sub" style="padding:10px 0">No games at or above leverage ${UI.seasonMin}.</div>`)
     + (below?`<div class="sub" style="padding:10px 0">${below} game${below>1?"s":""} below leverage ${UI.seasonMin} hidden.</div>`:"")
