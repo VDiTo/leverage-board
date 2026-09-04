@@ -60,6 +60,7 @@
     const rowSet=new Set(rows);
     const weeks=[...new Set(D.games.filter(g=>rowSet.has(g.home)||rowSet.has(g.away)).map(g=>g.week))].sort((a,b)=>a-b);
     const lev=new Map(); r.games.forEach(g=>lev.set(g.i, g.clear?Math.sign(g.swing)*g.levN:0));
+    const real=new Map(); (r.played||[]).forEach(g=>real.set(g.i,g));
     const byTeam=new Map();
     D.games.forEach((g,i)=>{
       const sw=lev.get(i)||0;
@@ -69,7 +70,7 @@
         const pWin=isHome?gP[i]:1-gP[i];
         let result=null;
         if(g.completed){ const won=isHome?g.homeWin:!g.homeWin; const mine=isHome?g.homeScore:g.awayScore, theirs=isHome?g.awayScore:g.homeScore; result={won,text:(won?"W":"L")+(mine!=null?` ${mine}-${theirs}`:"")}; }
-        byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw,mine:t===T||opp===T});
+        byTeam.get(t).set(g.week,{opp,isHome,pWin,result,sw:isHome?sw:-sw,mine:t===T||opp===T,real:g.completed?(real.get(i)||null):null});
       }
     });
     const byWeek=new Map(); r.games.filter(g=>!g.involvesMe).forEach(g=>{ if(!byWeek.has(g.week)) byWeek.set(g.week,[]); byWeek.get(g.week).push(g.clear?g.levN:0); });
@@ -141,6 +142,9 @@
         doc.text(fitText(doc, clean(name), wkW-5), x+2.5, y+rowH/2-0.8);
         doc.setFontSize(5); doc.setTextColor(...(c.result?(c.result.won?[47,127,80]:RED):MUTED));
         doc.text(c.result?c.result.text:`${Math.round(c.pWin*100)}%`, x+2.5, y+rowH/2+4.6);
+        // a finished game's impact score, signed by whether the result helped the rooting team
+        if(c.result && c.real && c.real.clear){ const v=Math.round(c.real.impN); const txt = field ? String(v) : (c.real.realized>0?"+":"-")+v;
+          doc.setFont("helvetica","bold"); doc.setTextColor(...(field?[138,111,46]:c.real.realized>0?[47,127,80]:RED)); doc.text(txt, x+wkW-3.5, y+rowH/2+4.6, {align:"right"}); doc.setFont("helvetica","normal"); }
       });
       doc.setDrawColor(...(T&&t===T?[201,164,76]:LINE)); doc.setLineWidth(T&&t===T?1.2:0.4); doc.line(tableX, y+rowH, tableX+tableW, y+rowH);
       y+=rowH;
