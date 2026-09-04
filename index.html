@@ -244,6 +244,7 @@
   .chip.against{border-color:var(--against)}
   .plain .big.bad{color:var(--against)}
   .good{color:var(--for)} .bad{color:var(--against)}
+  .g-top .lev small.good b, .scores .good b, .g-line b.good, .chip b.good{color:var(--for)} .g-top .lev small.bad b, .scores .bad b, .g-line b.bad, .chip b.bad{color:var(--against)}
   .g-top .lev small.good, .scores .good{color:var(--for)} .g-top .lev small.bad, .scores .bad{color:var(--against)}
   .g.played .g-match .chip b{margin-left:2px}
   td.multi .cell+.cell{margin-top:3px}
@@ -1069,7 +1070,7 @@ function openWhyPlayed(g){
     }
   }
   $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
-    <h2>${badge(g.away)} <small class="num" style="font-weight:500">${g.awayScore??""}</small> at ${badge(g.home)} <small class="num" style="font-weight:500">${g.homeScore??""}</small></h2>
+    <h2>${badge(g.away)} <small class="num ${g.homeWin?"bad":"good"}" style="font-weight:650">${g.awayScore??""}</small> at ${badge(g.home)} <small class="num ${g.homeWin?"good":"bad"}" style="font-weight:650">${g.homeScore??""}</small></h2>
     <div class="kv"><span>wk ${g.week}</span><span>Final</span>${g.start?`<span>${fmtKick(g)}</span>`:""}${g.spreadText?`<span>closed ${g.spreadText}</span>`:""}</div>
     <div class="plain">
       ${headline}
@@ -1411,7 +1412,7 @@ function renderSlate(r){
   const finalTag=p=>{ if(!p||!p.clear) return `<small class="sub">no effect</small>`;
     const v=Math.abs(p.realized)*100;
     return `<span class="lev why" data-game="${p.i}" role="button" title="Why?" style="flex-direction:row;gap:8px;align-items:center"><span>Impact ${scorePill(p.impN,p.sure)}</span>${T?`<small class="${p.realized>0?"good":"bad"}"><b class="num">${p.realized>0?"+":"−"}${v<0.95?v.toFixed(2):v.toFixed(1)}</b> pts</small>`:""}</span>`; };
-  const finalsHtml = finals.length ? `<details class="quiet" style="margin-top:14px"><summary>Finals this week (${finals.length})</summary>` + finals.map(({g,i})=>`<div class="g" style="padding:8px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div class="g-match" style="font-size:14.5px">${badge(g.away)} <small class="num" style="font-weight:500">${g.awayScore??""}</small> <em>at</em> ${badge(g.home)} <small class="num" style="font-weight:500">${g.homeScore??""}</small></div>${finalTag(playedOf.get(i))}</div>`).join("") + `</details>` : "";
+  const finalsHtml = finals.length ? `<details class="quiet" style="margin-top:14px"><summary>Finals this week (${finals.length})</summary>` + finals.map(({g,i})=>`<div class="g" style="padding:8px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div class="g-match" style="font-size:14.5px">${badge(g.away)} <small class="num ${g.homeWin?"bad":"good"}" style="font-weight:650">${g.awayScore??""}</small> <em>at</em> ${badge(g.home)} <small class="num ${g.homeWin?"good":"bad"}" style="font-weight:650">${g.homeScore??""}</small></div>${finalTag(playedOf.get(i))}</div>`).join("") + `</details>` : "";
   $("#slate").innerHTML = (html || `<div class="sub" style="padding:10px 0">No games match.</div>`) + (hidden ? `<div class="sub" style="padding:10px 0">${hidden} game${hidden>1?"s":""} below leverage ${UI.slateMin} hidden.</div>` : "") + finalsHtml;
 }
 
@@ -1423,8 +1424,7 @@ function cardPlayed(g){
   const pts=Math.abs(g.realized)*100, ptsTxt=pts<0.95?pts.toFixed(2):pts.toFixed(1);
   const weeksAll=[...new Set(D.games.map(x=>x.week))].sort((a,b)=>a-b);
   const curWk = RES && RES.games.length ? Math.min(...RES.games.map(x=>x.week)) : null;
-  const chip=(team,sc)=>{ const c = team===T ? " mine" : (want && g.clear && g.sure) ? (team===want ? " want" : " against") : "";
-    return `<span class="chip${c}">${badge(team)} <b class="num" style="font-weight:600">${sc??""}</b></span>`; };
+  const chip=(team,sc)=>`<span class="chip">${badge(team)} <b class="num ${team===winner?"good":"bad"}" style="font-weight:650">${sc??""}</b></span>`;
   const pActual=g.homeWin?g.pH:g.pA;
   const pWinPre = g.homeWin ? g.pSp : 1-g.pSp;
   const line = !T ? (g.clear ? `<span class="num">had ${short(loser)} won, the field would differ in ${pct(g.swing)}% of seasons</span>${g.fieldTop&&g.fieldTop.length?` · mostly ${g.fieldTop.slice(0,2).map(t=>short(t.team)).join(", ")}`:""}` : "no effect on who gets in")
