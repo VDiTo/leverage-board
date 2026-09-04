@@ -14,7 +14,28 @@
   }
 
   // ---- palette (navy on white, matching the site's default) ----
-  const NAVY=[12,35,64], MUTED=[79,96,121], LINE=[201,211,223], PANEL=[242,245,249], GREEN=[63,169,107], RED=[198,84,66];
+  // Palette on a white page. With team colours on, the ink takes the school's darker colour and the accent
+  // (rooting boxes, head-to-head borders, leverage pills, "for ___ Fans") takes the other one, each darkened until it
+  // reads on white. Green and red keep their meaning (pull for / pull against, win chance) whatever the school.
+  const BASE_NAVY=[12,35,64], BASE_ACCENT=[0xc9,0xa4,0x4c], BASE_ACCENT_TEXT=[0x8a,0x6f,0x2e];
+  let NAVY=BASE_NAVY, ACCENT=BASE_ACCENT, ACCENT_TEXT=BASE_ACCENT_TEXT, PILL=[63,169,107];
+  const MUTED=[79,96,121], LINE=[201,211,223], PANEL=[242,245,249], GREEN=[63,169,107], RED=[198,84,66], WHITE=[255,255,255];
+  function setPalette(){
+    NAVY=BASE_NAVY; ACCENT=BASE_ACCENT; ACCENT_TEXT=BASE_ACCENT_TEXT; PILL=GREEN;
+    const box=document.querySelector("#teamColors");
+    const tm = box && box.checked && T && D ? D.teams[idx.get(T)] : null;
+    if(!tm) return;
+    const cols=[tm.color,tm.altColor].map(hexRgb).filter(Boolean);
+    if(!cols.length) return;
+    const darken=(c,min)=>{ let x=c; for(let i=0;i<12 && contrast(x,WHITE)<min;i++) x=mixRgb(x,[0,0,0],0.15); return x; };
+    const dark=cols.slice().sort((a,b)=>lum(a)-lum(b))[0];
+    NAVY=darken(dark,6);
+    const other=cols.find(c=>c!==dark && lum(c)<=0.75);      // a white or near-white second colour is no accent
+    if(other){ ACCENT=darken(other,2.5); ACCENT_TEXT=darken(other,4.5); PILL=ACCENT; }
+    else { ACCENT=NAVY; ACCENT_TEXT=NAVY; PILL=NAVY; }
+  }
+  // text on an accent pill: white once the fill is dark enough to carry it
+  const pillText=bg=> contrast(bg,WHITE)>=2 ? WHITE : NAVY;
   const mixW=(c,pct)=>c.map(v=>Math.round(255+(v-255)*pct/100));           // colour mixed with white
   const mixCurve=v=>Math.round(8+Math.pow(Math.max(0,Math.min(1,v)),0.7)*82);
   const clean=s=>String(s??"").replace(/–/g,"-").replace(/—/g,"-").replace(/·/g,"|").replace(/≥/g,">=").replace(/[’']/g,"'");
@@ -80,6 +101,7 @@
 
   // ---- product 1: the board ----
   function buildBoard(jsPDF, r){
+    setPalette();
     const doc=new jsPDF({orientation:"landscape", unit:"pt", format:"letter"});
     const W=792, H=612, M=22; const {stat,rows,weeks,byTeam,byWeek,maxPIn,unrankedStart}=boardData(r);
     const field = !T;
@@ -89,7 +111,7 @@
     doc.text(title, M, M+14);
     doc.setProperties({title:clean(title+sub)});
     const tw=doc.getTextWidth(title);
-    doc.setTextColor(...MUTED); doc.text(clean(sub.trim()), M+tw+8, M+14);
+    doc.setTextColor(...(T?ACCENT_TEXT:MUTED)); doc.text(clean(sub.trim()), M+tw+8, M+14);
     const me = T ? stat.get(T) : null;
     const fbs=r.teamStats.filter(t=>!t.fcs);
     const meta = me ? `${Math.round(r.pIn*100)}% to make the 12-team field | proj. ${me.wins.toFixed(1)}-${(me.games-me.wins).toFixed(1)}`
@@ -111,8 +133,8 @@
     doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.line(tableX, y+10, tableX+tableW, y+10);
     y+=12;
     // summary rows
-    const pill=(x,cx,cy,v)=>{ const mix=mixCurve(v/100); const bg=mixW(GREEN,mix); doc.setFillColor(...bg); doc.roundedRect(cx-11, cy-5.5, 22, 9, 2, 2, "F");
-      doc.setFont("helvetica","bold"); doc.setFontSize(6.2); doc.setTextColor(...(mix>=45?[255,255,255]:NAVY)); doc.text(String(Math.round(v)), cx, cy+1.2, {align:"center"}); };
+    const pill=(x,cx,cy,v)=>{ const mix=mixCurve(v/100); const bg=mixW(PILL,mix); doc.setFillColor(...bg); doc.roundedRect(cx-11, cy-5.5, 22, 9, 2, 2, "F");
+      doc.setFont("helvetica","bold"); doc.setFontSize(6.2); doc.setTextColor(...pillText(bg)); doc.text(String(Math.round(v)), cx, cy+1.2, {align:"center"}); };
     const sumRow=(label,f)=>{ doc.setFont("helvetica","bold"); doc.setFontSize(6.4); doc.setTextColor(...MUTED); doc.text(label, tableX+2, y+7);
       weeks.forEach((w,i)=>{ const L=byWeek.get(w); if(L&&L.length) pill(0, tableX+teamW+pfW+wkW*i+wkW/2, y+5.5, f(L)); }); y+=11; };
     sumRow("Highest leverage", L=>Math.max(...L)); sumRow("Average leverage", L=>L.reduce((a,b)=>a+b,0)/L.length);
@@ -123,7 +145,7 @@
       if(ri===unrankedStart){ doc.setFont("helvetica","bold"); doc.setFontSize(5.6); doc.setTextColor(...MUTED); doc.text(clean(`UNRANKED | PLAYOFF CHANCE >= ${Math.round(UI.boardMin*100)}%`), tableX+2, y+6); y+=8; }
       const s=stat.get(t), m=byTeam.get(t)||new Map(), tm=D.teams[idx.get(t)];
       const rk=useCfp()?tm.cfpRank:tm.apRank;
-      doc.setFont("helvetica","bold"); doc.setFontSize(6.8); doc.setTextColor(...(t===T?[138,111,46]:NAVY));
+      doc.setFont("helvetica","bold"); doc.setFontSize(6.8); doc.setTextColor(...(t===T?ACCENT_TEXT:NAVY));
       doc.text(clean((rk?`#${rk} `:"")+short(t)), tableX+2, y+rowH/2+2.4);
       // playoff pill
       const mixP=mixCurve(s.pIn/maxPIn); doc.setFillColor(...mixW(GREEN,mixP)); doc.roundedRect(tableX+teamW+2, y+rowH/2-5, pfW-4, 10, 2, 2, "F");
@@ -132,8 +154,8 @@
         const c=m.get(w); const x=tableX+teamW+pfW+wkW*i+1;
         if(!c){ doc.setFont("helvetica","normal"); doc.setFontSize(5.4); doc.setTextColor(160,168,180); doc.text("bye", x+3, y+rowH/2+2); return; }
         let fill=null, border=null;
-        if(T && t===T){ const a=Math.min(1,Math.abs(c.sw)/100); if(!c.result && a>=0.005) fill=mixW(GREEN,mixCurve(a)); border=[201,164,76]; }
-        else if(c.mine){ border=[201,164,76]; }
+        if(T && t===T){ const a=Math.min(1,Math.abs(c.sw)/100); if(!c.result && a>=0.005) fill=mixW(GREEN,mixCurve(a)); border=ACCENT; }
+        else if(c.mine){ border=ACCENT; }
         else { let a=Math.min(1,Math.abs(c.sw)/100); if(Math.abs(c.sw)<0.5) a=0; if(a>0) fill=mixW(field?GREEN:(c.sw>0?GREEN:RED), mixCurve(a)); }
         if(fill){ doc.setFillColor(...fill); doc.roundedRect(x, y+1, wkW-2, rowH-2, 2, 2, "F"); }
         if(border){ doc.setDrawColor(...border); doc.setLineWidth(0.8); doc.roundedRect(x, y+1, wkW-2, rowH-2, 2, 2, "S"); }
@@ -145,9 +167,9 @@
         // a finished game's impact score, signed by whether the result helped the rooting team
         if(c.result && c.real){ const v=Math.round(c.real.impN); const zero = v===0 || !c.real.clear;
           const txt = zero ? "0" : field ? String(v) : (c.real.realized>0?"+":"-")+v;
-          doc.setFont("helvetica","bold"); doc.setTextColor(...(zero?MUTED:field?[138,111,46]:c.real.realized>0?[47,127,80]:RED)); doc.text(txt, x+wkW-3.5, y+rowH/2+4.6, {align:"right"}); doc.setFont("helvetica","normal"); }
+          doc.setFont("helvetica","bold"); doc.setTextColor(...(zero?MUTED:field?ACCENT_TEXT:c.real.realized>0?[47,127,80]:RED)); doc.text(txt, x+wkW-3.5, y+rowH/2+4.6, {align:"right"}); doc.setFont("helvetica","normal"); }
       });
-      doc.setDrawColor(...(T&&t===T?[201,164,76]:LINE)); doc.setLineWidth(T&&t===T?1.2:0.4); doc.line(tableX, y+rowH, tableX+tableW, y+rowH);
+      doc.setDrawColor(...(T&&t===T?ACCENT:LINE)); doc.setLineWidth(T&&t===T?1.2:0.4); doc.line(tableX, y+rowH, tableX+tableW, y+rowH);
       y+=rowH;
     });
 
@@ -160,7 +182,7 @@
       doc.setFont("helvetica","normal"); doc.setFontSize(6.8); doc.setTextColor(...NAVY); doc.text(clean(txt), sx+10, sy); sy+=10; };
     doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...NAVY); doc.text("How to read this", sx, sy); sy+=12;
     if(field){ legend(GREEN,"Shapes the playoff field"); legend(PANEL,"Doesn't change who gets in"); }
-    else { legend(GREEN,"You want this team to win"); legend(RED,"You want this team to lose"); legend([201,164,76],`Head-to-head with ${short(T)}`,true); }
+    else { legend(GREEN,"You want this team to win"); legend(RED,"You want this team to lose"); legend(ACCENT,`Head-to-head with ${short(T)}`,true); }
     para(`"@" = on the road. % = their chance of winning (SP+). The Playoff column is shaded by playoff chance.${T?` ${T}'s own row is shaded by each game's leverage on its own schedule.`:""}`, 6.6, MUTED);
     sy+=4; para("WHAT THE SHADING MEANS", 6.6, MUTED, true);
     para(field ? "Darker means the game does more to decide who makes the 12-team field: how often flipping its result changes the twelve teams that get in, weighed against how likely that swing is."
@@ -195,6 +217,7 @@
     return (parts.length>1?"Mostly because ":"Because ")+parts[0]+(parts[1]?"; also "+parts[1]:"")+".";
   }
   function buildWeek(jsPDF, r, week){
+    setPalette();
     const doc=new jsPDF({orientation:"portrait", unit:"pt", format:"letter"});
     const W=612, H=792, M=26; const field=!T;
     const games=r.games.filter(g=>g.week===week);
@@ -202,7 +225,7 @@
     const top=games.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,10);
     const title=`Top 10 games Week ${week}`, sub=T?` for ${T} Fans`:" for the Playoff Field";
     doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.setTextColor(...NAVY); doc.text(title, M, M+14);
-    const tw=doc.getTextWidth(title); doc.setTextColor(...MUTED); doc.text(clean(sub.trim()), M+tw+8, M+14);
+    const tw=doc.getTextWidth(title); doc.setTextColor(...(T?ACCENT_TEXT:MUTED)); doc.text(clean(sub.trim()), M+tw+8, M+14);
     doc.setProperties({title:clean(title+sub)});
     const me=T?r.teamStats.find(t=>t.team===T):null, fbs=r.teamStats.filter(t=>!t.fcs);
     doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
@@ -242,7 +265,7 @@
     y+=8;
     const rowH=(H-M-14-y)/Math.max(1,top.length);
     const pill=(x,yy,label,v)=>{ doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(...NAVY); doc.text(label, x, yy, {align:"right"});
-      const mix=mixCurve(v/100); doc.setFillColor(...mixW(GREEN,mix)); doc.roundedRect(x+3, yy-7, 22, 10, 2, 2, "F"); doc.setTextColor(...(mix>=45?[255,255,255]:NAVY)); doc.text(String(Math.round(v)), x+14, yy, {align:"center"}); };
+      const mix=mixCurve(v/100); const bg=mixW(PILL,mix); doc.setFillColor(...bg); doc.roundedRect(x+3, yy-7, 22, 10, 2, 2, "F"); doc.setTextColor(...pillText(bg)); doc.text(String(Math.round(v)), x+14, yy, {align:"center"}); };
     top.forEach((g,n)=>{
       const wantHome=g.swing>0, want=wantHome?g.home:g.away, pWant=wantHome?g.pHomeWin:1-g.pHomeWin, impact=Math.abs(g.swing)*100;
       doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(...NAVY); doc.text(String(n+1), M+14, y+13, {align:"right"});
