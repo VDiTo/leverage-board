@@ -174,6 +174,10 @@
   .slate-div::after{content:"";flex:1;height:2px;background:var(--line)}
   .slate-div.live{color:var(--against)} .slate-div.live::after{background:color-mix(in srgb, var(--against) 45%, var(--line))}
   .g.thisweek{border-left:3px solid var(--gold);padding-left:10px}
+  .wkrow{display:flex;gap:3px;margin:5px 0 2px;flex-wrap:wrap}
+  .wkrow span{min-width:19px;height:17px;line-height:17px;text-align:center;font-size:10.5px;font-variant-numeric:tabular-nums;border-radius:4px;background:var(--panel2);color:var(--muted)}
+  .wkrow span.now{box-shadow:inset 0 0 0 1px var(--gold)}
+  .wkrow span.on{background:var(--gold);color:#fff;font-weight:700}
   .wktag{display:inline-block;background:var(--gold);color:#fff;font-weight:700;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:1px 6px;margin-right:2px}
   body.light .wktag{color:#fff}
   .g-verdict{font-size:13px;margin-top:5px;color:var(--muted)}
@@ -1269,7 +1273,8 @@ function card(g, showWeek){
   const curWk = RES ? Math.min(...RES.games.map(x=>x.week)) : null;
   const thisWeek = showWeek && g.week===curWk;
   return `<div class="g${own}${dev?" dev":""}${thisWeek?" thisweek":""}">
-    <div class="g-top"><span>${thisWeek?`<span class="wktag">This week</span> `:""}${when}${g.tv?` · ${g.tv}`:""}${showWeek?` · wk ${g.week}`:""}</span><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
+    <div class="g-top"><span>${thisWeek?`<span class="wktag">This week</span> `:""}${when}${g.tv?` · ${g.tv}`:""}</span><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
+    ${showWeek ? `<div class="wkrow" aria-label="Week ${g.week}">${[...new Set(RES.games.map(x=>x.week))].sort((a,b)=>a-b).map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}">${w}</span>`).join("")}</div>` : ""}
     <div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>
     <div class="g-line">${line}${!T && g.clear ? ` · <span class="num">changes the field in ${pct(g.swing)}% of seasons</span>${g.fieldTop&&g.fieldTop.length?` · mostly ${g.fieldTop.slice(0,2).map(t=>short(t.team)).join(", ")}`:""}` : ""}</div>${dev}
   </div>`;
