@@ -1249,8 +1249,10 @@ function renderSlate(r){
   rest.sort(UI.slateSort==="time" ? byTime : (a,b)=>b.lev-a.lev);
   const liveHtml = liveNow.length ? `<h3 style="margin:4px 0 2px"><span class="dot on"></span>Live now</h3>` + liveNow.map(g=>card(g,false)).join("") : "";
   const html = liveHtml + (liveNow.length&&(mine.length||rest.length)?`<h3 style="margin:14px 0 2px">Coming up</h3>`:"") + mine.map(g=>card(g,false)).join("") + (mine.length&&rest.length?`<div class="sub" style="padding:10px 0 2px">Rest of the slate, by ${UI.slateSort==="time"?"kickoff":"leverage score"}</div>`:"") + rest.map(g=>card(g,false)).join("");
-  const finals=D.games.filter(g=>g.week===UI.slateWeek && g.completed && (!UI.slateRanked || g.home===T || g.away===T || isRanked(g.home) || isRanked(g.away)));
-  const finalsHtml = finals.length ? `<h3 style="margin:16px 0 4px">Final</h3>` + finals.map(g=>`<div class="g" style="padding:8px 0"><div class="g-match" style="font-size:14.5px">${badge(g.away)} <small class="num" style="font-weight:500">${g.awayScore??""}</small> <em>at</em> ${badge(g.home)} <small class="num" style="font-weight:500">${g.homeScore??""}</small> <small class="sub">· final</small></div></div>`).join("") : "";
+  // finals: only your team's game and games with a ranked team, collapsed by default
+  const finals=D.games.filter(g=>g.week===UI.slateWeek && g.completed && (g.home===T || g.away===T || isRanked(g.home) || isRanked(g.away)))
+    .sort((a,b)=>(b.home===T||b.away===T)-(a.home===T||a.away===T));
+  const finalsHtml = finals.length ? `<details class="quiet" style="margin-top:14px"><summary>Finals this week (${finals.length})</summary>` + finals.map(g=>`<div class="g" style="padding:8px 0"><div class="g-match" style="font-size:14.5px">${badge(g.away)} <small class="num" style="font-weight:500">${g.awayScore??""}</small> <em>at</em> ${badge(g.home)} <small class="num" style="font-weight:500">${g.homeScore??""}</small></div></div>`).join("") + `</details>` : "";
   $("#slate").innerHTML = (html || `<div class="sub" style="padding:10px 0">No games match.</div>`) + (hidden ? `<div class="sub" style="padding:10px 0">${hidden} game${hidden>1?"s":""} below leverage ${UI.slateMin} hidden.</div>` : "") + finalsHtml;
 }
 
