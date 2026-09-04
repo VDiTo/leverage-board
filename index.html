@@ -240,7 +240,7 @@
   .cell.done{background:var(--panel2)!important;border:1px solid var(--line);color:var(--muted)}
   .cell.done small.num{font-weight:700;font-size:11.5px}
   .cell.done.w small.num{color:var(--for)} .cell.done.l small.num{color:var(--against)}
-  .cell small.real{font-weight:700;font-size:11px;opacity:1} .cell small.real.good{color:var(--for)} .cell small.real.bad{color:var(--against)} .cell small.real.field{color:var(--gold)} .cell small.real.soft{opacity:.55}
+  .cell small.real{font-weight:700;font-size:11px;opacity:1} .cell small.real.good{color:var(--for)} .cell small.real.bad{color:var(--against)} .cell small.real.field{color:var(--gold)} .cell small.real.soft{opacity:.55} .cell small.real.zero{color:var(--muted);font-weight:600}
   .chip.against{border-color:var(--against)}
   .plain .big.bad{color:var(--against)}
   .good{color:var(--for)} .bad{color:var(--against)}
@@ -1264,7 +1264,7 @@ function renderBoard(r){
     ? `Ordered by the <strong>CFP committee ranking</strong> (week ${cfp.week}), which is what actually seeds the bracket, with the AP poll alongside.`
     : `Ordered by the <strong>AP poll</strong> (week ${ap?ap.week:"—"}) until the CFP committee releases its first ranking in early November, then by the committee.`}
     ${T?`Unranked teams that often finish ahead of ${T} are included too.`:"Unranked teams with a real playoff chance are included too."}</p>
-    <div class="legend">${T?`<span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by each game's leverage on your own schedule</span>`:`<span><i style="background:var(--fieldhue)"></i>Shapes the playoff field</span><span><i style="background:var(--panel2)"></i>Doesn't change who gets in</span>`}<span><i style="border:1.5px solid var(--against);background:transparent"></i>In progress (red LIVE line, pregame → live chance)</span><span><i style="background:var(--panel2);border:1px solid var(--line)"></i>Final (W/L, score, and how much the result moved ${T?"your odds":"the field"} from kickoff${T?": green helped, red hurt":""})</span><span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
+    <div class="legend">${T?`<span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row is shaded by each game's leverage on your own schedule</span>`:`<span><i style="background:var(--fieldhue)"></i>Shapes the playoff field</span><span><i style="background:var(--panel2)"></i>Doesn't change who gets in</span>`}<span><i style="border:1.5px solid var(--against);background:transparent"></i>In progress (red LIVE line, pregame → live chance)</span><span><i style="background:var(--panel2);border:1px solid var(--line)"></i>Final (W/L, score, and how much the result moved ${T?"your odds":"the field"} from kickoff${T?": green helped, red hurt":""}; 0 = an expected result, already priced in)</span><span>Darker = higher leverage score · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
     <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Posted point spreads are shown for reference; the simulation uses SP+. ${T?`Shading shows whether ${T} wants the row team to win or lose that game, and how much: it follows the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.`:"With no team selected, gold shading shows how much each game shapes the whole playoff field: how often flipping its result changes who gets in, discounted by how unlikely that is."}</p>`;
 
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
@@ -1286,9 +1286,11 @@ function renderBoard(r){
   const lev=new Map(); r.games.forEach(g=>lev.set(g.i, g.clear ? Math.sign(g.swing)*g.levN*(g.sure?1:0.5) : 0));
   // finished games: the impact score, signed by whether the result helped the selected team
   const real=new Map(); (r.played||[]).forEach(g=>real.set(g.i,g));
-  const realCell=g=>{ if(!g||!g.clear) return null;
-    if(!T) return {txt:String(Math.round(g.impN)), cls:"field"+(g.sure?"":" soft")};
-    return {txt:(g.realized>0?"+":"−")+Math.round(g.impN), cls:(g.realized>0?"good":"bad")+(g.sure?"":" soft")}; };
+  // every final carries a number: a muted 0 when the result was already priced in
+  const realCell=g=>{ if(!g) return null; const v=Math.round(g.impN);
+    if(v===0 || !g.clear) return {txt:"0", cls:"zero"};
+    if(!T) return {txt:String(v), cls:"field"+(g.sure?"":" soft")};
+    return {txt:(g.realized>0?"+":"−")+v, cls:(g.realized>0?"good":"bad")+(g.sure?"":" soft")}; };
   const cellFoot=c=> c.kick ? `<small class="tv">${c.kick}</small>` : c.real ? `<small class="real ${c.real.cls}" title="How much this result moved ${T?short(T)+"'s":"the field's"} odds from kickoff, on the impact scale${T?": green helped, red hurt":""}">${c.real.txt}</small>` : "";
   const scale=100;
   const byTeam=new Map();

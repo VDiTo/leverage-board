@@ -143,8 +143,9 @@
         doc.setFontSize(5); doc.setTextColor(...(c.result?(c.result.won?[47,127,80]:RED):MUTED));
         doc.text(c.result?c.result.text:`${Math.round(c.pWin*100)}%`, x+2.5, y+rowH/2+4.6);
         // a finished game's impact score, signed by whether the result helped the rooting team
-        if(c.result && c.real && c.real.clear){ const v=Math.round(c.real.impN); const txt = field ? String(v) : (c.real.realized>0?"+":"-")+v;
-          doc.setFont("helvetica","bold"); doc.setTextColor(...(field?[138,111,46]:c.real.realized>0?[47,127,80]:RED)); doc.text(txt, x+wkW-3.5, y+rowH/2+4.6, {align:"right"}); doc.setFont("helvetica","normal"); }
+        if(c.result && c.real){ const v=Math.round(c.real.impN); const zero = v===0 || !c.real.clear;
+          const txt = zero ? "0" : field ? String(v) : (c.real.realized>0?"+":"-")+v;
+          doc.setFont("helvetica","bold"); doc.setTextColor(...(zero?MUTED:field?[138,111,46]:c.real.realized>0?[47,127,80]:RED)); doc.text(txt, x+wkW-3.5, y+rowH/2+4.6, {align:"right"}); doc.setFont("helvetica","normal"); }
       });
       doc.setDrawColor(...(T&&t===T?[201,164,76]:LINE)); doc.setLineWidth(T&&t===T?1.2:0.4); doc.line(tableX, y+rowH, tableX+tableW, y+rowH);
       y+=rowH;
