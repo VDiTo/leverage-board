@@ -712,8 +712,11 @@ function simulate(target, N, onProgress, done){
       for(let i=0;i<nT;i++){ const u=Math.max(1e-12,rnd()), v=rnd(); rs[i]=rating[i]+RS*Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307179586*v); }
       for(let i=0;i<nG;i++){
         const h=gH[i],a=gA[i];
+        // always consume one draw per game, even for finals, so the random stream stays aligned across reruns:
+        // a game going final then changes only its own outcome, not every later game in every season
+        const u = rnd();
         const p = gLine[i] ? gP[i] : norm(((rs[h]-rs[a])+gHfa[i])/sdMargin);
-        const hw = gDone[i] ? gRes[i] : (rnd()<p?1:0);
+        const hw = gDone[i] ? gRes[i] : (u<p?1:0);
         res[i]=hw;
         const w=hw?h:a, l=hw?a:h;
         W[w]++; L[l]++;
