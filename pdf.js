@@ -207,7 +207,7 @@
     let y=M+34;
     // small green pill, vertically centred on the text baseline it sits beside
     const winPill=(x,yy,p)=>{ const mix=mixCurve(p); const txt=`${fmtWin(p)}%`; doc.setFont("helvetica","bold"); doc.setFontSize(7.5); const w=doc.getTextWidth(txt)+8;
-      doc.setFillColor(...mixW(GREEN,mix)); doc.roundedRect(x, yy-7.8, w, 10.4, 2.5, 2.5, "F"); doc.setTextColor(...(mix>=45?[255,255,255]:NAVY)); doc.text(txt, x+w/2, yy-0.4, {align:"center"}); return w; };
+      doc.setFillColor(...mixW(GREEN,mix)); doc.roundedRect(x, yy-8.9, w, 10.4, 2.5, 2.5, "F"); doc.setTextColor(...(mix>=45?[255,255,255]:NAVY)); doc.text(txt, x+w/2, yy-1.0, {align:"center"}); return w; };
     // own game / field box
     doc.setFillColor(...PANEL); doc.setDrawColor(...NAVY); doc.setLineWidth(0.8); doc.roundedRect(M, y, W-2*M, 40, 5, 5, "FD");
     doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(...NAVY);
