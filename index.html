@@ -1210,8 +1210,11 @@ function card(g, showWeek){
   const when = g.live ? `<span class="livetag">LIVE</span> ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period+" "+g.live.clock:"starting"} · ${short(g.away)} ${g.live.as}, ${short(g.home)} ${g.live.hs}` : fmtKick(g);
   const impact=Math.abs(g.swing)*100;
   // the team you're pulling for is boxed; each team carries its win chance
+  // live games show the shift from the pregame chance to the in-game chance
   const chip=(team,win)=>{ const boxed = !T ? false : g.involvesMe ? team===T : (g.clear && team===want);
-    return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <small class="num">(${fmtWin(win)}%)</small></span>`; };
+    const pre = g.live ? (team===g.home ? g.pSp : 1-g.pSp) : null;
+    const pctTxt = g.live ? `${fmtWin(pre)}% → <b class="${win>pre+0.005?"good":win<pre-0.005?"bad":""}">${fmtWin(win)}%</b>` : `${fmtWin(win)}%`;
+    return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <small class="num">(${pctTxt})</small></span>`; };
   const noise = Math.abs(g.swing)<0.001 ? (T?"no measurable effect":"never changes the field") : `too close to call (±${(2*g.se*100).toFixed(2)}${T?" pts":"%"})`;
   // the selected team's own game: tint the card by its chance of winning, same ramp as the board
   let own="";
