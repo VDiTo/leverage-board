@@ -65,7 +65,7 @@
     const inProg=[...LIVE.byId.values()].filter(x=>x.state==="in").length, finals=[...LIVE.byId.values()].filter(x=>x.state==="post").length;
     const t=LIVE.lastFetch?new Date(LIVE.lastFetch).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}):"—";
     if(LIVE.error) note(`<span class="dot err"></span>Live scores unavailable (${LIVE.error}); showing pregame numbers.`);
-    else if(!inProg && !finals) note(`<span class="dot"></span>Live scores on · no games in progress · checked ${t}`);
+    else if(!inProg) note(`<span class="dot"></span>Live scores on · no games in progress${finals?` · ${finals} final`:""} · checked ${t}`);
     else note(`<span class="dot on"></span>Live · ${inProg} in progress, ${finals} final · scores ${t}${LIVE.pendingSim?" · updating…":""}`);
   }
 
