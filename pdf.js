@@ -88,7 +88,7 @@
     doc.text(title, M, M+14);
     doc.setProperties({title:clean(title+sub)});
     const tw=doc.getTextWidth(title);
-    doc.setTextColor(...MUTED); doc.text(clean(sub), M+tw, M+14);
+    doc.setTextColor(...MUTED); doc.text(clean(sub.trim()), M+tw+5, M+14);
     const me = T ? stat.get(T) : null;
     const fbs=r.teamStats.filter(t=>!t.fcs);
     const meta = me ? `${Math.round(r.pIn*100)}% to make the 12-team field | proj. ${me.wins.toFixed(1)}-${(me.games-me.wins).toFixed(1)}`
@@ -197,7 +197,7 @@
     const top=games.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,10);
     const title=`Top 10 games Week ${week}`, sub=T?` for ${T} Fans`:" for the Playoff Field";
     doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.setTextColor(...NAVY); doc.text(title, M, M+14);
-    const tw=doc.getTextWidth(title); doc.setTextColor(...MUTED); doc.text(clean(sub), M+tw, M+14);
+    const tw=doc.getTextWidth(title); doc.setTextColor(...MUTED); doc.text(clean(sub.trim()), M+tw+5, M+14);
     doc.setProperties({title:clean(title+sub)});
     const me=T?r.teamStats.find(t=>t.team===T):null, fbs=r.teamStats.filter(t=>!t.fcs);
     doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
@@ -205,6 +205,8 @@
     doc.text(clean(me?`${Math.round(r.pIn*100)}% to make the 12-team field | proj. ${me.wins.toFixed(1)}-${(me.games-me.wins).toFixed(1)}`:`${fbs.filter(t=>t.pIn>=0.9).length} locks | ${fbs.filter(t=>t.pIn>=0.75&&t.pIn<0.9).length} likely | ${fbs.filter(t=>t.pIn>=0.25&&t.pIn<0.75).length} on the bubble`), W-M, M+18, {align:"right"});
     doc.setDrawColor(...NAVY); doc.setLineWidth(1.2); doc.line(M, M+24, W-M, M+24);
     let y=M+34;
+    const winPill=(x,yy,p)=>{ const mix=mixCurve(p); const txt=`${fmtWin(p)}%`; doc.setFont("helvetica","bold"); doc.setFontSize(8); const w=doc.getTextWidth(txt)+8;
+      doc.setFillColor(...mixW(GREEN,mix)); doc.roundedRect(x, yy-8, w, 11, 2.5, 2.5, "F"); doc.setTextColor(...(mix>=45?[255,255,255]:NAVY)); doc.text(txt, x+w/2, yy, {align:"center"}); return w; };
     // own game / field box
     doc.setFillColor(...PANEL); doc.setDrawColor(...NAVY); doc.setLineWidth(0.8); doc.roundedRect(M, y, W-2*M, 40, 5, 5, "FD");
     doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(...NAVY);
@@ -218,7 +220,10 @@
     } else if(own){
       doc.text(clean(`YOUR GAME | ${kick(own)}`), M+9, y+11);
       doc.setFont("helvetica","bold"); doc.setFontSize(11);
-      doc.text(clean(`${nameWithRank(own.away)} (${fmtWin(1-own.pHomeWin)}%)  at  ${nameWithRank(own.home)} (${fmtWin(own.pHomeWin)}%)${own.spreadText?"   "+own.spreadText:""}`), M+9, y+25);
+      { let cx=M+9; const put=(team)=>{ const t=clean(nameWithRank(team)); doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(...NAVY); doc.text(t, cx, y+25); cx+=doc.getTextWidth(t);
+          if(team===T){ cx+=4; cx+=winPill(cx, y+25, team===own.home?own.pHomeWin:1-own.pHomeWin); } };
+        put(own.away); doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...MUTED); doc.text("  at  ", cx, y+25); cx+=doc.getTextWidth("  at  "); put(own.home);
+        if(own.spreadText){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...MUTED); doc.text(clean("   "+own.spreadText), cx, y+25); } }
       doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...MUTED);
       const pw=(own.home===T?own.pH:own.pA)*100, pl=(own.home===T?own.pA:own.pH)*100;
       doc.text(clean(`Win and ${T}'s playoff odds are ${pw.toFixed(1)}%; lose and they're ${pl.toFixed(1)}%. A ${(Math.abs(own.swing)*100).toFixed(1)}-point swing, the biggest thing on this page by far.`), M+9, y+35);
@@ -227,7 +232,7 @@
     doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.setTextColor(...NAVY); doc.text("Ranked by leverage", M, y);
     const hw=doc.getTextWidth("Ranked by leverage");
     doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...MUTED);
-    doc.text(fitText(doc, clean(field?"| how often the result changes who makes the 12-team field, discounted by how unlikely the swing is":`| how much the result moves ${T}'s playoff odds, discounted by how unlikely the swing is | the boxed team is the one to pull for`), W-M-(M+hw+6)), M+hw+6, y);
+    doc.text(fitText(doc, clean(field?"| how often the result changes who makes the 12-team field, discounted by how unlikely the swing is":`| how much the result moves ${T}'s playoff odds, discounted by how unlikely the swing is | the boxed team is the one to pull for, with its chance to win`), W-M-(M+hw+6)), M+hw+6, y);
     y+=8;
     const rowH=(H-M-14-y)/Math.max(1,top.length);
     const pill=(x,yy,label,v)=>{ doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(...NAVY); doc.text(label, x, yy, {align:"right"});
@@ -240,9 +245,17 @@
       pill(W-M-88, y+8, "Leverage", g.levN); pill(W-M-30, y+8, "Impact", g.impN);
       // matchup with a box around the team to pull for
       doc.setFontSize(10.5); doc.setFont("helvetica","bold"); doc.setTextColor(...NAVY);
-      let cx=x; const seg=(txt,box)=>{ const w=doc.getTextWidth(txt); if(box){ doc.setDrawColor(47,127,80); doc.setLineWidth(1); doc.roundedRect(cx-3, y+11, w+6, 13, 3, 3, "S"); } doc.text(txt, cx, y+21); cx+=w; };
-      const aw=clean(`${nameWithRank(g.away)} (${fmtWin(1-g.pHomeWin)}%)`), hm=clean(`${nameWithRank(g.home)} (${fmtWin(g.pHomeWin)}%)`);
-      seg(aw, !field && !wantHome); doc.setFont("helvetica","normal"); doc.setTextColor(...MUTED); seg("  at  ", false); doc.setFont("helvetica","bold"); doc.setTextColor(...NAVY); seg(hm, !field && wantHome);
+      let cx=x;
+      const favHome=g.pHomeWin>=0.5;
+      const team=(name,isHome)=>{ const txt=clean(nameWithRank(name)); const boxed=!field && (isHome===wantHome); const pill = field ? (isHome===favHome) : boxed;
+        doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.setTextColor(...NAVY);
+        const w=doc.getTextWidth(txt); const pw = pill ? 4 + (doc.getTextWidth(`${fmtWin(isHome?g.pHomeWin:1-g.pHomeWin)}%`)+8) : 0;
+        if(boxed){ doc.setDrawColor(47,127,80); doc.setLineWidth(1); doc.roundedRect(cx-3, y+11, w+pw+6, 13, 3, 3, "S"); }
+        doc.text(txt, cx, y+21); cx+=w;
+        if(pill){ cx+=4; cx+=winPill(cx, y+21, isHome?g.pHomeWin:1-g.pHomeWin); doc.setFontSize(10.5); }
+        if(boxed) cx+=6;
+      };
+      team(g.away,false); doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(...MUTED); doc.text("  at  ", cx, y+21); cx+=doc.getTextWidth("  at  "); team(g.home,true);
       if(g.spreadText){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...MUTED); doc.text(clean(`   ${g.spreadText}${g.overUnder?" | O/U "+g.overUnder:""}`), cx+4, y+21); }
       doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...NAVY);
       const line3 = field ? `Changes who makes the field in ${(g.swing*100).toFixed(1)}% of simulated seasons`
