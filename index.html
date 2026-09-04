@@ -1226,7 +1226,7 @@ function renderBracket(r){
 
 // 0-100 score -> gold pill whose intensity follows the score
 const scorePill = (v, ok=true) => { const mix=Math.round(8+Math.pow(Math.max(0,Math.min(100,v||0))/100,0.7)*82); return ok
-  ? `<span class="pill" style="background:color-mix(in srgb, var(--pillhue) ${mix}%, transparent);${mix>=45?"color:#fff":""}">${Math.round(v)}</span>`
+  ? `<span class="pill" style="background:color-mix(in srgb, var(--pillhue) ${mix}%, transparent);${mix>=65?"color:#fff":""}">${Math.round(v)}</span>`
   : `<span class="pill dim">${v==null?"—":"~"+Math.round(v)}</span>`; };
 // percentage ramp with the same intensity curve as the score pills
 const ramp = (v,color,max=1) => `background:color-mix(in srgb, ${color} ${Math.round(8+Math.pow(Math.max(0,Math.min(1,v/max)),0.7)*82)}%, transparent)`;
@@ -1368,7 +1368,7 @@ function card(g, showWeek){
     const pillFor = boxed || (!T && !g.clear ? false : (!boxed && !g.clear && !g.involvesMe && team===(g.pHomeWin>=0.5?g.home:g.away)));
     if(pillFor){
       const mix=Math.round(8+Math.pow(win,0.7)*82);
-      return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <span class="winpill num" style="background:color-mix(in srgb, var(--for) ${mix}%, transparent);${mix>=45?"color:#fff":""}">${pctTxt}</span></span>`;
+      return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <span class="winpill num" style="background:color-mix(in srgb, var(--for) ${mix}%, transparent);${mix>=65?"color:#fff":""}">${pctTxt}</span></span>`;
     }
     return `<span class="chip">${badge(team)}</span>`; };
   const noise = Math.abs(g.swing)<0.001 ? (T?"no measurable effect":"never changes the field") : `too close to call (±${(2*g.se*100).toFixed(2)}${T?" pts":"%"})`;

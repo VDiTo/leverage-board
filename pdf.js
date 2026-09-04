@@ -149,7 +149,7 @@
       doc.text(clean((rk?`#${rk} `:"")+short(t)), tableX+2, y+rowH/2+2.4);
       // playoff pill
       const mixP=mixCurve(s.pIn/maxPIn); doc.setFillColor(...mixW(GREEN,mixP)); doc.roundedRect(tableX+teamW+2, y+rowH/2-5, pfW-4, 10, 2, 2, "F");
-      doc.setFontSize(6.2); doc.setTextColor(...(mixP>=45?[255,255,255]:NAVY)); doc.text(`${Math.round(s.pIn*100)}%`, tableX+teamW+pfW/2, y+rowH/2+2, {align:"center"});
+      doc.setFontSize(6.2); doc.setTextColor(...pillText(mixW(GREEN,mixP))); doc.text(`${Math.round(s.pIn*100)}%`, tableX+teamW+pfW/2, y+rowH/2+2, {align:"center"});
       weeks.forEach((w,i)=>{
         const c=m.get(w); const x=tableX+teamW+pfW+wkW*i+1;
         if(!c){ doc.setFont("helvetica","normal"); doc.setFontSize(5.4); doc.setTextColor(160,168,180); doc.text("bye", x+3, y+rowH/2+2); return; }
@@ -235,7 +235,7 @@
     let y=M+34;
     // small green pill, vertically centred on the text baseline it sits beside
     const winPill=(x,yy,p)=>{ const mix=mixCurve(p); const txt=`${fmtWin(p)}%`; doc.setFont("helvetica","bold"); doc.setFontSize(7.5); const w=doc.getTextWidth(txt)+8;
-      doc.setFillColor(...mixW(GREEN,mix)); doc.roundedRect(x, yy-8.9, w, 10.4, 2.5, 2.5, "F"); doc.setTextColor(...(mix>=45?[255,255,255]:NAVY)); doc.text(txt, x+w/2, yy-1.0, {align:"center"}); return w; };
+      const bg=mixW(GREEN,mix); doc.setFillColor(...bg); doc.roundedRect(x, yy-8.9, w, 10.4, 2.5, 2.5, "F"); doc.setTextColor(...pillText(bg)); doc.text(txt, x+w/2, yy-1.0, {align:"center"}); return w; };
     // own game / field box
     doc.setFillColor(...PANEL); doc.setDrawColor(...NAVY); doc.setLineWidth(0.8); doc.roundedRect(M, y, W-2*M, 40, 5, 5, "FD");
     doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(...NAVY);
