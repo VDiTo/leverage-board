@@ -126,7 +126,8 @@
   .g.dev:not(.own){border-left:3px solid var(--gold);padding-left:10px}
   .g-dev{font-size:12.5px;color:var(--gold);margin-top:3px}
   .g-dev b{color:var(--gold)}
-  .g-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:12.5px;color:var(--muted)}
+  .g-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--muted)}
+  .chip b.sc{font-weight:700;margin-left:1px}
   .g-top .lev{color:var(--ink);font-weight:600;white-space:nowrap}
   .g-top .lev b{color:var(--gold);font-size:15px}
   .g-match{font-size:16px;font-weight:600;margin-top:4px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
@@ -283,7 +284,7 @@
     .controls .seg{display:flex} .controls .seg button{flex:1;padding:7px 3px;text-align:center;font-size:12px;white-space:nowrap}
     .controls label.chk select{flex:1;min-width:0} .controls button.ghost{width:100%}
     .slate-div.pulse{display:block;line-height:1.55;letter-spacing:.03em} .slate-div.pulse::after{content:none}
-    .slate-div.pulse .pulse-live{display:block} .slate-div.pulse .pulse-live .dot{margin-left:0} }
+    .slate-div.pulse .pulse-live{display:block} .slate-div.pulse .pulse-sep{display:none} }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -1171,7 +1172,8 @@ function card(g, showWeek){
     const mkP = spFav===g.home ? g.pLine : 1-g.pLine;
     dev=`<div class="g-dev">SP+ and the market disagree: SP+ has <b>${short(spFav)}</b> at ${Math.round(spP*100)}%, the line says ${Math.round(mkP*100)}%</div>`;
   }
-  const when = g.live ? `<span class="livetag">LIVE</span> ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period+" "+g.live.clock:"starting"} · ${short(g.away)} ${g.live.as}, ${short(g.home)} ${g.live.hs}` : fmtKick(g);
+  const when = g.live ? `<span class="livetag">LIVE</span> ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period+" "+g.live.clock:"starting"}` : fmtKick(g);
+  const liveScore = team => g.live ? ` <b class="num sc">${team===g.home?g.live.hs:g.live.as}</b>` : "";
   const impact=Math.abs(g.swing)*100;
   // the team you're pulling for is boxed; each team carries its win chance
   // live games show the shift from the pregame chance to the in-game chance
@@ -1182,21 +1184,31 @@ function card(g, showWeek){
     const pillFor = boxed || (!T && !g.clear ? false : (!boxed && !g.clear && !g.involvesMe && team===(g.pHomeWin>=0.5?g.home:g.away)));
     if(pillFor){
       const mix=Math.round(8+Math.pow(win,0.7)*82);
-      return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)} <span class="winpill num" style="background:color-mix(in srgb, var(--for) ${mix}%, transparent);${mix>=65?"color:#fff":""}">${pctTxt}</span></span>`;
+      return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)}${liveScore(team)} <span class="winpill num" style="background:color-mix(in srgb, var(--for) ${mix}%, transparent);${mix>=65?"color:#fff":""}">${pctTxt}</span></span>`;
     }
-    return `<span class="chip">${badge(team)}</span>`; };
+    return `<span class="chip">${badge(team)}${liveScore(team)}</span>`; };
   const noise = Math.abs(g.swing)<0.001 ? (T?"no measurable effect":"never changes the field") : `too close to call (±${(2*g.se*100).toFixed(2)}${T?" pts":"%"})`;
   // the selected team's own game: tint the card by its chance of winning, same ramp as the board
   const own = g.involvesMe ? " own" : "";
   const curWk = RES ? Math.min(...RES.games.map(x=>x.week)) : null;
   const thisWeek = showWeek && g.week===curWk;
   return `<div class="g${own}${dev?" dev":""}${thisWeek?" thisweek":""}">
-    <div class="g-top"><div><span>${thisWeek?`<span class="wktag">This week</span> `:""}${when}${g.tv?` · ${g.tv}`:""}</span>${showWeek ? `<div class="wkrow" title="Week ${g.week}" aria-label="Week ${g.week}">${[...new Set(RES.games.map(x=>x.week))].sort((a,b)=>a-b).map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}" title="Week ${w}">${w}</span>`).join("")}<small class="sub" style="margin-left:6px">wk ${g.week}</small></div>` : ""}</div><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
-    <div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>
+    <div class="g-top"><div><span>${thisWeek?`<span class="wktag">This week</span> `:""}${when}${g.tv?` · ${g.tv}`:""}</span><div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>${showWeek ? `<div class="wkrow" title="Week ${g.week}" aria-label="Week ${g.week}">${[...new Set(RES.games.map(x=>x.week))].sort((a,b)=>a-b).map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}" title="Week ${w}">${w}</span>`).join("")}<small class="sub" style="margin-left:6px">wk ${g.week}</small></div>` : ""}</div><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
     <div class="g-line">${line}${!T && g.clear ? ` · <span class="num">changes the field in ${pct(g.swing)}% of seasons</span>${g.fieldTop&&g.fieldTop.length?` · mostly ${g.fieldTop.slice(0,2).map(t=>short(t.team)).join(", ")}`:""}` : ""}</div>${dev}
   </div>`;
 }
 
+function soFarStrip(label, playedWk, upWk, scope){
+  const fmtPts=v=>{ const m=Math.abs(v); return (v>0.005?"+":v<-0.005?"−":"")+(m<0.95?m.toFixed(2):m.toFixed(1)); };
+  // a "so far" strip, shown above both views of a tab: net effect of the finals, the live effect of games in progress
+  // (how far the in-game win chances have moved the odds from the kickoff baseline), and what's still to play
+  const liveWk=upWk.filter(g=>g.live);
+  const net = T ? playedWk.reduce((a,g)=>a+g.realized,0)*100 : 0;
+  const liveShift = T ? liveWk.reduce((a,g)=>a+(g.pHomeWin-g.pSp)*(g.pH-g.pA),0)*100 : 0;
+  const signed=v=>`<b class="${v>0.005?"good":v<-0.005?"bad":""}" style="text-transform:none">${fmtPts(v)} pts</b>`;
+  const toPlay=upWk.length-liveWk.length;
+  return (playedWk.length||liveWk.length) ? `<div class="slate-div pulse" title="${T?"Net change to "+T+"'s playoff chance from "+scope+" results so far; the live figure follows the in-game win chances":scope.charAt(0).toUpperCase()+scope.slice(1)+" results so far"}">${label}${T&&playedWk.length?` · ${signed(net)}`:""} · ${playedWk.length} of ${playedWk.length+upWk.length} final${liveWk.length?`<span class="pulse-sep"> · </span><span class="pulse-live"><span class="dot on"></span>${liveWk.length} live${T?" "+signed(liveShift):""}</span>`:""}</div>` : "";
+}
 function renderSlate(r){
   const upWeeks=[...new Set(r.games.map(g=>g.week))];
   const weeks=[...new Set([...upWeeks, ...(r.played||[]).map(g=>g.week)])].sort((a,b)=>a-b);
@@ -1212,15 +1224,7 @@ function renderSlate(r){
   if(RES) labelPdfButtons();
   const playedWk=(r.played||[]).filter(g=>g.week===UI.slateWeek);
   const upWk=r.games.filter(g=>g.week===UI.slateWeek);
-  const fmtPts=v=>{ const m=Math.abs(v); return (v>0.005?"+":v<-0.005?"−":"")+(m<0.95?m.toFixed(2):m.toFixed(1)); };
-  // the week so far, shown above both views: net effect of the finals, the live effect of games in progress
-  // (how far the in-game win chances have moved the odds from the kickoff baseline), and what's still to play
-  const liveWk=upWk.filter(g=>g.live);
-  const net = T ? playedWk.reduce((a,g)=>a+g.realized,0)*100 : 0;
-  const liveShift = T ? liveWk.reduce((a,g)=>a+(g.pHomeWin-g.pSp)*(g.pH-g.pA),0)*100 : 0;
-  const signed=v=>`<b class="${v>0.005?"good":v<-0.005?"bad":""}" style="text-transform:none">${fmtPts(v)} pts</b>`;
-  const toPlay=upWk.length-liveWk.length;
-  const strip = (playedWk.length||liveWk.length) ? `<div class="slate-div pulse" title="${T?"Net change to "+T+"'s playoff chance from this week's results so far; the live figure follows the in-game win chances":"This week's results so far"}">Week ${UI.slateWeek} so far${T&&playedWk.length?` · ${signed(net)}`:""} · ${playedWk.length} of ${playedWk.length+upWk.length} final${liveWk.length?`<span class="pulse-live"> · <span class="dot on"></span>${liveWk.length} live${T?" "+signed(liveShift):""}</span>`:""}</div>` : "";
+  const strip=soFarStrip(`Week ${UI.slateWeek} so far`, playedWk, upWk, "this week's");
 
   if(playedView){
     $("#slateExplain").innerHTML = !T ? `<p>Games already played this week, ranked by how much each result reshaped the playoff field, weighed by how unexpected it was.</p>`
@@ -1269,8 +1273,7 @@ function cardPlayed(g){
     : `<span class="num">${short(T)} <b class="${cls}">${pct(pActual)}%</b> after this result, ${pct(g.pBefore)}% at kickoff</span>`;
   const verdict = !T ? "" : g.involvesMe ? (winner===T?"You won":"You lost") : !g.clear ? "Didn't matter" : !g.sure ? (helped?"Leaned your way":"Leaned against you") : (helped?"Went your way":"Went against you");
   return `<div class="g played${g.involvesMe?" own":""}">
-    <div class="g-top"><div><span>${g.start?fmtKick(g):""}${g.tv?` · ${g.tv}`:""}</span><div class="wkrow" title="Week ${g.week}" aria-label="Week ${g.week}">${weeksAll.map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}" title="Week ${w}">${w}</span>`).join("")}<small class="sub" style="margin-left:6px">wk ${g.week}</small></div></div><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Impact ${scorePill(g.clear?g.impN:null, g.sure)}</span>${T&&g.clear?`<small class="${cls}"><b class="num">${helped?"+":"−"}${ptsTxt}</b> pts${g.sure?"":" (±"+(2*g.se*100).toFixed(2)+")"}</small>`:`<small>${verdict||(g.clear?"":"no effect on the field")}</small>`}</span></div>
-    <div class="g-match">${chip(g.away,g.awayScore)} <em>at</em> ${chip(g.home,g.homeScore)}</div>
+    <div class="g-top"><div><span>${g.start?fmtKick(g):""}${g.tv?` · ${g.tv}`:""}</span><div class="g-match">${chip(g.away,g.awayScore)} <em>at</em> ${chip(g.home,g.homeScore)}</div><div class="wkrow" title="Week ${g.week}" aria-label="Week ${g.week}">${weeksAll.map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}" title="Week ${w}">${w}</span>`).join("")}<small class="sub" style="margin-left:6px">wk ${g.week}</small></div></div><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Impact ${scorePill(g.clear?g.impN:null, g.sure)}</span>${T&&g.clear?`<small class="${cls}"><b class="num">${helped?"+":"−"}${ptsTxt}</b> pts${g.sure?"":" (±"+(2*g.se*100).toFixed(2)+")"}</small>`:`<small>${verdict||(g.clear?"":"no effect on the field")}</small>`}</span></div>
     <div class="g-line">${verdict&&T&&g.clear?`<b>${verdict}.</b> `:""}${line}</div>
   </div>`;
 }
@@ -1281,7 +1284,7 @@ function renderPlayed(r){
   const below=clear.length-kept.length, quiet=played.length-clear.length;
   $("#seasonExplain").innerHTML = !T ? `<p>Every game already played, ranked by how much the result reshaped the playoff field: how often the twelve teams would differ had it gone the other way, weighed by how unexpected the result was.</p>`
     : `<p>Every game already played, ranked by how much the result moved <strong>${T}</strong>'s playoff odds from where they stood at kickoff. An expected win barely moves them; an upset does. Green went your way, red went against you. <strong>Impact</strong> is on the same 0–100 scale as the games still to come, so what has happened compares directly with what's left.</p>`;
-  $("#season").innerHTML = (played.length ? (kept.map(cardPlayed).join("") || `<div class="sub" style="padding:10px 0">No played games at or above impact ${UI.seasonMin}.</div>`) : `<div class="sub" style="padding:10px 0">No games have been played yet.</div>`)
+  $("#season").innerHTML = soFarStrip("Season so far", r.played||[], r.games, "the season's") + (played.length ? (kept.map(cardPlayed).join("") || `<div class="sub" style="padding:10px 0">No played games at or above impact ${UI.seasonMin}.</div>`) : `<div class="sub" style="padding:10px 0">No games have been played yet.</div>`)
     + (below?`<div class="sub" style="padding:10px 0">${below} game${below>1?"s":""} below impact ${UI.seasonMin} hidden.</div>`:"")
     + (quiet?`<details class="quiet"><summary>${quiet} more played game${quiet>1?"s":""} that barely moved ${T?T+"'s odds":"the field"}</summary><div class="sub" style="margin-top:6px">${T?"Mostly expected results, already priced into the odds before kickoff.":"Mostly expected results that leave the twelve-team field as it was."}</div></details>`:"");
 }
@@ -1300,7 +1303,7 @@ function renderSeason(r){
   // one list in rank order; games in the current week are tagged, not moved
   const sections = list.map(g=>card(g,true)).join("");
   const below=all.length-kept.length, quiet=r.games.filter(g=>!g.clear&&!g.involvesMe).length;
-  $("#season").innerHTML = (sections || `<div class="sub" style="padding:10px 0">No games at or above leverage ${UI.seasonMin}.</div>`)
+  $("#season").innerHTML = soFarStrip("Season so far", r.played||[], r.games, "the season's") + (sections || `<div class="sub" style="padding:10px 0">No games at or above leverage ${UI.seasonMin}.</div>`)
     + (below?`<div class="sub" style="padding:10px 0">${below} game${below>1?"s":""} below leverage ${UI.seasonMin} hidden.</div>`:"")
     + (quiet?`<details class="quiet"><summary>${quiet} more games with no measurable effect on ${T}</summary><div class="sub" style="margin-top:6px">They move the odds by less than a tenth of a point either way.</div></details>`:"");
 }
