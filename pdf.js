@@ -135,9 +135,19 @@
     // summary rows
     const pill=(x,cx,cy,v)=>{ const mix=mixCurve(v/100); const bg=mixW(PILL,mix); doc.setFillColor(...bg); doc.roundedRect(cx-11, cy-5.5, 22, 9, 2, 2, "F");
       doc.setFont("helvetica","bold"); doc.setFontSize(6.2); doc.setTextColor(...pillText(bg)); doc.text(String(Math.round(v)), cx, cy+1.2, {align:"center"}); };
-    const sumRow=(label,f)=>{ doc.setFont("helvetica","bold"); doc.setFontSize(6.4); doc.setTextColor(...MUTED); doc.text(label, tableX+2, y+7);
-      weeks.forEach((w,i)=>{ const L=byWeek.get(w); if(L&&L.length) pill(0, tableX+teamW+pfW+wkW*i+wkW/2, y+5.5, f(L)); }); y+=11; };
-    sumRow("Highest leverage", L=>Math.max(...L)); sumRow("Average leverage", L=>L.reduce((a,b)=>a+b,0)/L.length);
+    // one row: highest then average leverage side by side; a finished week shows the net change to the rooting team's odds
+    const small=(cx,cy,v)=>{ const mix=mixCurve(v/100); const bg=mixW(PILL,mix); doc.setFillColor(...bg); doc.roundedRect(cx-7, cy-5, 14, 9, 2, 2, "F");
+      doc.setFont("helvetica","bold"); doc.setFontSize(5.6); doc.setTextColor(...pillText(bg)); doc.text(String(Math.round(v)), cx, cy+1.6, {align:"center"}); };
+    const playedBy=new Map(); (r.played||[]).forEach(g=>{ if(!playedBy.has(g.week)) playedBy.set(g.week,[]); playedBy.get(g.week).push(g); });
+    doc.setFont("helvetica","bold"); doc.setFontSize(6.4); doc.setTextColor(...MUTED); doc.text("Impact/Leverage", tableX+2, y+7);
+    weeks.forEach((w,i)=>{ const cx=tableX+teamW+pfW+wkW*i+wkW/2;
+      const done = playedBy.has(w) && !r.games.some(g=>g.week===w);
+      if(done && T){ const net=playedBy.get(w).reduce((a,g)=>a+g.realized,0)*100, mag=Math.abs(net);
+        doc.setFont("helvetica","bold"); doc.setFontSize(6.4); doc.setTextColor(...(net>0.005?[47,127,80]:net<-0.005?RED:MUTED));
+        doc.text((net>0.005?"+":net<-0.005?"-":"")+(mag<0.95?mag.toFixed(2):mag.toFixed(1)), cx, y+7, {align:"center"}); return; }
+      let L = done ? playedBy.get(w).map(g=>g.clear?g.impN:0) : byWeek.get(w);
+      if(L&&L.length){ small(cx-7.5, y+5.5, Math.max(...L)); small(cx+7.5, y+5.5, L.reduce((a,b)=>a+b,0)/L.length); } });
+    y+=11;
     doc.setDrawColor(...LINE); doc.setLineWidth(1); doc.line(tableX, y+1, tableX+tableW, y+1); y+=4;
 
     // team rows

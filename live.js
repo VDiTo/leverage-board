@@ -1,10 +1,12 @@
 // Live scores from ESPN's public scoreboard feed. Game ids match the data file's ids, so matching is exact.
-// In-progress games get an in-game win probability from the pregame SP+ edge, the current margin and the clock;
-// final games become fixed results. The simulation reruns on a throttle while games are live.
+// Finals are applied on every page load, whatever the toggle says, so results show within minutes of a game ending
+// even when the daily data refresh hasn't run. The toggle governs in-game scores: with it on, in-progress games get an
+// in-game win probability from the pregame SP+ edge, the current margin and the clock, and the simulation reruns on a
+// throttle while games are live.
 (function(){
   const FEED = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard";
   const POLL_MS = 60000, RESIM_MIN_MS = 150000;
-  const LIVE = { on:true, byId:new Map(), hash:"", lastFetch:0, lastSim:0, timer:null, error:null, pendingSim:false };
+  const LIVE = { on:true, byId:new Map(), hash:"", lastFetch:0, lastSim:0, timer:null, error:null, pendingSim:false, finalsKey:"", finalsN:0, inProgress:0 };
   window.LIVE = LIVE;
 
   const ymd = d => d.toISOString().slice(0,10).replace(/-/g,"");
@@ -41,27 +43,38 @@
     return map;
   }
 
-  // push live state into the data: finals become fixed results, in-progress games carry a live block
+  // push live state into the data: finals always become fixed results; in-progress games carry a live block only
+  // while the toggle is on. Returns a hash of everything applied; finalsKey / inProgress feed the result cache.
   function applyLive(){
-    if(typeof D==="undefined" || !D || !LIVE.on) return "";
-    let parts=[];
+    if(typeof D==="undefined" || !D) return "";
+    const finals=[], live=[];
     D.games.forEach(g=>{
       const L=LIVE.byId.get(String(g.id)); if(!L) return;
       if(L.state==="post" && L.completed){
         if(!g.completed){ g.completed=true; g.homeWin=L.hs>L.as; g.homeScore=L.hs; g.awayScore=L.as; g.liveFinal=true; }
-        g.live=null; parts.push(`${g.id}F${L.hs}-${L.as}`);
-      } else if(L.state==="in"){
+        g.live=null; finals.push(`${g.id}F${L.hs}-${L.as}`);
+      } else if(L.state==="in" && LIVE.on){
         g.live={hs:L.hs, as:L.as, period:L.period, clock:L.clock, detail:L.detail};
-        parts.push(`${g.id}L${L.hs}-${L.as}P${L.period}`);
+        live.push(`${g.id}L${L.hs}-${L.as}P${L.period}`);
       } else g.live=null;
     });
-    return parts.join("|");
+    LIVE.finalsKey=finals.join("|"); LIVE.finalsN=finals.length; LIVE.inProgress=live.length;
+    return finals.concat(live).join("|");
   }
   window.applyLive = applyLive;
+  // one fetch before the first simulation, so finals are in place whatever the toggle says; never blocks for long
+  async function sync(){
+    try{
+      await Promise.race([fetchLive(), new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),5000))]);
+      LIVE.hash=applyLive();
+    }catch(e){ LIVE.error=e.message; }
+    status();
+  }
+  window.liveSync = sync;
 
   function note(msg){ const el=document.querySelector("#liveNote"); if(!el) return; if(!msg){ el.hidden=true; return; } el.hidden=false; el.innerHTML=msg; }
   function status(){
-    if(!LIVE.on){ note(""); return; }
+    if(!LIVE.on){ note(LIVE.finalsN ? `<span class="dot"></span>${LIVE.finalsN} final${LIVE.finalsN>1?"s":""} applied from ESPN · live scores off` : ""); return; }
     const inProg=[...LIVE.byId.values()].filter(x=>x.state==="in").length, finals=[...LIVE.byId.values()].filter(x=>x.state==="post").length;
     const t=LIVE.lastFetch?new Date(LIVE.lastFetch).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}):"—";
     if(LIVE.error) note(`<span class="dot err"></span>Live scores unavailable (${LIVE.error}); showing pregame numbers.`);
@@ -71,14 +84,15 @@
 
   async function tick(force){
     if(!LIVE.on || typeof D==="undefined" || !D) return;
-    try{ await fetchLive(); }catch(e){ LIVE.error=e.message; status(); return; }
+    // the start-up sync just fetched; don't hit the feed twice within half a minute
+    if(!force || Date.now()-LIVE.lastFetch > 30000){ try{ await fetchLive(); }catch(e){ LIVE.error=e.message; status(); return; } }
     const h=applyLive();
     const changed = h!==LIVE.hash; LIVE.hash=h;
     status();
     if(!h) return;                                   // nothing live or final today
     const due = Date.now()-LIVE.lastSim >= RESIM_MIN_MS;
     const running = document.querySelector("#run").disabled;
-    if((changed||force) && !running && (due||force)){ LIVE.lastSim=Date.now(); LIVE.pendingSim=false; run(true,{live:true}); status(); }
+    if(changed && !running && (due||force)){ LIVE.lastSim=Date.now(); LIVE.pendingSim=false; run(true,{live:true}); status(); }
     else if(changed) { LIVE.pendingSim=true; status(); }
   }
 
