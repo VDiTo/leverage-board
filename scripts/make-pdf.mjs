@@ -14,7 +14,7 @@ const N = +(process.env.N || 25000);
 const PRODUCT = process.env.PRODUCT || "board";
 
 const html = readFileSync(REPO + "/index.html", "utf8");
-let src = html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</script>"));
+let src = readFileSync(REPO + "/sim.js", "utf8") + "\n" + html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</script>"));
 const a = src.indexOf('fetch("data.json'), b = src.indexOf("\n", src.indexOf(".catch(e=>{", a));
 src = src.slice(0, a) + src.slice(b + 1);
 const fake = new Proxy({}, { get: (t, k) => k === "checked" ? false : k === "value" ? "" : (() => { }), set: () => true });
