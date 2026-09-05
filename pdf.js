@@ -171,10 +171,12 @@
         else { let a=Math.min(1,Math.abs(c.sw)/100); if(Math.abs(c.sw)<0.5) a=0; if(a>0) fill=mixW(field?GREEN:(c.sw>0?GREEN:RED), mixCurve(a)); }
         if(fill){ doc.setFillColor(...fill); doc.roundedRect(x, y+1, wkW-2, rowH-2, 2, 2, "F"); }
         if(border){ doc.setDrawColor(...border); doc.setLineWidth(0.8); doc.roundedRect(x, y+1, wkW-2, rowH-2, 2, 2, "S"); }
-        doc.setFont("helvetica","normal"); doc.setFontSize(5.6); doc.setTextColor(...NAVY);
+        // on a strong fill the text goes white; on a light tint it stays navy
+        const onDark = !!fill && contrast(fill,WHITE)>=2;
+        doc.setFont("helvetica","normal"); doc.setFontSize(5.6); doc.setTextColor(...(onDark?WHITE:NAVY));
         const name=(c.isHome?"":"@")+cellName(c.opp);
         doc.text(fitText(doc, clean(name), wkW-5), x+2.5, y+rowH/2-0.8);
-        doc.setFontSize(5); doc.setTextColor(...(c.result?(c.result.won?[47,127,80]:RED):MUTED));
+        doc.setFontSize(5); doc.setTextColor(...(c.result?(c.result.won?[47,127,80]:RED):onDark?[236,241,246]:MUTED));
         doc.text(c.result?c.result.text:`${Math.round(c.pWin*100)}%`, x+2.5, y+rowH/2+4.6);
         // a finished game's impact score, signed by whether the result helped the rooting team
         if(c.result && c.real){ const v=Math.round(c.real.impN); const zero = v===0 || !c.real.clear;
@@ -201,36 +203,52 @@
     sy+=4; para("WHAT THE SHADING MEANS", 6.6, MUTED, true);
     para(field ? "Darker means the game does more to decide who makes the 12-team field: how often flipping its result changes the twelve teams that get in, weighed against how likely that swing is."
                : `Darker means the game matters more to ${T}: how much the result would move ${short(T)}'s playoff odds, weighed against how likely that swing is. A game can matter because the loser drops behind you in the rankings, because a conference title and its automatic bid change hands, or because a team on your schedule ends up with a better or worse record.`, 6.6, NAVY);
-    para(`Every shade comes from playing out the rest of the season ${r.N.toLocaleString()} times and flipping each game one at a time.`, 6.6, MUTED);
     sy+=4; para(field?"GAMES THAT SHAPE THE FIELD MOST":`BIGGEST GAMES NOT INVOLVING ${short(T).toUpperCase()}`, 6.6, MUTED, true);
-    r.games.filter(g=>g.clear&&!g.involvesMe).sort((a,b)=>b.levN-a.levN).slice(0,6).forEach(g=>{
+    r.games.filter(g=>g.clear&&!g.involvesMe).sort((a,b)=>b.levN-a.levN).slice(0,5).forEach(g=>{
       para(`Wk ${g.week}: ${short(g.away)} at ${short(g.home)} - ${field?`changes the field ${(g.swing*100).toFixed(1)}% of the time`:`pull for ${short(g.swing>0?g.home:g.away)}`}`, 6.6, NAVY);
     });
 
-    // projected bracket, played through to the title: each game goes to the SP+ favourite, first round at the higher seed
-    if(typeof projectField==="function" && H-M-30-sy > 150){
+    // projected bracket as cards, like the Overview: first round with who the winner meets, the byes, the first
+    // teams out, and the title game when the bracket is played through to the SP+ favourite (first round at the higher seed)
+    if(typeof projectField==="function"){
       const PF=projectField(r); const S=n=>PF[n-1];
       if(PF.length>=12){
         const nrm=z=>{ const t=1/(1+0.2316419*Math.abs(z)); const d=0.3989422804014327*Math.exp(-z*z/2);
           const q=d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429)))); return z>0?1-q:q; };
         const rt=n=>D.teams[idx.get(n)].rating, {hfa,sdMargin}=D.config;
-        const play=(a,b,hostB)=>{ const pB=nrm((rt(b.team)-rt(a.team)+(hostB?hfa:0))/sdMargin); return pB>=0.5?{w:b,p:pB}:{w:a,p:1-pB}; };
-        const nm=t=>`#${t.seed} ${short(t.team)}`;
-        const line=(txt,color,bold)=>{ doc.setFont("helvetica",bold?"bold":"normal"); doc.setFontSize(6.2); doc.setTextColor(...color); doc.text(clean(txt), sx, sy); sy+=7.6; };
-        const head=t=>{ sy+=1.5; line(t, MUTED, true); };
-        const gm=(a,b,hostB)=>{ const {w,p}=play(a,b,hostB); const mine=T&&(a.team===T||b.team===T);
-          line(`${nm(a)} ${hostB?"at":"vs"} ${nm(b)}  >  ${short(w.team)} ${Math.round(p*100)}%`, mine?ACCENT_TEXT:NAVY, mine); return w; };
-        sy+=6; para("PROJECTED BRACKET", 6.6, MUTED, true);
-        head("First round, at the higher seed");
-        const w5=gm(S(12),S(5),true), w8=gm(S(9),S(8),true), w6=gm(S(11),S(6),true), w7=gm(S(10),S(7),true);
-        head("Quarterfinals (#1-#4 on byes)");
-        const q1=gm(w8,S(1)), q4=gm(w5,S(4)), q3=gm(w6,S(3)), q2=gm(w7,S(2));
-        head("Semifinals");
-        const f1=gm(q4,q1), f2=gm(q3,q2);
-        head("National championship");
-        const champ=gm(f2,f1);
-        sy+=1; line(`Projected champion: ${champ.team}`, NAVY, true);
-        sy+=2; para("The most likely field: each Power Four's likeliest champion, the strongest Group of Six champion, seven at-larges by playoff chance; seeded by average seed when in. Each game goes to the SP+ favourite, with its chance to win.", 5.6, MUTED);
+        const play=(x,z,hostZ)=>{ const pZ=nrm((rt(z.team)-rt(x.team)+(hostZ?hfa:0))/sdMargin); return pZ>=0.5?{w:z,p:pZ}:{w:x,p:1-pZ}; };
+        // squeeze the line height a little when the sidebar is short
+        const avail=H-M-30-sy, k=Math.max(0.7, Math.min(1, avail/300));
+        const LH=7.6*k, PAD=3*k, FS=Math.max(5.2, 6.2*k);
+        const teamLine=(t,yy)=>{ const mine=T&&t.team===T;
+          doc.setFont("helvetica","bold"); doc.setFontSize(FS); doc.setTextColor(...ACCENT_TEXT); if(t.seed) doc.text(String(t.seed), sx+11, yy, {align:"right"});
+          doc.setTextColor(...(mine?ACCENT_TEXT:NAVY)); doc.text(clean(short(t.team)), sx+14, yy);
+          doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.6); doc.setTextColor(...MUTED);
+          const pc=`${Math.round(t.pIn*100)}%`; doc.text(pc, sx+sw-3, yy, {align:"right"});
+          doc.text(clean(t.tag||""), sx+sw-3-doc.getTextWidth(pc)-5, yy, {align:"right"}); };
+        const card=h=>{ doc.setFillColor(...PANEL); doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.roundedRect(sx, sy, sw, h, 3, 3, "FD"); };
+        const head=t=>{ sy+=2.5*k; doc.setFont("helvetica","bold"); doc.setFontSize(FS); doc.setTextColor(...MUTED); doc.text(t, sx, sy+4.5); sy+=8*k; };
+        const game=(lo,hi,next)=>{ const h=PAD+LH+LH*0.7+LH+PAD; card(h);
+          teamLine(S(lo), sy+PAD+LH-1.5);
+          doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.8); doc.setTextColor(...MUTED); doc.text("at", sx+sw/2, sy+PAD+LH+LH*0.7-2, {align:"center"});
+          teamLine(S(hi), sy+PAD+LH+LH*0.7+LH-1.5); sy+=h;
+          doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.8); doc.setTextColor(...MUTED); doc.text(clean(`winner meets #${next} ${short(S(next).team)}`), sx+14, sy+LH-2.2); sy+=LH+1; };
+        const list=items=>{ const h=PAD*2+LH*items.length; card(h); items.forEach((t,i)=>teamLine(t, sy+PAD+LH*(i+1)-1.5)); sy+=h+2; };
+        sy+=4; para("PROJECTED BRACKET", 6.6, MUTED, true); sy-=3;
+        head("FIRST ROUND"); game(12,5,4); game(9,8,1); game(11,6,3); game(10,7,2);
+        head("BYES TO THE QUARTERFINALS"); list([S(1),S(2),S(3),S(4)]);
+        const out=(PF.nextOut||[]).slice(0,4).map(t=>({...t, seed:"", tag:t.conf}));
+        if(out.length){ head("FIRST TEAMS OUT"); list(out); }
+        // played through to the title
+        const w5=play(S(12),S(5),true).w, w8=play(S(9),S(8),true).w, w6=play(S(11),S(6),true).w, w7=play(S(10),S(7),true).w;
+        const q1=play(w8,S(1)).w, q4=play(w5,S(4)).w, q3=play(w6,S(3)).w, q2=play(w7,S(2)).w;
+        const f1=play(q4,q1).w, f2=play(q3,q2).w, fin=play(f2,f1);
+        head("PROJECTED TITLE GAME");
+        { const h=PAD*2+LH; card(h); const mine=T&&(f1.team===T||f2.team===T);
+          doc.setFont("helvetica","bold"); doc.setFontSize(FS); doc.setTextColor(...(mine?ACCENT_TEXT:NAVY));
+          doc.text(clean(`#${f2.seed} ${short(f2.team)} vs #${f1.seed} ${short(f1.team)}`), sx+4, sy+PAD+LH-1.5);
+          doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.6); doc.setTextColor(...MUTED); doc.text(clean(`${short(fin.w.team)} ${Math.round(fin.p*100)}%`), sx+sw-3, sy+PAD+LH-1.5, {align:"right"}); sy+=h+2; }
+        para("Each game to the SP+ favourite; first round at the higher seed.", 5.4, MUTED);
       }
     }
     // footer
