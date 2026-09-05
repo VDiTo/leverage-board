@@ -360,8 +360,7 @@
     <div class="controls">
       <select id="slateWeek" aria-label="Week"></select>
       <div class="seg" id="slateView"><button data-v="up" aria-pressed="true">Upcoming</button><button data-v="played" aria-pressed="false">Played</button></div>
-      <div class="seg" id="slateSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="time" aria-pressed="false">Kickoff</button></div>
-      <label class="chk"><input type="checkbox" id="slateRanked"> Ranked teams only</label>
+      <div class="seg" id="slateSort"><button data-v="lev" aria-pressed="true">Leverage</button><button data-v="time" aria-pressed="false">Kickoff</button></div>
       <label class="chk"><span id="slateMinText">Min leverage</span> <select id="slateMin" aria-label="Minimum leverage score"><option value="0">0</option><option value="5">5</option><option value="10" selected>10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option></select></label>
     </div>
     <div id="slate"></div>
@@ -372,7 +371,7 @@
     <div class="explain" id="seasonExplain"></div>
     <div class="controls">
       <div class="seg" id="seasonView"><button data-v="up" aria-pressed="true">Upcoming</button><button data-v="played" aria-pressed="false">Played</button></div>
-      <div class="seg" id="seasonSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="impact" aria-pressed="false">Impact</button></div>
+      <div class="seg" id="seasonSort"><button data-v="lev" aria-pressed="true">Leverage</button><button data-v="impact" aria-pressed="false">Impact</button></div>
       <label class="chk"><span id="seasonMinText">Min leverage</span> <select id="seasonMin" aria-label="Minimum leverage score"><option value="0">0</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25" selected>25</option></select></label>
     </div>
     <div id="season"></div>
@@ -387,7 +386,7 @@ const $ = s => document.querySelector(s);
 let D=null, T=null, RES=null;
 // per-device preferences (team, season count, lines toggle, last tab)
 const pref = { get(k){ try{ return localStorage.getItem("lb."+k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem("lb."+k, v); }catch(e){} } };
-const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateView:"up", slateRanked:false, slateMin:10, seasonSort:"lev", seasonView:"up", seasonMin:25, boardSort:"rank", boardMin:0.10 };
+const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateView:"up", slateMin:10, seasonSort:"lev", seasonView:"up", seasonMin:25, boardSort:"rank", boardMin:0.10 };
 
 const norm = z => { // standard normal CDF
   const t = 1/(1+0.2316419*Math.abs(z));
@@ -932,7 +931,6 @@ $("#boardMin").onchange=()=>{ UI.boardMin=+$("#boardMin").value; pref.set("board
 $("#slateView").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.slateView=b.dataset.v; pref.set("slateView",UI.slateView); renderSlate(RES); });
 $("#seasonView").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.seasonView=b.dataset.v; pref.set("seasonView",UI.seasonView); renderSeason(RES); });
 $("#seasonSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.seasonSort=b.dataset.v; renderSeason(RES); });
-$("#slateRanked").onchange=()=>{ UI.slateRanked=$("#slateRanked").checked; renderSlate(RES); };
 $("#slateMin").onchange=()=>{ UI.slateMin=+$("#slateMin").value; pref.set("slateMin",String(UI.slateMin)); renderSlate(RES); };
 $("#seasonMin").onchange=()=>{ UI.seasonMin=+$("#seasonMin").value; pref.set("seasonMin",String(UI.seasonMin)); renderSeason(RES); };
 $("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(RES); };
@@ -1227,7 +1225,6 @@ function renderSlate(r){
     $("#slateExplain").innerHTML = !T ? `<p>Games already played this week, ranked by how much each result reshaped the playoff field, weighed by how unexpected it was.</p>`
       : `<p>Games already played this week, ranked by how much each result moved <strong>${T}</strong>'s playoff odds from where they stood at kickoff. An expected win barely moves them; an upset does. Green went your way, red went against you. <strong>Impact</strong> is on the same 0–100 scale as the games still to come.</p>`;
     let list=playedWk;
-    if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
     const hidden=list.filter(g=>!g.involvesMe && !(g.clear && g.impN>=UI.slateMin)).length;
     list=list.filter(g=>g.involvesMe || (g.clear && g.impN>=UI.slateMin));
     const mine=list.filter(g=>g.involvesMe), rest=list.filter(g=>!g.involvesMe).sort((a,b)=>Math.abs(b.realized)-Math.abs(a.realized));
@@ -1238,7 +1235,6 @@ function renderSlate(r){
 
   $("#slateExplain").innerHTML = !T ? `<p>No team selected. <strong>Impact</strong> is how often flipping a game's result changes who makes the 12-team field. <strong>Leverage</strong> discounts that by how unlikely the swing is. Both are scaled 0–100 against the biggest game left. Tap a leverage score to see which teams a game tends to swap in and out.</p>` : `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation always uses SP+.</p>`;
   let list=upWk;
-  if(UI.slateRanked) list=list.filter(g=>g.involvesMe||isRanked(g.home)||isRanked(g.away));
   const hidden = UI.slateMin>0 ? list.filter(g=>!g.involvesMe && !(g.clear && g.levN>=UI.slateMin)).length : 0;
   if(UI.slateMin>0) list=list.filter(g=>g.involvesMe || (g.clear && g.levN>=UI.slateMin));
   // games in progress that pass the filters are grouped first
