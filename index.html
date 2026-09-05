@@ -130,8 +130,10 @@
   .chip b.sc{font-weight:700;margin-left:1px}
   .sb{display:flex;flex-direction:column;gap:3px;margin-top:4px}
   .sb-row{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600}
-  .chip.sbchip{display:inline-flex;justify-content:space-between;align-items:center;gap:12px;min-width:172px}
-  .sb .shift{font-size:13px;font-weight:600;color:var(--muted)}
+  .chip.sbchip{display:inline-flex;justify-content:space-between;align-items:center;gap:10px;width:min(165px,66%);box-sizing:border-box}
+  .chip.sbchip .nm{white-space:nowrap} .chip.sbchip b.sc{min-width:1.4em;text-align:right}
+  .sb .shift{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
+  @media (max-width:480px){ .sb-row{font-size:15px;gap:8px} .sb .shift{font-size:12px} }
   .g-top .lev{color:var(--ink);font-weight:600;white-space:nowrap}
   .g-top .lev b{color:var(--gold);font-size:15px}
   .g-match{font-size:16px;font-weight:600;margin-top:4px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
@@ -1190,7 +1192,7 @@ function card(g, showWeek){
     return {boxed, pillFor, pctTxt}; };
   // live games read like a scoreboard: one row per team with its score, the rooting team boxed, its win-chance shift beside it
   const liveBoard = !g.live ? "" : (()=>{ const row=(team,win)=>{ const {boxed,pillFor,pctTxt}=roles(team,win);
-      return `<div class="sb-row"><span class="chip sbchip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)}<b class="num sc">${team===g.home?g.live.hs:g.live.as}</b></span>${pillFor?`<span class="shift num">${pctTxt}</span>`:""}</div>`; };
+      return `<div class="sb-row"><span class="chip sbchip${boxed?(g.involvesMe?" mine":" want"):""}"><span class="nm">${badge(team)}</span><b class="num sc">${team===g.home?g.live.hs:g.live.as}</b></span>${pillFor?`<span class="shift num">${pctTxt}</span>`:""}</div>`; };
     return `<div class="sb">${row(g.away,1-g.pHomeWin)}${row(g.home,g.pHomeWin)}</div>`; })();
   const chip=(team,win)=>{ const {boxed,pillFor,pctTxt}=roles(team,win);
     if(pillFor){
