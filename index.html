@@ -266,7 +266,8 @@
   #rankings tr.sum td.k{font-weight:600;color:var(--muted)}
   #rankings tr.sep.lab td{height:auto;padding:10px 6px 4px;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
   .cell.own{border:1px solid color-mix(in srgb, var(--gold) 45%, transparent)}
-  .ramp{display:block;border-radius:5px;padding:3px 7px;text-align:right;font-weight:700;color:var(--ink)}
+  .ramp{display:block;border-radius:5px;padding:3px 7px;text-align:center;font-weight:700;color:var(--ink)}
+  td.pc{width:118px}
   button{color:#10233a}
   .legend{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center;margin:0 0 8px;font-size:12.5px;color:var(--muted)}
   .legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
@@ -1269,8 +1270,8 @@ function renderBlockers(r){
   $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Proj. record</th><th class="c">Blocks you</th><th class="c">Finishes ahead</th></tr>`+
     blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(t.team)}</td><td class="sub">${t.conf}</td>
       <td class="num" style="text-align:center">${t.wins.toFixed(1)}–${(t.games-t.wins).toFixed(1)}</td>
-      <td><span class="ramp num" style="${ramp(t.block,"var(--against)",maxB)}">${pct(t.block)}%</span></td>
-      <td><span class="ramp num" style="${ramp(t.ahead,"var(--flat)")}">${pct(t.ahead)}%</span></td></tr>`;}).join("");
+      <td class="pc"><span class="ramp num" style="${ramp(t.block,"var(--against)",maxB)}">${pct(t.block)}%</span></td>
+      <td class="pc"><span class="ramp num" style="${ramp(t.ahead,"var(--flat)")}">${pct(t.ahead)}%</span></td></tr>`;}).join("");
 }
 
 function sumTip(){
