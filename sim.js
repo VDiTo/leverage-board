@@ -15,11 +15,13 @@
     // why a flip mattered: 0 = target's own résumé moved, 1 = an auto-bid changed hands, 2 = a team moved past the target
     why:[new Float64Array(nG), new Float64Array(nG), new Float64Array(nG)],
     // no-team mode: seasons where flipping the game changed the field, slots swapped, and per-team membership flips
-    fieldChg:new Float64Array(nG), fieldSwaps:new Float64Array(nG), teamFlip: NONE ? new Float64Array(nG*nT) : null };
+    fieldChg:new Float64Array(nG), fieldSwaps:new Float64Array(nG), teamFlip: NONE ? new Float64Array(nG*nT) : null,
+    // national titles: the 12-team bracket is played out every season on the same noisy ratings
+    titleN:new Float64Array(nT) };
   }
   function mergeAcc(into, from){
     for(const k of ["in","champ","rankSum","blockSum","winSum"]) into[k]+=from[k];
-    for(const k of ["ranks","blockers","aheadN","teamWins","fieldN","seedSum","p4ChampN","g6N","sumH","sumA","sumD","sumD2","fieldChg","fieldSwaps"]){ const a=into[k], b=from[k]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
+    for(const k of ["ranks","blockers","aheadN","teamWins","fieldN","seedSum","p4ChampN","g6N","titleN","sumH","sumA","sumD","sumD2","fieldChg","fieldSwaps"]){ const a=into[k], b=from[k]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     for(let w=0;w<3;w++){ const a=into.why[w], b=from.why[w]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     if(into.teamFlip && from.teamFlip){ const a=into.teamFlip, b=from.teamFlip; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     return into;
@@ -38,7 +40,7 @@
   const res=new Uint8Array(nG);
   const nC=confList.length, champ=new Int32Array(nC), uC=new Float64Array(nC);
   let bestG6=-1, blockers=0;
-  const {ratingWeight,resumeWeight,atLargeSlots,sdMargin}=config;
+  const {ratingWeight,resumeWeight,atLargeSlots,sdMargin}=config; const HFA=config.hfa||0;
   const LP = config.lossPenalty ?? 5, LQ = config.lossQuality ?? 0.35;
   // Quality wins: only beating teams that finish with strong records earns credit, and it ramps up fast.
   // Beating a 7-5 team is worth almost nothing; beating a 10-2 team is a real résumé line.
@@ -50,6 +52,7 @@
   let flipReason=2;
   // this season's field: who is in, the seven at-larges in order, and the next three out
   const inF=new Uint8Array(nT), alList=new Int32Array(8), reserve=new Int32Array(3); let nRes=0;
+  const fieldSeed=new Int32Array(12);
   const stampF=new Int32Array(nT), stampIn=new Int32Array(nT); let curF=0;
   const cand=new Int32Array(nT), pool=new Int32Array(nT); let nCand=0;
 
@@ -256,9 +259,17 @@
       inF.fill(0); alList.fill(-1); nRes=0;
       { let seed=0, al=0;
         for(let j=0;j<nT;j++){ const i=order[j];
-          if(seed<12 && (aq[i] || al<atLargeSlots)){ if(!aq[i]){ alList[al]=i; al++; } seed++; inF[i]=1; acc.fieldN[i]++; acc.seedSum[i]+=seed; }
+          if(seed<12 && (aq[i] || al<atLargeSlots)){ if(!aq[i]){ alList[al]=i; al++; } seed++; inF[i]=1; fieldSeed[seed-1]=i; acc.fieldN[i]++; acc.seedSum[i]+=seed; }
           else if(!aq[i] && nRes<3){ reserve[nRes++]=i; }
           if(seed>=12 && nRes>=3) break; } }
+
+      // play the bracket: first round at the higher seed, the rest neutral; eleven draws every season keeps the stream aligned
+      { const S=n=>fieldSeed[n-1];
+        const pw=(a,b,host)=>{ const p=norm(((rs[a]-rs[b])+(host?HFA:0))/sdMargin); return rnd()<p?a:b; };
+        const r5=pw(S(5),S(12),true), r8=pw(S(8),S(9),true), r6=pw(S(6),S(11),true), r7=pw(S(7),S(10),true);
+        const q1=pw(S(1),r8,false), q4=pw(S(4),r5,false), q3=pw(S(3),r6,false), q2=pw(S(2),r7,false);
+        const f1=pw(q1,q4,false), f2=pw(q2,q3,false);
+        acc.titleN[pw(f1,f2,false)]++; }
 
       // where does the target land
       let inField=0;

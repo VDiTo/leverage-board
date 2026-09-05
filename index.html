@@ -673,7 +673,7 @@ function finish(acc,N,ti){
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
   const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
-    pIn:acc.fieldN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N}));
+    pIn:acc.fieldN[i]/N, pTitle:acc.titleN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N}));
   return { mode: ti<0?"field":"team", forTeam:T, pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
            avgWins:acc.winSum/N, myGames:ti>=0?gamesPerTeam[ti]:0, games, played, teamStats, N };
 }
@@ -681,7 +681,7 @@ function finish(acc,N,ti){
 // ---------- render ----------
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
-const RESULT_VERSION = 9; // bump when the result shape changes so stale saved results are recomputed
+const RESULT_VERSION = 10; // bump when the result shape changes so stale saved results are recomputed
 const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|F${strHash(window.LIVE?LIVE.finalsKey:"")}|${T}|${$("#sims").value}`;
 // results are cached unless a game is in progress; the set of applied finals is part of the cache key
 const liveActive = () => !!(window.LIVE && LIVE.inProgress>0);
@@ -1024,12 +1024,12 @@ function renderBlockers(r){
     $("#blockExplain").innerHTML = `<p>Every team with a real shot, ordered by playoff probability. <strong>Seed</strong> is the average seed in the seasons the team makes it; <strong>Title</strong> is how often it wins its conference (which brings an automatic bid).</p>`;
     const list=r.teamStats.filter(t=>!t.fcs&&t.pIn>=0.05).sort((a,b)=>b.pIn-a.pIn).slice(0,30);
     const maxP=Math.max(0.01,...list.map(t=>t.pIn));
-    $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Playoff</th><th class="c">Proj. record</th><th class="c">Seed</th><th class="c">Conf title</th></tr>`+
+    $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Playoff</th><th class="c">Proj. record</th><th class="c">Seed</th><th class="c">Title</th></tr>`+
       list.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(t.team)}</td><td class="sub">${t.conf}</td>
         <td><span class="ramp num" style="${ramp(t.pIn,"var(--for)",maxP)}">${pct(t.pIn)}%</span></td>
         <td class="num" style="text-align:center">${t.wins.toFixed(1)}–${(t.games-t.wins).toFixed(1)}</td>
         <td class="num" style="text-align:center">${t.avgSeed<99?t.avgSeed.toFixed(1):"—"}</td>
-        <td class="num" style="text-align:center">${/independent/i.test(t.conf)?"—":Math.round(Math.max(t.pP4Champ,t.pG6)*100)+"%"}</td></tr>`;}).join("");
+        <td class="num" style="text-align:center">${t.pTitle>=0.005?Math.round(t.pTitle*100)+"%":t.pTitle>0?"<1%":"0%"}</td></tr>`;}).join("");
     return;
   }
   $("#blockTitle").textContent="Who is actually blocking you";
