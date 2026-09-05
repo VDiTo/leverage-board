@@ -282,7 +282,8 @@
     .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
     .controls .seg{display:flex} .controls .seg button{flex:1;padding:7px 3px;text-align:center;font-size:12px;white-space:nowrap}
     .controls label.chk select{flex:1;min-width:0} .controls button.ghost{width:100%}
-    .slate-div.pulse{display:block;line-height:1.55;letter-spacing:.03em} .slate-div.pulse::after{content:none} }
+    .slate-div.pulse{display:block;line-height:1.55;letter-spacing:.03em} .slate-div.pulse::after{content:none}
+    .slate-div.pulse .pulse-live{display:block} .slate-div.pulse .pulse-live .dot{margin-left:0} }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -1219,7 +1220,7 @@ function renderSlate(r){
   const liveShift = T ? liveWk.reduce((a,g)=>a+(g.pHomeWin-g.pSp)*(g.pH-g.pA),0)*100 : 0;
   const signed=v=>`<b class="${v>0.005?"good":v<-0.005?"bad":""}" style="text-transform:none">${fmtPts(v)} pts</b>`;
   const toPlay=upWk.length-liveWk.length;
-  const strip = (playedWk.length||liveWk.length) ? `<div class="slate-div pulse" title="${T?"Net change to "+T+"'s playoff chance from this week's results so far; the live figure follows the in-game win chances":"This week's results so far"}">Week ${UI.slateWeek} so far${T&&playedWk.length?` · ${signed(net)}`:""} · ${playedWk.length} of ${playedWk.length+upWk.length} final${liveWk.length?` · <span class="dot on"></span>${liveWk.length} live${T?" "+signed(liveShift):""}`:""}</div>` : "";
+  const strip = (playedWk.length||liveWk.length) ? `<div class="slate-div pulse" title="${T?"Net change to "+T+"'s playoff chance from this week's results so far; the live figure follows the in-game win chances":"This week's results so far"}">Week ${UI.slateWeek} so far${T&&playedWk.length?` · ${signed(net)}`:""} · ${playedWk.length} of ${playedWk.length+upWk.length} final${liveWk.length?`<span class="pulse-live"> · <span class="dot on"></span>${liveWk.length} live${T?" "+signed(liveShift):""}</span>`:""}</div>` : "";
 
   if(playedView){
     $("#slateExplain").innerHTML = !T ? `<p>Games already played this week, ranked by how much each result reshaped the playoff field, weighed by how unexpected it was.</p>`
