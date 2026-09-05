@@ -1204,21 +1204,26 @@ function render(){
     + `Final ordering is a strength-plus-résumé stand-in for the committee, not the committee itself.`;
 }
 
-function renderBracket(r){
+// The most likely 12-team field: each Power Four conference's most probable champion, the strongest Group of Six
+// champion, then seven at-larges by playoff probability; seeded by average seed when in. Shared with the PDFs.
+function projectField(r){
   const st=r.teamStats.filter(t=>!t.fcs);
   const byConf=new Map(); st.forEach(t=>{ if(!byConf.has(t.conf)) byConf.set(t.conf,[]); byConf.get(t.conf).push(t); });
   const field=[], taken=new Set();
   const take=(t,tag)=>{ if(!t||taken.has(t.team)) return; taken.add(t.team); field.push({...t,tag}); };
-  // four P4 champions: the most likely winner of each conference
   for(const c of P4){ const list=byConf.get(c)||[]; take(list.slice().sort((a,b)=>b.pP4Champ-a.pP4Champ)[0], c+" champ"); }
-  // best Group of Six champion
   take(st.slice().sort((a,b)=>b.pG6-a.pG6)[0], "G6 champ");
-  // seven at-larges by playoff probability
   st.filter(t=>!taken.has(t.team)).sort((a,b)=>b.pIn-a.pIn).slice(0,D.config.atLargeSlots).forEach(t=>take(t,"at-large"));
   field.sort((a,b)=>a.avgSeed-b.avgSeed);
   field.forEach((t,i)=>t.seed=i+1);
+  field.nextOut=st.filter(t=>!taken.has(t.team)).sort((a,b)=>b.pIn-a.pIn).slice(0,4);
+  return field;
+}
+function renderBracket(r){
+  const st=r.teamStats.filter(t=>!t.fcs);
+  const field=projectField(r);
   const me=T?field.find(t=>t.team===T):null, mine=T?st.find(t=>t.team===T):null;
-  const nextOut=st.filter(t=>!taken.has(t.team)).sort((a,b)=>b.pIn-a.pIn).slice(0,4);
+  const nextOut=field.nextOut;
 
   $("#bracketExplain").innerHTML = `<p>${T?"":"No team selected, so this is the whole picture. "}The most likely field: each Power Four conference's most probable champion takes its auto-bid, the strongest Group of Six champion takes the fifth, and seven at-larges fill in by playoff probability. Seeds are each team's average seed across the seasons it made the field. Straight seeding: the four highest-ranked teams get byes whether or not they won a conference. The % is each team's overall chance of making the field.</p>`;
 

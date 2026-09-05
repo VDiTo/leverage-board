@@ -147,8 +147,8 @@
         doc.text((net>0.005?"+":net<-0.005?"-":"")+(mag<0.95?mag.toFixed(2):mag.toFixed(1)), cx, y+7, {align:"center"}); return; }
       let L = done ? playedBy.get(w).map(g=>g.clear?g.impN:0) : byWeek.get(w);
       if(L&&L.length){ small(cx-7.5, y+5.5, Math.max(...L)); small(cx+7.5, y+5.5, L.reduce((a,b)=>a+b,0)/L.length); } });
-    y+=11;
-    doc.setDrawColor(...LINE); doc.setLineWidth(1); doc.line(tableX, y+1, tableX+tableW, y+1); y+=4;
+    y+=13;
+    doc.setDrawColor(...LINE); doc.setLineWidth(1); doc.line(tableX, y+1.5, tableX+tableW, y+1.5); y+=6;
 
     // team rows
     rows.forEach((t,ri)=>{
@@ -179,8 +179,10 @@
           const txt = zero ? "0" : field ? String(v) : (c.real.realized>0?"+":"-")+v;
           doc.setFont("helvetica","bold"); doc.setTextColor(...(zero?MUTED:field?ACCENT_TEXT:c.real.realized>0?[47,127,80]:RED)); doc.text(txt, x+wkW-3.5, y+rowH/2+4.6, {align:"right"}); doc.setFont("helvetica","normal"); }
       });
-      doc.setDrawColor(...(T&&t===T?ACCENT:LINE)); doc.setLineWidth(T&&t===T?1.2:0.4); doc.line(tableX, y+rowH, tableX+tableW, y+rowH);
-      y+=rowH;
+      // the rooting team's row gets a little air below its outlined cells before the thick accent line
+      const extra = T&&t===T ? 3 : 0;
+      doc.setDrawColor(...(T&&t===T?ACCENT:LINE)); doc.setLineWidth(T&&t===T?1.2:0.4); doc.line(tableX, y+rowH+extra/2, tableX+tableW, y+rowH+extra/2);
+      y+=rowH+extra;
     });
 
     // sidebar
@@ -202,6 +204,33 @@
     r.games.filter(g=>g.clear&&!g.involvesMe).sort((a,b)=>b.levN-a.levN).slice(0,6).forEach(g=>{
       para(`Wk ${g.week}: ${short(g.away)} at ${short(g.home)} - ${field?`changes the field ${(g.swing*100).toFixed(1)}% of the time`:`pull for ${short(g.swing>0?g.home:g.away)}`}`, 6.6, NAVY);
     });
+
+    // projected bracket, played through to the title: each game goes to the SP+ favourite, first round at the higher seed
+    if(typeof projectField==="function" && H-M-30-sy > 150){
+      const PF=projectField(r); const S=n=>PF[n-1];
+      if(PF.length>=12){
+        const nrm=z=>{ const t=1/(1+0.2316419*Math.abs(z)); const d=0.3989422804014327*Math.exp(-z*z/2);
+          const q=d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429)))); return z>0?1-q:q; };
+        const rt=n=>D.teams[idx.get(n)].rating, {hfa,sdMargin}=D.config;
+        const play=(a,b,hostB)=>{ const pB=nrm((rt(b.team)-rt(a.team)+(hostB?hfa:0))/sdMargin); return pB>=0.5?{w:b,p:pB}:{w:a,p:1-pB}; };
+        const nm=t=>`#${t.seed} ${short(t.team)}`;
+        const line=(txt,color,bold)=>{ doc.setFont("helvetica",bold?"bold":"normal"); doc.setFontSize(6.2); doc.setTextColor(...color); doc.text(clean(txt), sx, sy); sy+=7.6; };
+        const head=t=>{ sy+=1.5; line(t, MUTED, true); };
+        const gm=(a,b,hostB)=>{ const {w,p}=play(a,b,hostB); const mine=T&&(a.team===T||b.team===T);
+          line(`${nm(a)} ${hostB?"at":"vs"} ${nm(b)}  >  ${short(w.team)} ${Math.round(p*100)}%`, mine?ACCENT_TEXT:NAVY, mine); return w; };
+        sy+=6; para("PROJECTED BRACKET", 6.6, MUTED, true);
+        head("First round, at the higher seed");
+        const w5=gm(S(12),S(5),true), w8=gm(S(9),S(8),true), w6=gm(S(11),S(6),true), w7=gm(S(10),S(7),true);
+        head("Quarterfinals (#1-#4 on byes)");
+        const q1=gm(w8,S(1)), q4=gm(w5,S(4)), q3=gm(w6,S(3)), q2=gm(w7,S(2));
+        head("Semifinals");
+        const f1=gm(q4,q1), f2=gm(q3,q2);
+        head("National championship");
+        const champ=gm(f2,f1);
+        sy+=1; line(`Projected champion: ${champ.team}`, NAVY, true);
+        sy+=2; para("The most likely field: each Power Four's likeliest champion, the strongest Group of Six champion, seven at-larges by playoff chance; seeded by average seed when in. Each game goes to the SP+ favourite, with its chance to win.", 5.6, MUTED);
+      }
+    }
     // footer
     doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.line(M, H-M-14, W-M, H-M-14);
     doc.setFont("helvetica","normal"); doc.setFontSize(6); doc.setTextColor(...MUTED);
