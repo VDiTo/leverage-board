@@ -41,6 +41,7 @@
   .explain strong{color:var(--ink);font-weight:600}
   .explain p{margin:0 0 8px} .explain p:last-child{margin-bottom:0}
   h2{display:flex;align-items:center;gap:9px}
+  .h2-right{margin-left:auto;font-size:13px;padding:5px 10px;font-weight:600;white-space:nowrap}
   .info{width:20px;height:20px;border-radius:50%;padding:0;background:transparent;color:var(--gold);border:1.5px solid var(--gold);
     font:italic 600 12px/1 Georgia,serif;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
   .info[aria-expanded=true]{background:var(--gold);color:#10233a}
@@ -354,7 +355,7 @@
   </section>
 
   <section class="tab" id="tab-slate" hidden>
-    <h2><span id="slateTitle">This week</span></h2>
+    <h2><span id="slateTitle">This week</span><button id="pdfWeek" class="ghost h2-right" title="One page: the ten highest-leverage games of this week">Top 10 PDF</button></h2>
     <div class="explain" id="slateExplain"></div>
     <div class="controls">
       <select id="slateWeek" aria-label="Week"></select>
@@ -362,7 +363,6 @@
       <div class="seg" id="slateSort"><button data-v="lev" aria-pressed="true">Leverage score</button><button data-v="time" aria-pressed="false">Kickoff</button></div>
       <label class="chk"><input type="checkbox" id="slateRanked"> Ranked teams only</label>
       <label class="chk"><span id="slateMinText">Min leverage</span> <select id="slateMin" aria-label="Minimum leverage score"><option value="0">0</option><option value="5">5</option><option value="10" selected>10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option></select></label>
-      <button id="pdfWeek" class="ghost" title="One page: the ten highest-leverage games of this week">Top 10 PDF</button>
     </div>
     <div id="slate"></div>
   </section>
@@ -908,7 +908,7 @@ document.querySelectorAll(".explain").forEach(el=>{
   const b=document.createElement("button"); b.type="button"; b.className="info"; b.textContent="i";
   b.setAttribute("aria-label","What is this?"); b.setAttribute("aria-expanded","false");
   b.onclick=()=>{ const open=el.classList.toggle("open"); b.setAttribute("aria-expanded",String(open)); };
-  hd.appendChild(b);
+  hd.insertBefore(b, hd.querySelector(".h2-right"));   // the "i" sits by the title, ahead of any right-hand button
 });
 
 // tabs
@@ -1221,10 +1221,7 @@ function renderSlate(r){
   const liveShift = T ? liveWk.reduce((a,g)=>a+(g.pHomeWin-g.pSp)*(g.pH-g.pA),0)*100 : 0;
   const signed=v=>`<b class="${v>0.005?"good":v<-0.005?"bad":""}" style="text-transform:none">${fmtPts(v)} pts</b>`;
   const toPlay=upWk.length-liveWk.length;
-  const strip = (playedWk.length||liveWk.length) ? `<div class="slate-div pulse" title="${T?"Net change to "+T+"'s playoff chance from this week's results so far; the live figure follows the in-game win chances":"This week's results so far"}">Week ${UI.slateWeek} so far${
-      playedWk.length ? ` · ${T?signed(net)+" from":""} ${playedWk.length} final${playedWk.length>1?"s":""}` : ""}${
-      liveWk.length ? ` · <span class="dot on"></span>${T?signed(liveShift)+" live in":""} ${liveWk.length} in progress` : ""}${
-      toPlay ? ` · ${toPlay} still to play` : ""}</div>` : "";
+  const strip = (playedWk.length||liveWk.length) ? `<div class="slate-div pulse" title="${T?"Net change to "+T+"'s playoff chance from this week's results so far; the live figure follows the in-game win chances":"This week's results so far"}">Week ${UI.slateWeek} so far${T&&playedWk.length?` · ${signed(net)}`:""} · ${playedWk.length} of ${playedWk.length+upWk.length} final${liveWk.length?` · <span class="dot on"></span>${liveWk.length} live${T?" "+signed(liveShift):""}`:""}</div>` : "";
 
   if(playedView){
     $("#slateExplain").innerHTML = !T ? `<p>Games already played this week, ranked by how much each result reshaped the playoff field, weighed by how unexpected it was.</p>`
