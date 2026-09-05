@@ -344,7 +344,7 @@
         if(boxed) cx+=6;
       };
       team(g.away,false); doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(...MUTED); doc.text("  at  ", cx, y+21); cx+=doc.getTextWidth("  at  "); team(g.home,true);
-      if(g.spreadText){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...MUTED); doc.text(clean(`   ${g.spreadText}${g.overUnder?" | O/U "+g.overUnder:""}`), cx+4, y+21); }
+      if(g.spreadText){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...MUTED); doc.text(clean(`   ${g.spreadText}`), cx+4, y+21); }
       doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...NAVY);
       const line3 = field ? `Changes who makes the field in ${(g.swing*100).toFixed(1)}% of simulated seasons`
         : `A ${want} win happens ${fmtWin(pWant)}% of the time and is worth ${impact<0.95?impact.toFixed(2):impact.toFixed(1)} pts of playoff odds (${T} ${((wantHome?g.pH:g.pA)*100).toFixed(1)}% vs ${((wantHome?g.pA:g.pH)*100).toFixed(1)}%)`;

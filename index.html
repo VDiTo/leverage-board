@@ -128,6 +128,10 @@
   .g-dev b{color:var(--gold)}
   .g-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--muted)}
   .chip b.sc{font-weight:700;margin-left:1px}
+  .sb{display:flex;flex-direction:column;gap:3px;margin-top:4px}
+  .sb-row{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600}
+  .chip.sbchip{display:inline-flex;justify-content:space-between;align-items:center;gap:12px;min-width:172px}
+  .sb .shift{font-size:13px;font-weight:600;color:var(--muted)}
   .g-top .lev{color:var(--ink);font-weight:600;white-space:nowrap}
   .g-top .lev b{color:var(--gold);font-size:15px}
   .g-match{font-size:16px;font-weight:600;margin-top:4px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
@@ -1164,7 +1168,7 @@ function renderBoard(r){
 // One card renderer for both the weekly slate and the season list
 function card(g, showWeek){
   const wantHome=g.swing>0, want=wantHome?g.home:g.away;
-  const line=g.spreadText ? `<b>${g.spreadText}</b>${g.overUnder?` · O/U ${g.overUnder}`:""}` : `<b>No line</b>`;
+  const line=g.spreadText ? `<b>${g.spreadText}</b>` : `<b>No line</b>`;
   // SP+ vs market: flag games where the two disagree by 10+ points of win probability
   let dev="";
   if(g.pLine!=null && Math.abs(g.pSp-g.pLine)>=0.10){
@@ -1173,15 +1177,22 @@ function card(g, showWeek){
     dev=`<div class="g-dev">SP+ and the market disagree: SP+ has <b>${short(spFav)}</b> at ${Math.round(spP*100)}%, the line says ${Math.round(mkP*100)}%</div>`;
   }
   const when = g.live ? `<span class="livetag">LIVE</span> ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period+" "+g.live.clock:"starting"}` : fmtKick(g);
+  const lineTop = g.live && g.spreadText ? ` · ${g.spreadText}` : "";
   const liveScore = team => g.live ? ` <b class="num sc">${team===g.home?g.live.hs:g.live.as}</b>` : "";
   const impact=Math.abs(g.swing)*100;
   // the team you're pulling for is boxed; each team carries its win chance
   // live games show the shift from the pregame chance to the in-game chance
-  const chip=(team,win)=>{ const boxed = !T ? false : g.involvesMe ? team===T : (g.clear && team===want);
+  const roles=(team,win)=>{ const boxed = !T ? false : g.involvesMe ? team===T : (g.clear && team===want);
     const pre = g.live ? (team===g.home ? g.pSp : 1-g.pSp) : null;
     const pctTxt = g.live ? `${fmtWin(pre)}% → <b class="${win>pre+0.005?"good":win<pre-0.005?"bad":""}">${fmtWin(win)}%</b>` : `${fmtWin(win)}%`;
     // the rooting-interest team carries its win chance in a green pill; the other team's is implied
     const pillFor = boxed || (!T && !g.clear ? false : (!boxed && !g.clear && !g.involvesMe && team===(g.pHomeWin>=0.5?g.home:g.away)));
+    return {boxed, pillFor, pctTxt}; };
+  // live games read like a scoreboard: one row per team with its score, the rooting team boxed, its win-chance shift beside it
+  const liveBoard = !g.live ? "" : (()=>{ const row=(team,win)=>{ const {boxed,pillFor,pctTxt}=roles(team,win);
+      return `<div class="sb-row"><span class="chip sbchip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)}<b class="num sc">${team===g.home?g.live.hs:g.live.as}</b></span>${pillFor?`<span class="shift num">${pctTxt}</span>`:""}</div>`; };
+    return `<div class="sb">${row(g.away,1-g.pHomeWin)}${row(g.home,g.pHomeWin)}</div>`; })();
+  const chip=(team,win)=>{ const {boxed,pillFor,pctTxt}=roles(team,win);
     if(pillFor){
       const mix=Math.round(8+Math.pow(win,0.7)*82);
       return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)}${liveScore(team)} <span class="winpill num" style="background:color-mix(in srgb, var(--for) ${mix}%, transparent);${mix>=65?"color:#fff":""}">${pctTxt}</span></span>`;
@@ -1193,8 +1204,8 @@ function card(g, showWeek){
   const curWk = RES ? Math.min(...RES.games.map(x=>x.week)) : null;
   const thisWeek = showWeek && g.week===curWk;
   return `<div class="g${own}${dev?" dev":""}${thisWeek?" thisweek":""}">
-    <div class="g-top"><div><span>${thisWeek?`<span class="wktag">This week</span> `:""}${when}${g.tv?` · ${g.tv}`:""}</span><div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>${showWeek ? `<div class="wkrow" title="Week ${g.week}" aria-label="Week ${g.week}">${[...new Set(RES.games.map(x=>x.week))].sort((a,b)=>a-b).map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}" title="Week ${w}">${w}</span>`).join("")}<small class="sub" style="margin-left:6px">wk ${g.week}</small></div>` : ""}</div><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
-    <div class="g-line">${line}${!T && g.clear ? ` · <span class="num">changes the field in ${pct(g.swing)}% of seasons</span>${g.fieldTop&&g.fieldTop.length?` · mostly ${g.fieldTop.slice(0,2).map(t=>short(t.team)).join(", ")}`:""}` : ""}</div>${dev}
+    <div class="g-top"><div><span>${thisWeek?`<span class="wktag">This week</span> `:""}${when}${g.tv?` · ${g.tv}`:""}${lineTop}</span>${g.live ? liveBoard : `<div class="g-match">${chip(g.away,1-g.pHomeWin)} <em>at</em> ${chip(g.home,g.pHomeWin)}</div>`}${showWeek ? `<div class="wkrow" title="Week ${g.week}" aria-label="Week ${g.week}">${[...new Set(RES.games.map(x=>x.week))].sort((a,b)=>a-b).map(w=>`<span class="${w===g.week?"on":""}${w===curWk?" now":""}" title="Week ${w}">${w}</span>`).join("")}<small class="sub" style="margin-left:6px">wk ${g.week}</small></div>` : ""}</div><span class="lev why" data-game="${g.i}" role="button" title="Why?"><span>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span><small>Impact ${scorePill(g.lev>0?g.impN:null, g.sure)}</small>${g.clear?(g.sure?"":`<small>estimate ±${(2*g.se*100).toFixed(2)} pts</small>`):`<small>${noise}</small>`}</span></div>
+    ${g.live?"":`<div class="g-line">${line}${!T && g.clear ? ` · <span class="num">changes the field in ${pct(g.swing)}% of seasons</span>${g.fieldTop&&g.fieldTop.length?` · mostly ${g.fieldTop.slice(0,2).map(t=>short(t.team)).join(", ")}`:""}` : ""}</div>`}${dev}
   </div>`;
 }
 
