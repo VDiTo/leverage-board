@@ -888,7 +888,7 @@ function openTeam(name){
   const rk=[tm.apRank?`AP #${tm.apRank}`:null, tm.cfpRank?`CFP #${tm.cfpRank}`:null].filter(Boolean).join(" · ");
   $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
     <h2>${name}</h2>
-    <div class="kv"><span>${tm.conference}</span>${rk?`<span>${rk}</span>`:""}${st?`<span>Proj. <b class="num">${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}</b></span><span>Playoff <b class="num">${Math.round(st.pIn*100)}%</b></span>`:""}</div>
+    <div class="kv"><span>${tm.conference}</span>${rk?`<span>${rk}</span>`:""}${st?`<span>Proj. <b class="num">${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}</b></span><span>Playoff <b class="num">${Math.round(st.pIn*100)}%</b></span><span>Title <b class="num">${st.pTitle>=0.005?Math.round(st.pTitle*100)+"%":st.pTitle>0?"<1%":"0%"}</b></span>`:""}</div>
     ${spHtml}
     <h3>Schedule <span class="sub" style="font-weight:400">· leverage is for ${T||"the whole field"}; tap a score for the why</span></h3>
     <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
