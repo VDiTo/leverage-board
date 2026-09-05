@@ -247,7 +247,7 @@
         { const h=PAD*2+LH; card(h); const mine=T&&(f1.team===T||f2.team===T);
           doc.setFont("helvetica","bold"); doc.setFontSize(FS); doc.setTextColor(...(mine?ACCENT_TEXT:NAVY));
           doc.text(clean(`#${f2.seed} ${short(f2.team)} vs #${f1.seed} ${short(f1.team)}`), sx+4, sy+PAD+LH-1.5);
-          doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.6); doc.setTextColor(...MUTED); doc.text(clean(`${short(fin.w.team)} ${Math.round(fin.p*100)}%`), sx+sw-3, sy+PAD+LH-1.5, {align:"right"}); sy+=h+2; }
+          doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.6); doc.setTextColor(...MUTED); doc.text(clean(`${short(fin.w.team)} ${Math.round(fin.p*100)}%`), sx+sw-3, sy+PAD+LH-1.5, {align:"right"}); sy+=h+9; }
         para("Each game to the SP+ favourite; first round at the higher seed.", 5.4, MUTED);
       }
     }
