@@ -177,7 +177,9 @@
   .slate-div.pulse{margin-top:6px} .slate-div.pulse .dot{margin:0 4px 0 2px}
   .slate-div.live{color:var(--against)} .slate-div.live::after{background:color-mix(in srgb, var(--against) 45%, var(--line))}
   .g.thisweek{border-left:3px solid var(--gold);padding-left:10px}
-  .wkrow{display:flex;gap:4px;margin:4px 0 0;flex-wrap:wrap;align-items:center;height:18px}
+  .wkrow{display:flex;gap:4px;margin:4px 0 0;flex-wrap:nowrap;align-items:center;min-height:14px;white-space:nowrap}
+  .g-top>div:first-child{min-width:0}
+  @media (max-width:480px){ .wkrow{gap:2.5px} .wkrow span{width:8px;height:8px} .wkrow span.on{width:10px;height:10px} .wkrow small{font-size:10px} }
   .wkrow span{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--muted);box-sizing:border-box;font-size:0;color:transparent;opacity:.6}
   .wkrow span.now{opacity:1;border-color:var(--gold)}
   .wkrow span.on{background:var(--gold);border-color:var(--gold);opacity:1;width:13px;height:13px}
