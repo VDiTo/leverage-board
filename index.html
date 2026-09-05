@@ -192,7 +192,7 @@
   .g-verdict.mine strong{color:var(--gold)}
   .g-verdict.flat{color:var(--muted)}
   .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 6px}
-  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden} .seg[hidden]{display:none}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden} .seg[hidden]{display:none!important}
   .seg button{background:var(--panel2);color:var(--muted);border:0;border-radius:0;padding:6px 11px;font-size:13px;font-weight:500}
   .seg button[aria-pressed=true]{background:var(--gold);color:#10233a;font-weight:650}
   details.quiet{margin-top:12px;color:var(--muted);font-size:13px}
@@ -1289,8 +1289,8 @@ function renderSeason(r){
   const playedView = UI.seasonView==="played";
   $("#seasonSort").hidden = playedView;
   $("#seasonMinText").textContent = playedView ? "Min impact" : "Min leverage";
-  if(playedView){ renderPlayed(r); return; }
   document.querySelectorAll("#seasonSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.seasonSort)));
+  if(playedView){ renderPlayed(r); return; }
   $("#seasonExplain").innerHTML = !T ? `<p>Every remaining game, ranked by how much it shapes the playoff field: how often flipping the result changes who gets in, discounted by how unlikely the swing is.</p>` : `<p>Every remaining game <strong>not involving ${T}</strong>, ranked by how much it matters to ${T}. Your own games are left out because they obviously dwarf everything else; they're on the Top 25 board and the weekly slate. <strong>Impact</strong> is the swing in playoff odds between the two outcomes; <strong>leverage</strong> discounts that by how unlikely the swing is to happen. Both are scaled 0–100 against the biggest of these games, and darker gold means a higher score.</p>`;
   const all=r.games.filter(g=>g.clear&&!g.involvesMe);
   const kept=all.filter(g=>g.levN>=UI.seasonMin);
