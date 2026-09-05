@@ -145,7 +145,9 @@
       if(done && T){ const net=playedBy.get(w).reduce((a,g)=>a+g.realized,0)*100, mag=Math.abs(net);
         doc.setFont("helvetica","bold"); doc.setFontSize(6.4); doc.setTextColor(...(net>0.005?[47,127,80]:net<-0.005?RED:MUTED));
         doc.text((net>0.005?"+":net<-0.005?"-":"")+(mag<0.95?mag.toFixed(2):mag.toFixed(1)), cx, y+7, {align:"center"}); return; }
-      let L = done ? playedBy.get(w).map(g=>g.clear?g.impN:0) : byWeek.get(w);
+      if(done){ const tot=playedBy.get(w).reduce((a,g)=>a+Math.abs(g.realized),0), ref=Math.max(1e-6,...r.games.filter(g=>g.clear).map(g=>Math.abs(g.swing)));
+        small(cx, y+5.5, Math.min(100,tot/ref*100)); return; }
+      const L=byWeek.get(w);
       if(L&&L.length){ small(cx-7.5, y+5.5, Math.max(...L)); small(cx+7.5, y+5.5, L.reduce((a,b)=>a+b,0)/L.length); } });
     y+=13;
     doc.setDrawColor(...LINE); doc.setLineWidth(1); doc.line(tableX, y+1.5, tableX+tableW, y+1.5); y+=6;

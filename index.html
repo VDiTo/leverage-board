@@ -1277,7 +1277,7 @@ function renderBlockers(r){
 function sumTip(){
   return T
     ? `Two numbers per week, side by side: the highest leverage score of any game that week, then the average across every game that week. ${T}'s own games are left out. Once every game in a week has been played, the cell shows instead the net change to ${T}'s playoff chance from that week's results, in percentage points: each result's move from where the odds stood at kickoff, added up. Green is up, red is down.`
-    : `Two numbers per week, side by side: the highest leverage score of any game that week, then the average across every game that week. Once every game in a week has been played, the cell shows the highest and average impact of those results on the playoff field instead.`;
+    : `Two numbers per week, side by side: the highest leverage score of any game that week, then the average across every game that week. Once every game in a week has been played, the cell shows one number instead: how much that week's results, taken together, reshaped the playoff field, on the same 0–100 impact scale, where 100 is the biggest game still to come.`;
 }
 function openSumInfo(){
   $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button><h2>Impact/Leverage row</h2><div class="plain"><p>${sumTip()}</p></div>`;
@@ -1346,7 +1346,9 @@ function renderBoard(r){
           if(T){ const net=Pw.reduce((a,g)=>a+g.realized,0)*100, mag=Math.abs(net);
             const cls=net>0.005?"good":net<-0.005?"bad":"zero";
             return `<td class="c"><b class="net num ${cls}" title="Net change to ${T}'s playoff chance from week ${w}'s results">${net>0.005?"+":net<-0.005?"−":""}${mag<0.95?mag.toFixed(2):mag.toFixed(1)}</b></td>`; }
-          const v=Pw.map(g=>g.clear?g.impN:0); return `<td class="c">${pair(Math.max(...v), v.reduce((a,b)=>a+b,0)/v.length)}</td>`; }
+          // no team: the week's results combined, on the same 0-100 impact scale (100 = the biggest game still to come)
+          const tot=Pw.reduce((a,g)=>a+Math.abs(g.realized),0), ref=Math.max(1e-6,...r.games.filter(g=>g.clear).map(g=>Math.abs(g.swing)));
+          return `<td class="c">${scorePill(Math.min(100,tot/ref*100),true)}</td>`; }
         const L=byWeek.get(w); if(!L||!L.length) return `<td class="r sub">—</td>`;
         return `<td class="c">${pair(Math.max(...L), L.reduce((a,b)=>a+b,0)/L.length)}</td>`; };
       return `<tr class="sum"><td class="k"><span class="sumlab" role="button" title="${sumTip().replace(/"/g,"&quot;")}">Impact/Leverage <i>i</i></span></td><td class="sub" style="font-size:11px;white-space:normal;line-height:1.1">all games</td>${weeks.map(cell).join("")}</tr>`;
