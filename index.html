@@ -276,7 +276,12 @@
   .legend{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center;margin:0 0 8px;font-size:12.5px;color:var(--muted)}
   .legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
   .foot{margin-top:30px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:12px}
-  @media (max-width:560px){ .odds{font-size:54px} h1{font-size:21px} .g-match{font-size:15px} }
+  @media (max-width:560px){ .odds{font-size:54px} h1{font-size:21px} .g-match{font-size:15px}
+    /* phones: controls in a tidy two-column grid; the week-so-far strip wraps like a sentence */
+    .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
+    .controls .seg{display:flex} .controls .seg button{flex:1;padding:7px 3px;text-align:center;font-size:12px;white-space:nowrap}
+    .controls label.chk select{flex:1;min-width:0} .controls button.ghost{width:100%}
+    .slate-div.pulse{display:block;line-height:1.55;letter-spacing:.03em} .slate-div.pulse::after{content:none} }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
