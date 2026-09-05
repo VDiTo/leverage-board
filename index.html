@@ -128,12 +128,13 @@
   .g-dev b{color:var(--gold)}
   .g-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--muted)}
   .chip b.sc{font-weight:700;margin-left:1px}
-  .sb{display:flex;flex-direction:column;gap:3px;margin-top:4px}
-  .sb-row{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600}
-  .chip.sbchip{display:inline-flex;justify-content:space-between;align-items:center;gap:10px;width:min(165px,66%);box-sizing:border-box}
-  .chip.sbchip .nm{white-space:nowrap} .chip.sbchip b.sc{min-width:1.4em;text-align:right}
-  .sb .shift{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
-  @media (max-width:480px){ .sb-row{font-size:15px;gap:8px} .sb .shift{font-size:12px} }
+  /* live scoreboard: a two-column grid, so both team boxes share the width of the widest name and the scores line up */
+  .sb{display:grid;grid-template-columns:minmax(0,max-content) max-content;gap:3px 10px;align-items:center;margin-top:4px;font-size:16px;font-weight:600}
+  .sb-row{display:contents}
+  .chip.sbchip{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0;box-sizing:border-box}
+  .chip.sbchip .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .chip.sbchip b.sc{min-width:1.4em;text-align:right}
+  .sb .shift{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:center;gap:5px} .sb .shift em{font-style:normal}
+  @media (max-width:480px){ .sb{font-size:15px;column-gap:8px} .sb .shift{font-size:12px} }
   .g-top .lev{color:var(--ink);font-weight:600;white-space:nowrap}
   .g-top .lev b{color:var(--gold);font-size:15px}
   .g-match{font-size:16px;font-weight:600;margin-top:4px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
@@ -411,7 +412,7 @@ const rankOf = team => { const t=D.teams[idx.get(team)]; if(!t) return null; ret
 const isRanked = team => { const t=D.teams[idx.get(team)]; return !!(t && (t.apRank||t.cfpRank)); };
 const isFcs = team => !!(D.teams[idx.get(team)]||{}).fcs;
 const tn = (team, label) => `<span class="tn" data-team="${team.replace(/"/g,"&quot;")}">${label??team}</span>`;
-const badge = team => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${tn(team)}` : (isFcs(team) ? `${tn(team)} <span class="rk" style="color:var(--muted)">FCS</span>` : tn(team)); };
+const badge = (team, label) => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${tn(team,label)}` : (isFcs(team) ? `${tn(team,label)} <span class="rk" style="color:var(--muted)">FCS</span>` : tn(team,label)); };
 const fmtKick = g => {
   if(!g.start) return "";
   const d=new Date(g.start); if(isNaN(d)) return "";
@@ -1191,8 +1192,10 @@ function card(g, showWeek){
     const pillFor = boxed || (!T && !g.clear ? false : (!boxed && !g.clear && !g.involvesMe && team===(g.pHomeWin>=0.5?g.home:g.away)));
     return {boxed, pillFor, pctTxt}; };
   // live games read like a scoreboard: one row per team with its score, the rooting team boxed, its win-chance shift beside it
-  const liveBoard = !g.live ? "" : (()=>{ const row=(team,win)=>{ const {boxed,pillFor,pctTxt}=roles(team,win);
-      return `<div class="sb-row"><span class="chip sbchip${boxed?(g.involvesMe?" mine":" want"):""}"><span class="nm">${badge(team)}</span><b class="num sc">${team===g.home?g.live.hs:g.live.as}</b></span>${pillFor?`<span class="shift num">${pctTxt}</span>`:""}</div>`; };
+  // win chances on the scoreboard are ramped pills: where the team stood at kickoff, then where it stands now
+  const wp=v=>{ const mix=Math.round(8+Math.pow(v,0.7)*82); return `<span class="winpill num" style="background:color-mix(in srgb, var(--for) ${mix}%, transparent);${mix>=65?"color:#fff":""}">${fmtWin(v)}%</span>`; };
+  const liveBoard = !g.live ? "" : (()=>{ const row=(team,win)=>{ const {boxed,pillFor}=roles(team,win); const pre = team===g.home ? g.pSp : 1-g.pSp;
+      return `<div class="sb-row"><span class="chip sbchip${boxed?(g.involvesMe?" mine":" want"):""}"><span class="nm">${badge(team, innerWidth<=480 ? short(team) : undefined)}</span><b class="num sc">${team===g.home?g.live.hs:g.live.as}</b></span>${pillFor?`<span class="shift num">${wp(pre)} <em>→</em> ${wp(win)}</span>`:`<span></span>`}</div>`; };
     return `<div class="sb">${row(g.away,1-g.pHomeWin)}${row(g.home,g.pHomeWin)}</div>`; })();
   const chip=(team,win)=>{ const {boxed,pillFor,pctTxt}=roles(team,win);
     if(pillFor){
