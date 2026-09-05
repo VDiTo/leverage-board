@@ -172,6 +172,7 @@
   .g-odds .want span{color:var(--ink)}
   .slate-div{display:flex;align-items:center;gap:10px;margin:18px 0 4px;font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
   .slate-div::after{content:"";flex:1;height:2px;background:var(--line)}
+  .slate-div.pulse{margin-top:6px} .slate-div.pulse .dot{margin:0 4px 0 2px}
   .slate-div.live{color:var(--against)} .slate-div.live::after{background:color-mix(in srgb, var(--against) 45%, var(--line))}
   .g.thisweek{border-left:3px solid var(--gold);padding-left:10px}
   .wkrow{display:flex;gap:4px;margin:4px 0 0;flex-wrap:wrap;align-items:center;height:18px}
@@ -1428,6 +1429,17 @@ function renderSlate(r){
   const playedWk=(r.played||[]).filter(g=>g.week===UI.slateWeek);
   const upWk=r.games.filter(g=>g.week===UI.slateWeek);
   const fmtPts=v=>{ const m=Math.abs(v); return (v>0.005?"+":v<-0.005?"−":"")+(m<0.95?m.toFixed(2):m.toFixed(1)); };
+  // the week so far, shown above both views: net effect of the finals, the live effect of games in progress
+  // (how far the in-game win chances have moved the odds from the kickoff baseline), and what's still to play
+  const liveWk=upWk.filter(g=>g.live);
+  const net = T ? playedWk.reduce((a,g)=>a+g.realized,0)*100 : 0;
+  const liveShift = T ? liveWk.reduce((a,g)=>a+(g.pHomeWin-g.pSp)*(g.pH-g.pA),0)*100 : 0;
+  const signed=v=>`<b class="${v>0.005?"good":v<-0.005?"bad":""}" style="text-transform:none">${fmtPts(v)} pts</b>`;
+  const toPlay=upWk.length-liveWk.length;
+  const strip = (playedWk.length||liveWk.length) ? `<div class="slate-div pulse" title="${T?"Net change to "+T+"'s playoff chance from this week's results so far; the live figure follows the in-game win chances":"This week's results so far"}">Week ${UI.slateWeek} so far${
+      playedWk.length ? ` · ${T?signed(net)+" from":""} ${playedWk.length} final${playedWk.length>1?"s":""}` : ""}${
+      liveWk.length ? ` · <span class="dot on"></span>${T?signed(liveShift)+" live in":""} ${liveWk.length} in progress` : ""}${
+      toPlay ? ` · ${toPlay} still to play` : ""}</div>` : "";
 
   if(playedView){
     $("#slateExplain").innerHTML = !T ? `<p>Games already played this week, ranked by how much each result reshaped the playoff field, weighed by how unexpected it was.</p>`
@@ -1437,9 +1449,7 @@ function renderSlate(r){
     const hidden=list.filter(g=>!g.involvesMe && !(g.clear && g.impN>=UI.slateMin)).length;
     list=list.filter(g=>g.involvesMe || (g.clear && g.impN>=UI.slateMin));
     const mine=list.filter(g=>g.involvesMe), rest=list.filter(g=>!g.involvesMe).sort((a,b)=>Math.abs(b.realized)-Math.abs(a.realized));
-    const net=T ? playedWk.reduce((a,g)=>a+g.realized,0)*100 : 0;
-    const head = playedWk.length ? `<div class="slate-div">${playedWk.length} final${playedWk.length>1?"s":""}${T?` · net <b class="${net>0.005?"good":net<-0.005?"bad":""}" style="text-transform:none">${fmtPts(net)} pts</b> for ${short(T)}`:""}${upWk.length?` · ${upWk.length} still to play`:""}</div>` : "";
-    $("#slate").innerHTML = (playedWk.length ? head + mine.concat(rest).map(cardPlayed).join("") : `<div class="sub" style="padding:10px 0">No games played yet this week.</div>`)
+    $("#slate").innerHTML = (playedWk.length ? strip + mine.concat(rest).map(cardPlayed).join("") : `<div class="sub" style="padding:10px 0">No games played yet this week.</div>`)
       + (hidden ? `<div class="sub" style="padding:10px 0">${hidden} game${hidden>1?"s":""} ${UI.slateMin>0?"below impact "+UI.slateMin:"with no measurable effect"} hidden.</div>` : "");
     return;
   }
@@ -1461,7 +1471,7 @@ function renderSlate(r){
   const restHtml = rest.length ? ((liveNow.length||mine.length) ? div(restLabel) : "") + rest.map(g=>card(g,false)).join("") : "";
   const html = mine.map(g=>card(g,false)).join("") + liveHtml + restHtml;
   const finalsNote = playedWk.length ? `<div class="sub" style="padding:12px 0">${playedWk.length} game${playedWk.length>1?"s":""} already played this week: <a href="#" class="tolink" data-view="played">see the results</a>.</div>` : "";
-  $("#slate").innerHTML = (html || `<div class="sub" style="padding:10px 0">${upWk.length?"No games match.":"No games left to play this week."}</div>`) + (hidden ? `<div class="sub" style="padding:10px 0">${hidden} game${hidden>1?"s":""} below leverage ${UI.slateMin} hidden.</div>` : "") + finalsNote;
+  $("#slate").innerHTML = strip + (html || `<div class="sub" style="padding:10px 0">${upWk.length?"No games match.":"No games left to play this week."}</div>`) + (hidden ? `<div class="sub" style="padding:10px 0">${hidden} game${hidden>1?"s":""} below leverage ${UI.slateMin} hidden.</div>` : "") + finalsNote;
 }
 
 // A finished game on the Played list: the score, and what the result did to the selected team's odds
