@@ -1037,6 +1037,7 @@ function projectField(r){
 // Line chart: the current top 20 by playoff chance, and where each stood after every completed week.
 // drawChart renders into any container (the Overview card or the full-screen sheet) with hover/tap tooltips.
 let CHART_METRIC="odds";   // "odds" = playoff chance by week, "sp" = SP+ rating by edition
+const curRatingsHash=()=>{ let h=5381; const str=D.teams.filter(t=>!t.fcs).map(t=>t.team+":"+t.rating).join("|"); for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0; return h.toString(36); };
 function chartData(r, metric){
   const st=r.teamStats.filter(t=>!t.fcs).slice().sort((a,b)=>b.pIn-a.pIn);
   const top=st.slice(0,20);
@@ -1045,11 +1046,15 @@ function chartData(r, metric){
     const eds=(hist&&hist.sp)||[];
     const pts=eds.map(e=>({label:e.label, val:Object.fromEntries(Object.entries(e.ratings).map(([t,v])=>[t,v[0]])), rank:Object.fromEntries(Object.entries(e.ratings).map(([t,v])=>[t,v[1]]))}));
     // the live data file may carry an edition not yet recorded
-    const curHash=(()=>{ let h=5381; const str=D.teams.filter(t=>!t.fcs).map(t=>t.team+":"+t.rating).join("|"); for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0; return h.toString(36); })();
-    if(!eds.length || eds[eds.length-1].hash!==curHash) pts.push({label:"Now", now:true, val:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,+(+t.rating).toFixed(1)])), rank:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,t.sp&&t.sp.rank||null]))});
+    if(!eds.length || eds[eds.length-1].hash!==curRatingsHash()) pts.push({label:"Now", now:true, val:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,+(+t.rating).toFixed(1)])), rank:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,t.sp&&t.sp.rank||null]))});
     return {top, pts, metric};
   }
-  const pts=[...((hist&&hist.points)||[]).map(p=>({label:p.label, val:p.pIn})), {label:"Now", val:Object.fromEntries(st.map(t=>[t.team,t.pIn])), now:true}];
+  const pts=((hist&&hist.points)||[]).map(p=>({label:p.label, val:p.pIn}));
+  // "Now" only once something has moved since the last recorded week: newer results, a game in progress, or a new SP+ edition
+  const last=hist&&hist.points&&hist.points[hist.points.length-1];
+  const lastWeek = last ? (last.key==="pre" ? -1 : last.week) : -1;
+  const moved = !last || (r.played||[]).some(g=>g.week>lastWeek) || r.games.some(g=>g.live) || (last.ratingsHash && last.ratingsHash!==curRatingsHash());
+  if(moved) pts.push({label:"Now", val:Object.fromEntries(st.map(t=>[t.team,t.pIn])), now:true});
   return {top, pts, metric:"odds"};
 }
 function chartColor(team){
@@ -1103,7 +1108,7 @@ function drawChart(el, r, big){
 }
 function renderHistory(r){
   const el=$("#hist"); if(!el) return;
-  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each earlier point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons, and "Now" is this run. <strong>SP+ rating</strong> shows each team's rating in every SP+ update of the season, which is what drives the model.${T?` <strong>${T}</strong> is drawn heavier.`:""} Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
+  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. <strong>SP+ rating</strong> shows each team's rating in every SP+ update of the season, which is what drives the model.${T?` <strong>${T}</strong> is drawn heavier.`:""} Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
   drawChart(el, r, false);
   if(chartData(r, CHART_METRIC).pts.length<2) el.insertAdjacentHTML("afterbegin", `<div class="sub" style="padding:6px 0">The chart fills in as weeks are completed: the daily refresh records every team's chance after each week.</div>`);
 }
