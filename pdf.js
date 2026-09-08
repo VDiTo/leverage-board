@@ -77,7 +77,7 @@
     let ordered, splitAt=-1;
     if(UI.boardSort==="pIn") ordered=[...ranked,...unranked].sort(byPIn);
     else { ordered=[...ranked.sort(byRank), ...unranked.sort(byPIn)]; splitAt=ranked.length; }
-    const rows=[...(T?[T]:[]), ...ordered.map(t=>t.team)].slice(0, 30);
+    const rows=[...(T?[T]:[]), ...ordered.map(t=>t.team)].slice(0, 40);   // same rows as the site, up to a page's worth
     const rowSet=new Set(rows);
     const weeks=[...new Set(D.games.filter(g=>rowSet.has(g.home)||rowSet.has(g.away)).map(g=>g.week))].sort((a,b)=>a-b);
     const lev=new Map(); r.games.forEach(g=>lev.set(g.i, g.clear?Math.sign(g.swing)*g.levN:0));
@@ -126,6 +126,7 @@
     const teamW=70, pfW=28, wkW=(tableW-teamW-pfW)/weeks.length;
     let y=M+30;
     const rowH=Math.min(17, (H-M-y-40)/(rows.length+2.6));
+    const f=Math.min(1, rowH/14);   // long boards: rows and type shrink together
     // header row
     doc.setFontSize(6.2); doc.setTextColor(...MUTED); doc.setFont("helvetica","bold");
     doc.text("Team", tableX+2, y+7); doc.text("Playoff", tableX+teamW+pfW/2, y+7, {align:"center"});
@@ -156,14 +157,14 @@
       if(ri===unrankedStart){ doc.setFont("helvetica","bold"); doc.setFontSize(5.6); doc.setTextColor(...MUTED); doc.text(clean(`UNRANKED | PLAYOFF CHANCE >= ${Math.round(UI.boardMin*100)}%`), tableX+2, y+6); y+=8; }
       const s=stat.get(t), m=byTeam.get(t)||new Map(), tm=D.teams[idx.get(t)];
       const rk=useCfp()?tm.cfpRank:tm.apRank;
-      doc.setFont("helvetica","bold"); doc.setFontSize(6.8); doc.setTextColor(...(t===T?ACCENT_TEXT:NAVY));
+      doc.setFont("helvetica","bold"); doc.setFontSize(6.8*f); doc.setTextColor(...(t===T?ACCENT_TEXT:NAVY));
       doc.text(clean((rk?`#${rk} `:"")+short(t)), tableX+2, y+rowH/2+2.4);
       // playoff pill
       const mixP=mixCurve(s.pIn/maxPIn); doc.setFillColor(...mixW(GREEN,mixP)); doc.roundedRect(tableX+teamW+2, y+rowH/2-5, pfW-4, 10, 2, 2, "F");
-      doc.setFontSize(6.2); doc.setTextColor(...pillText(mixW(GREEN,mixP))); doc.text(`${Math.round(s.pIn*100)}%`, tableX+teamW+pfW/2, y+rowH/2+2, {align:"center"});
+      doc.setFontSize(6.2*f); doc.setTextColor(...pillText(mixW(GREEN,mixP))); doc.text(`${Math.round(s.pIn*100)}%`, tableX+teamW+pfW/2, y+rowH/2+2, {align:"center"});
       weeks.forEach((w,i)=>{
         const c=m.get(w); const x=tableX+teamW+pfW+wkW*i+1;
-        if(!c){ doc.setFont("helvetica","normal"); doc.setFontSize(5.4); doc.setTextColor(160,168,180); doc.text("bye", x+3, y+rowH/2+2); return; }
+        if(!c){ doc.setFont("helvetica","normal"); doc.setFontSize(5.4*f); doc.setTextColor(160,168,180); doc.text("bye", x+3, y+rowH/2+2); return; }
         let fill=null, border=null;
         if(T && t===T){ const a=Math.min(1,Math.abs(c.sw)/100); if(!c.result && a>=0.005) fill=mixW(GREEN,mixCurve(a)); border=ACCENT; }
         else if(c.mine){ border=ACCENT; }
@@ -172,15 +173,15 @@
         if(border){ doc.setDrawColor(...border); doc.setLineWidth(0.8); doc.roundedRect(x, y+1, wkW-2, rowH-2, 2, 2, "S"); }
         // on a strong fill the text goes white; on a light tint it stays navy
         const onDark = !!fill && contrast(fill,WHITE)>=2;
-        doc.setFont("helvetica","normal"); doc.setFontSize(5.6); doc.setTextColor(...(onDark?WHITE:NAVY));
+        doc.setFont("helvetica","normal"); doc.setFontSize(5.6*f); doc.setTextColor(...(onDark?WHITE:NAVY));
         const name=(c.isHome?"":"@")+cellName(c.opp);
-        doc.text(fitText(doc, clean(name), wkW-5), x+2.5, y+rowH/2-0.8);
-        doc.setFontSize(5); doc.setTextColor(...(c.result?(c.result.won?[47,127,80]:RED):onDark?[236,241,246]:MUTED));
-        doc.text(c.result?c.result.text:`${Math.round(c.pWin*100)}%`, x+2.5, y+rowH/2+4.6);
+        doc.text(fitText(doc, clean(name), wkW-5), x+2.5, y+rowH/2-0.8*f);
+        doc.setFontSize(5*f); doc.setTextColor(...(c.result?(c.result.won?[47,127,80]:RED):onDark?[236,241,246]:MUTED));
+        doc.text(c.result?c.result.text:`${Math.round(c.pWin*100)}%`, x+2.5, y+rowH/2+4.6*f);
         // a finished game's impact score, signed by whether the result helped the rooting team
         if(c.result && c.real){ const v=Math.round(c.real.impN); const zero = v===0 || !c.real.clear;
           const txt = zero ? "0" : field ? String(v) : (c.real.realized>0?"+":"-")+v;
-          doc.setFont("helvetica","bold"); doc.setTextColor(...(zero?MUTED:field?ACCENT_TEXT:c.real.realized>0?[47,127,80]:RED)); doc.text(txt, x+wkW-3.5, y+rowH/2+4.6, {align:"right"}); doc.setFont("helvetica","normal"); }
+          doc.setFont("helvetica","bold"); doc.setTextColor(...(zero?MUTED:field?ACCENT_TEXT:c.real.realized>0?[47,127,80]:RED)); doc.text(txt, x+wkW-3.5, y+rowH/2+4.6*f, {align:"right"}); doc.setFont("helvetica","normal"); }
       });
       // the rooting team's row gets a little air below its outlined cells before the thick accent line
       const extra = T&&t===T ? 3 : 0;
