@@ -261,6 +261,7 @@
   .hist-wrap.big{padding:12px 8px 6px}
   .hist-tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;line-height:1.35;color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap;z-index:2}
   .hist-expand{position:absolute;top:8px;right:10px;font-size:12px;padding:4px 9px}
+  .hist-seg{margin:0 0 6px 4px} .hist-seg button{font-size:12px;padding:4px 9px}
   .sheet.wide{max-width:min(96vw,1400px);width:96vw;max-height:94vh} .sheet.wide svg.hist{max-height:70vh}
   svg.hist{width:100%;height:auto;display:block;font-family:inherit}
   svg.hist .gl{stroke:var(--line);stroke-width:1} svg.hist .ax{fill:var(--muted);font-size:12px} svg.hist .ax.now{fill:var(--gold);font-weight:700}
@@ -268,6 +269,10 @@
   svg.hist .tl circle{fill:currentColor;opacity:.9}
   svg.hist .tl.me path{stroke-width:3.2;opacity:1} svg.hist .tl.hl path{stroke-width:3.4;opacity:1} svg.hist .tl.dim{opacity:.18}
   .hist-legend{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:8px}
+  .sp-trend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 4px;margin:4px 0 10px}
+  .sp-ed{display:inline-flex;flex-direction:column;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:4px 9px;line-height:1.2;min-width:58px}
+  .sp-ed small{color:var(--muted);font-size:10.5px} .sp-ed b{font-size:15px} .sp-ed em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)} .sp-ed em.good{color:var(--for)} .sp-ed em.bad{color:var(--against)}
+  .sp-arrow{color:var(--muted)}
   .hl-btn{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:12px;font-weight:500}
   .hl-btn i{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block} .hl-btn b{color:var(--muted);font-weight:600}
   .hl-btn.on{border-color:var(--gold);background:color-mix(in srgb, var(--gold) 18%, transparent)} .hl-btn.me{font-weight:700}
@@ -901,7 +906,13 @@ function openTeam(name){
   const st=RES ? RES.teamStats.find(x=>x.team===name) : null;
   const sp=tm.sp;
   const unitRow=(lab,u)=> u && u.rating!=null ? `<tr><td>${lab}</td><td class="r2 num">${(+u.rating).toFixed(1)}</td><td class="r2 num sub">${u.rank?"#"+u.rank:""}</td></tr>` : "";
-  const spHtml = sp ? `<h3>SP+ by unit${sp.prior?' <span class="sub">(last season, until this year\'s are published)</span>':""}</h3>
+  const eds=(HIST&&HIST.season===D.season&&HIST.sp)||[];
+  const trend = eds.length>1 ? (()=>{ const rows=eds.map(e=>({label:e.label, v:e.ratings[name]})).filter(x=>x.v);
+      if(rows.length<2) return "";
+      const cells=rows.map((x,i)=>{ const prev=i?rows[i-1].v:null; const d=prev?x.v[0]-prev[0]:0; const cls=d>0.05?"good":d<-0.05?"bad":"";
+        return `<span class="sp-ed"><small>${x.label}</small><b class="num">${x.v[0].toFixed(1)}</b>${x.v[1]?`<small class="num">#${x.v[1]}</small>`:""}${prev?`<em class="num ${cls}">${d>0?"+":""}${d.toFixed(1)}</em>`:""}</span>`; }).join('<span class="sp-arrow">→</span>');
+      return `<h3>SP+ by week</h3><div class="sp-trend">${cells}</div>`; })() : "";
+  const spHtml = sp ? trend + `<h3>SP+ by unit${sp.prior?' <span class="sub">(last season, until this year\'s are published)</span>':""}</h3>
       <table><tr><th></th><th class="c">Rating</th><th class="c">Rank</th></tr>
       ${unitRow("Overall",{rating:sp.rating,rank:sp.rank})}${unitRow("Offense",sp.offense)}${unitRow("Defense",sp.defense)}${unitRow("Special teams",sp.specialTeams)}</table>`
     : `<h3>SP+</h3><div class="sub">Overall rating ${tm.rating}. The unit breakdown arrives with the next data refresh.</div>`;
@@ -1025,11 +1036,21 @@ function projectField(r){
 }
 // Line chart: the current top 20 by playoff chance, and where each stood after every completed week.
 // drawChart renders into any container (the Overview card or the full-screen sheet) with hover/tap tooltips.
-function chartData(r){
+let CHART_METRIC="odds";   // "odds" = playoff chance by week, "sp" = SP+ rating by edition
+function chartData(r, metric){
   const st=r.teamStats.filter(t=>!t.fcs).slice().sort((a,b)=>b.pIn-a.pIn);
   const top=st.slice(0,20);
-  const pts=[...((HIST&&HIST.season===D.season&&HIST.points)||[]).map(p=>({label:p.label, pIn:p.pIn})), {label:"Now", pIn:Object.fromEntries(st.map(t=>[t.team,t.pIn])), now:true}];
-  return {top, pts};
+  const hist = HIST&&HIST.season===D.season ? HIST : null;
+  if(metric==="sp"){
+    const eds=(hist&&hist.sp)||[];
+    const pts=eds.map(e=>({label:e.label, val:Object.fromEntries(Object.entries(e.ratings).map(([t,v])=>[t,v[0]])), rank:Object.fromEntries(Object.entries(e.ratings).map(([t,v])=>[t,v[1]]))}));
+    // the live data file may carry an edition not yet recorded
+    const curHash=(()=>{ let h=5381; const str=D.teams.filter(t=>!t.fcs).map(t=>t.team+":"+t.rating).join("|"); for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0; return h.toString(36); })();
+    if(!eds.length || eds[eds.length-1].hash!==curHash) pts.push({label:"Now", now:true, val:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,+(+t.rating).toFixed(1)])), rank:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,t.sp&&t.sp.rank||null]))});
+    return {top, pts, metric};
+  }
+  const pts=[...((hist&&hist.points)||[]).map(p=>({label:p.label, val:p.pIn})), {label:"Now", val:Object.fromEntries(st.map(t=>[t.team,t.pIn])), now:true}];
+  return {top, pts, metric:"odds"};
 }
 function chartColor(team){
   const tm=D.teams[idx.get(team)]; const c=hexRgb(tm&&tm.color); if(!c) return "var(--gold)";
@@ -1039,17 +1060,24 @@ function chartColor(team){
   let x2=c; for(let i=0;i<5 && contrast(x2,ground)<2.2;i++) x2=mixRgb(x2, light?[0,0,0]:[255,255,255], 0.25); return css(x2);
 }
 function drawChart(el, r, big){
-  const {top, pts}=chartData(r);
+  const metric=CHART_METRIC, {top, pts}=chartData(r, metric);
   const W=big?1100:760, H=big?540:340, L=big?54:44, R=big?24:16, TOP=big?18:14, B=big?40:34, iw=W-L-R, ih=H-TOP-B, fs=big?15:12;
-  const x=i=>L+(pts.length>1? i*iw/(pts.length-1) : iw/2), y=p=>TOP+ih*(1-p);
-  const grid=[0,0.25,0.5,0.75,1].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="gl"/><text x="${L-6}" y="${y(v)+4}" class="ax" font-size="${fs}" text-anchor="end">${Math.round(v*100)}%</text>`).join("");
+  // y scale: 0-100% for odds; for SP+ a padded range around the top 20's ratings, on round numbers
+  let lo=0, hi=1, ticks=[0,0.25,0.5,0.75,1], fmtY=v=>Math.round(v*100)+"%";
+  if(metric==="sp"){ const vals=top.flatMap(t=>pts.map(p=>p.val[t.team]).filter(v=>v!=null)); const mn=Math.min(...vals), mx=Math.max(...vals);
+    lo=Math.floor((mn-2)/5)*5; hi=Math.ceil((mx+2)/5)*5; if(hi-lo<10){ hi=lo+10; } ticks=[]; for(let v=lo; v<=hi+1e-9; v+=5) ticks.push(v); fmtY=v=>String(v); }
+  const x=i=>L+(pts.length>1? i*iw/(pts.length-1) : iw/2), y=p=>TOP+ih*(1-(p-lo)/(hi-lo));
+  const grid=ticks.map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="gl"/><text x="${L-6}" y="${y(v)+4}" class="ax" font-size="${fs}" text-anchor="end">${fmtY(v)}</text>`).join("");
   const xa=pts.map((p,i)=>`<text x="${x(i)}" y="${H-B+fs+6}" class="ax${p.now?" now":""}" font-size="${fs}" text-anchor="${i===0?"start":i===pts.length-1?"end":"middle"}">${p.label}</text>`).join("");
-  const series=top.map(t=>({team:t.team, col:chartColor(t.team), d:pts.map((p,i)=>{ const v=p.pIn[t.team]; return v==null?null:{x:x(i),y:y(v),v,i}; })}));
+  const series=top.map(t=>({team:t.team, col:chartColor(t.team), d:pts.map((p,i)=>{ const v=p.val[t.team]; return v==null?null:{x:x(i),y:y(v),v,i,rank:p.rank?p.rank[t.team]:null}; })}));
   const lines=series.map(sr=>{ let path="", open=false; sr.d.forEach(pt=>{ if(!pt){ open=false; return; } path+=(open?"L":"M")+pt.x.toFixed(1)+" "+pt.y.toFixed(1); open=true; });
     const dots=sr.d.map(pt=>pt?`<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="${big?3.4:2.6}"/>`:"").join("");
     return `<g class="tl${sr.team===T?" me":""}" data-team="${sr.team.replace(/"/g,"&quot;")}" style="color:${sr.col}"><path d="${path}" style="stroke-width:${big?2.2:1.6}"/>${dots}</g>`; }).join("");
-  const legend=top.map((t,k)=>`<button type="button" class="hl-btn${t.team===T?" me":""}" data-team="${t.team.replace(/"/g,"&quot;")}" style="--c:${chartColor(t.team)}"><i></i>${k+1}. ${short(t.team)} <b class="num">${Math.round(t.pIn*100)}%</b></button>`).join("");
-  el.innerHTML=`<div class="hist-wrap${big?" big":""}"><svg viewBox="0 0 ${W} ${H}" class="hist" role="img" aria-label="Playoff chance by week for the top 20 teams">${grid}${xa}${lines}</svg><div class="hist-tip" hidden></div>${big?"":`<button type="button" class="ghost hist-expand" title="Full screen">⤢ Expand</button>`}</div><div class="hist-legend">${legend}</div>`;
+  const legend=top.map((t,k)=>{ const last=pts[pts.length-1].val[t.team]; const lbl=metric==="sp"?(last==null?"":last.toFixed(1)):Math.round(t.pIn*100)+"%";
+    return `<button type="button" class="hl-btn${t.team===T?" me":""}" data-team="${t.team.replace(/"/g,"&quot;")}" style="--c:${chartColor(t.team)}"><i></i>${k+1}. ${short(t.team)} <b class="num">${lbl}</b></button>`; }).join("");
+  const seg=`<div class="seg hist-seg"><button type="button" data-m="odds" aria-pressed="${metric==="odds"}">Playoff odds</button><button type="button" data-m="sp" aria-pressed="${metric==="sp"}">SP+ rating</button></div>`;
+  el.innerHTML=`<div class="hist-wrap${big?" big":""}">${seg}<svg viewBox="0 0 ${W} ${H}" class="hist" role="img" aria-label="${metric==="sp"?"SP+ rating by week":"Playoff chance by week"} for the top 20 teams">${grid}${xa}${lines}</svg><div class="hist-tip" hidden></div>${big?"":`<button type="button" class="ghost hist-expand" title="Full screen">⤢ Expand</button>`}</div><div class="hist-legend">${legend}</div>`;
+  el.querySelectorAll(".hist-seg button").forEach(b=>b.onclick=()=>{ CHART_METRIC=b.dataset.m; drawChart(el, r, big); });
   const svg=el.querySelector("svg.hist"), tip=el.querySelector(".hist-tip"), wrap=el.querySelector(".hist-wrap");
   const setHl=team=>{ el.querySelectorAll(".tl").forEach(g=>{ g.classList.remove("hl","dim"); if(team) g.classList.add(g.dataset.team===team?"hl":"dim"); }); };
   let pinned=null;
@@ -1065,7 +1093,7 @@ function drawChart(el, r, big){
   const show=e=>{ const n=nearest(e.clientX,e.clientY); if(!n){ tip.hidden=true; setHl(pinned); return; }
     const {rc,k,ox,oy}=geo(), wr=wrap.getBoundingClientRect();
     const px=rc.left-wr.left+ox+n.pt.x*k, py=rc.top-wr.top+oy+n.pt.y*k;
-    tip.innerHTML=`<b style="color:${n.sr.col}">${n.sr.team}</b><br>${pts[n.pt.i].label}: <b class="num">${(n.pt.v*100).toFixed(1)}%</b>`;
+    tip.innerHTML=`<b style="color:${n.sr.col}">${n.sr.team}</b><br>${pts[n.pt.i].label}: <b class="num">${metric==="sp"?n.pt.v.toFixed(1)+(n.pt.rank?" (#"+n.pt.rank+")":""):(n.pt.v*100).toFixed(1)+"%"}</b>`;
     tip.hidden=false; const tw=tip.offsetWidth, th=tip.offsetHeight;
     tip.style.left=Math.max(4, Math.min(wr.width-tw-4, px-tw/2))+"px"; tip.style.top=Math.max(4, py-th-12)+"px";
     setHl(n.sr.team); };
@@ -1075,9 +1103,9 @@ function drawChart(el, r, big){
 }
 function renderHistory(r){
   const el=$("#hist"); if(!el) return;
-  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now, and where each stood after every completed week. Each earlier point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; "Now" is this run.${T?` <strong>${T}</strong> is drawn heavier.`:""} Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
+  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each earlier point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons, and "Now" is this run. <strong>SP+ rating</strong> shows each team's rating in every SP+ update of the season, which is what drives the model.${T?` <strong>${T}</strong> is drawn heavier.`:""} Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
   drawChart(el, r, false);
-  if(chartData(r).pts.length<2) el.insertAdjacentHTML("afterbegin", `<div class="sub" style="padding:6px 0">The chart fills in as weeks are completed: the daily refresh records every team's chance after each week.</div>`);
+  if(chartData(r, CHART_METRIC).pts.length<2) el.insertAdjacentHTML("afterbegin", `<div class="sub" style="padding:6px 0">The chart fills in as weeks are completed: the daily refresh records every team's chance after each week.</div>`);
 }
 // full-screen chart in the modal sheet
 function openChart(r){

@@ -1,7 +1,8 @@
-// Records every FBS team's playoff chance after each completed week into history.json, so the site can chart the
-// season. Runs after the data refresh. Each point is the field-mode simulation (no rooting team) with every game from
-// later weeks treated as unplayed, so a point means "what the model said once that week was in the books".
-// Points already recorded are kept as they were; the preseason point is computed once with no results at all.
+// Records the season's history into history.json after each data refresh:
+//  - points: every FBS team's playoff chance after each completed week (field-mode simulation with later results
+//    masked, so a point is "what the model said once that week was in the books"). Past points are kept as they were;
+//    the latest week's point is recomputed if SP+ has been updated since it was recorded.
+//  - sp: every distinct SP+ edition (rating and rank per team), keyed to the latest completed week at the time.
 // Env: N=25000 (seasons per point), FORCE=1 recomputes every point.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -33,19 +34,43 @@ const win = g => { const d = new Date(g.start); const back = (d.getUTCDay() + 5)
   if (wins.length > 1) wk1.forEach(g => { if (win(g) === wins[0]) g.week = 0; }); }
 const weeks = [...new Set(D.games.map(g => g.week))].sort((x, y) => x - y);
 const complete = weeks.filter(w => D.games.filter(g => g.week === w).every(g => g.completed));
+const latestKey = complete.length ? "w" + complete[complete.length - 1] : "pre";
+const labelOf = key => key === "pre" ? "Preseason" : "Wk " + key.slice(1);
+
+// the SP+ edition in this data file
+const fbs = D.teams.filter(t => !t.fcs);
+const hashOf = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
+const ratingsHash = hashOf(fbs.map(t => t.team + ":" + t.rating).join("|"));
+const ratings = Object.fromEntries(fbs.map(t => [t.team, [+(+t.rating).toFixed(1), t.sp && t.sp.rank || null]]));
 
 let H = existsSync(OUT) && !FORCE ? JSON.parse(readFileSync(OUT, "utf8")) : null;
-if (!H || H.season !== D.season) H = { season: D.season, N, points: [] };
-const have = new Set(H.points.map(p => p.key));
+if (!H || H.season !== D.season) H = { season: D.season, N, points: [], sp: [] };
+H.sp = H.sp || [];
+
+// --- playoff-chance points ---
+const have = new Map(H.points.map(p => [p.key, p]));
 const t0 = Date.now();
-if (!have.has("pre")) { H.points.push({ key: "pre", label: "Preseason", asOf: D.updatedAt, pIn: await point(null) }); console.log("preseason point", ((Date.now() - t0) / 1000).toFixed(1) + "s"); }
+if (!have.has("pre")) { H.points.push({ key: "pre", label: "Preseason", asOf: D.updatedAt, ratingsHash, pIn: await point(null) }); console.log("preseason point", ((Date.now() - t0) / 1000).toFixed(1) + "s"); }
 for (const w of complete) {
-  const key = "w" + w; if (have.has(key)) continue;
+  const key = "w" + w, old = have.get(key);
+  // keep past weeks as recorded; refresh the latest week if SP+ moved since it was taken
+  if (old && !(key === latestKey && old.ratingsHash !== ratingsHash)) continue;
   const t1 = Date.now();
-  H.points.push({ key, week: w, label: "Wk " + w, asOf: D.updatedAt, pIn: await point(w) });
-  console.log(key, ((Date.now() - t1) / 1000).toFixed(1) + "s");
+  const p = { key, week: w, label: labelOf(key), asOf: D.updatedAt, ratingsHash, pIn: await point(w) };
+  if (old) H.points[H.points.indexOf(old)] = p; else H.points.push(p);
+  console.log((old ? "recomputed " : "") + key, ((Date.now() - t1) / 1000).toFixed(1) + "s");
 }
 H.points.sort((p, q) => (p.key === "pre" ? -1 : p.week) - (q.key === "pre" ? -1 : q.week));
+
+// --- SP+ editions ---
+const lastEd = H.sp[H.sp.length - 1];
+if (!lastEd || lastEd.hash !== ratingsHash) {
+  const ed = { key: latestKey, label: labelOf(latestKey), asOf: D.updatedAt, hash: ratingsHash, ratings };
+  const i = H.sp.findIndex(e => e.key === latestKey);
+  if (i >= 0) H.sp[i] = ed; else H.sp.push(ed);          // a second update inside the same week replaces the first
+  console.log("SP+ edition recorded as " + latestKey);
+}
+
 H.updatedAt = new Date().toISOString();
 writeFileSync(OUT, JSON.stringify(H));
-console.log(`history.json: ${H.points.map(p => p.key).join(", ")} (${N.toLocaleString()} seasons each)`);
+console.log(`history.json: points ${H.points.map(p => p.key).join(", ")} | SP+ editions ${H.sp.map(e => e.key).join(", ")} (${N.toLocaleString()} seasons per point)`);
