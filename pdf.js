@@ -203,6 +203,19 @@
     sy+=4; para("WHAT THE SHADING MEANS", 6.6, MUTED, true);
     para(field ? "Darker means the game does more to decide who makes the 12-team field: how often flipping its result changes the twelve teams that get in, weighed against how likely that swing is."
                : `Darker means the game matters more to ${T}: how much the result would move ${short(T)}'s playoff odds, weighed against how likely that swing is. A game can matter because the loser drops behind you in the rankings, because a conference title and its automatic bid change hands, or because a team on your schedule ends up with a better or worse record.`, 6.6, NAVY);
+    // SP+ week to week: the rooting team's rating, rank and movement by edition; for the field, the week's biggest movers
+    { const eds=(typeof HIST!=="undefined"&&HIST&&HIST.season===D.season&&HIST.sp)||[];
+      if(eds.length>1){
+        if(!field){ const rows=eds.map(e=>({label:e.label, v:e.ratings[T]})).filter(x=>x.v);
+          if(rows.length>1){ sy+=4; para(`${short(T).toUpperCase()} SP+ BY WEEK`, 6.6, MUTED, true);
+            para(rows.map((x,i)=>{ const d=i?x.v[0]-rows[i-1].v[0]:null; return `${x.label} ${x.v[0].toFixed(1)}${x.v[1]?" (#"+x.v[1]+")":""}${d!=null?` ${d>=0?"+":""}${d.toFixed(1)}`:""}`; }).join("  >  "), 6.6, NAVY); } }
+        else { const last=eds[eds.length-1], prev=eds[eds.length-2];
+          const moves=Object.keys(last.ratings).filter(t=>prev.ratings[t]).map(t=>({t, d:last.ratings[t][0]-prev.ratings[t][0]})).sort((p,q)=>q.d-p.d);
+          const fmt=m=>`${short(m.t)} ${m.d>=0?"+":""}${m.d.toFixed(1)}`;
+          sy+=4; para(`SP+ MOVERS, ${last.label.toUpperCase()}`, 6.6, MUTED, true);
+          para("Up: "+moves.slice(0,4).map(fmt).join(", "), 6.6, NAVY);
+          para("Down: "+moves.slice(-4).reverse().map(fmt).join(", "), 6.6, NAVY); }
+      } }
     sy+=4; para(field?"GAMES THAT SHAPE THE FIELD MOST":`BIGGEST GAMES NOT INVOLVING ${short(T).toUpperCase()}`, 6.6, MUTED, true);
     r.games.filter(g=>g.clear&&!g.involvesMe).sort((a,b)=>b.levN-a.levN).slice(0,5).forEach(g=>{
       para(`Wk ${g.week}: ${short(g.away)} at ${short(g.home)} - ${field?`changes the field ${(g.swing*100).toFixed(1)}% of the time`:`pull for ${short(g.swing>0?g.home:g.away)}`}`, 6.6, NAVY);
