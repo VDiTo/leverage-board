@@ -257,6 +257,15 @@
   .cell small.real{font-weight:700;font-size:11px;opacity:1} .cell small.real.good{color:var(--for)} .cell small.real.bad{color:var(--against)} .cell small.real.field{color:var(--gold)} .cell small.real.soft{opacity:.55} .cell small.real.zero{color:var(--muted);font-weight:600}
   .chip.against{border-color:var(--against)}
   .plain .big.bad{color:var(--against)}
+  /* ---- last week's movers ---- */
+  .movers{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;align-items:start}
+  @media (max-width:640px){ .movers{grid-template-columns:1fr} }
+  .movers h3{margin:0 0 4px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .movers h3.up{color:var(--for)} .movers h3.down{color:var(--against)}
+  .movers table{width:100%} .movers td.k{min-width:0}
+  .movers td.ch{width:82px} .movers .ch .ramp{font-size:13px}
+  .movers .ba{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap} .movers .ba b{color:var(--ink);font-weight:600}
+  .movers .mine{grid-column:1/-1;margin-top:8px;font-size:13px;color:var(--muted)} .movers .mine b{color:var(--ink);font-weight:600}
   .hist-wrap{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 6px 4px}
   .hist-wrap.big{padding:12px 8px 6px}
   .hist-tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;line-height:1.35;color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap;z-index:2}
@@ -370,6 +379,9 @@
         <div class="scroll"><table id="blockers"></table></div>
       </div>
     </div>
+    <h2><span id="moversTitle">Biggest winners and losers last week</span></h2>
+    <div class="explain" id="moversExplain"></div>
+    <div id="movers"></div>
     <h2>Playoff odds by week</h2>
     <div class="explain" id="histExplain"></div>
     <div id="hist"></div>
@@ -500,7 +512,7 @@ $("#teamColors").onchange=()=>{ pref.set("teamColors",$("#teamColors").checked?"
 
 // ---------- load ----------
 let HIST=null;
-fetch("history.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.ok?r.json():null).then(h=>{ HIST=h; if(RES) renderHistory(RES); }).catch(()=>{});
+fetch("history.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.ok?r.json():null).then(h=>{ HIST=h; if(RES){ renderMovers(RES); renderHistory(RES); } }).catch(()=>{});
 fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   D = d; build();
   const pollBits=[];
@@ -1006,7 +1018,7 @@ function render(){
   $("#sChamp").textContent=pct(r.pChamp)+"%"; $("#sChamp").nextElementSibling.textContent="chance of an auto-bid";
   }
 
-  renderBracket(r); renderHistory(r);
+  renderBracket(r); renderMovers(r); renderHistory(r);
   renderBlockers(r);
   renderBoard(r);
   renderSlate(r);
@@ -1111,6 +1123,34 @@ function renderHistory(r){
   $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. <strong>SP+ rating</strong> shows each team's rating in every SP+ update of the season, which is what drives the model.${T?` <strong>${T}</strong> is drawn heavier.`:""} Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
   drawChart(el, r, false);
   if(chartData(r, CHART_METRIC).pts.length<2) el.insertAdjacentHTML("afterbegin", `<div class="sub" style="padding:6px 0">The chart fills in as weeks are completed: the daily refresh records every team's chance after each week.</div>`);
+}
+// Last week's biggest movers: every team's playoff chance after the latest recorded week against the week before,
+// straight from history.json, so the figures are the model's own answers at the time rather than a re-simulation.
+function renderMovers(r){
+  const el=$("#movers"); if(!el) return;
+  const pts=(HIST&&HIST.season===D.season&&HIST.points)||[];
+  const last=pts[pts.length-1], prev=pts[pts.length-2];
+  if(!last||!prev){
+    $("#moversTitle").textContent="Biggest winners and losers last week";
+    $("#moversExplain").innerHTML=`<p>Once two weeks are recorded, this lists the teams whose playoff chance rose and fell the most over the latest completed week.</p>`;
+    el.innerHTML=`<div class="sub" style="padding:6px 0">Nothing to compare yet: the daily refresh records every team's chance after each completed week.</div>`;
+    return;
+  }
+  const conf=new Map(r.teamStats.map(t=>[t.team,t.conf]));
+  const all=Object.keys(last.pIn).filter(t=>prev.pIn[t]!=null && conf.has(t)).map(t=>({team:t, before:prev.pIn[t], after:last.pIn[t], d:last.pIn[t]-prev.pIn[t]}));
+  const up=all.filter(x=>x.d>=0.005).sort((a,b)=>b.d-a.d).slice(0,8);
+  const down=all.filter(x=>x.d<=-0.005).sort((a,b)=>a.d-b.d).slice(0,8);
+  const wk = last.key==="pre" ? "the preseason" : last.label.replace("Wk ","week ");
+  $("#moversTitle").textContent=`Biggest winners and losers, ${last.label}`;
+  $("#moversExplain").innerHTML=`<p>Where each team's playoff chance stood after <strong>${last.label}</strong> against where it stood after <strong>${prev.label}</strong>, as the model recorded them at the time on ${(HIST.N||r.N).toLocaleString()} simulated seasons each. A move folds in every result from ${wk}, not just the team's own game, plus any SP+ update that landed with them. Change is in percentage points.</p>`;
+  const fmt=v=>{ const m=Math.abs(v)*100; return (v>0?"+":"−")+(m<9.95?m.toFixed(1):Math.round(m)); };
+  const table=(list,color,max)=>list.length ? `<div class="scroll"><table>${list.map(x=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub">${conf.get(x.team)}</td>
+      <td class="ba num">${pct(x.before)}% → <b>${pct(x.after)}%</b></td>
+      <td class="ch"><span class="ramp num" style="${ramp(Math.abs(x.d),color,max)}">${fmt(x.d)}</span></td></tr>`; }).join("")}</table></div>`
+    : `<div class="sub" style="padding:6px 0">No team moved by half a point or more.</div>`;
+  const mine = T && !up.concat(down).some(x=>x.team===T) && last.pIn[T]!=null && prev.pIn[T]!=null
+    ? `<div class="mine"><b>${T}</b>: ${pct(prev.pIn[T])}% after ${prev.label} → <b>${pct(last.pIn[T])}%</b> after ${last.label} (<b class="${last.pIn[T]-prev.pIn[T]>=0.0005?"good":last.pIn[T]-prev.pIn[T]<=-0.0005?"bad":""}">${fmt(last.pIn[T]-prev.pIn[T])}</b>)</div>` : "";
+  el.innerHTML=`<div class="movers"><div><h3 class="up">Winners</h3>${table(up,"var(--for)",Math.max(0.01,...up.map(x=>x.d)))}</div><div><h3 class="down">Losers</h3>${table(down,"var(--against)",Math.max(0.01,...down.map(x=>-x.d)))}</div>${mine}</div>`;
 }
 // full-screen chart in the modal sheet
 function openChart(r){
