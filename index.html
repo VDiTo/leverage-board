@@ -282,8 +282,9 @@
   svg.hist .tl circle{fill:currentColor;opacity:.9}
   svg.hist .tl.me path{stroke-width:3.2;opacity:1} svg.hist .tl.hl path{stroke-width:3.4;opacity:1} svg.hist .tl.dim{opacity:.18}
   .hist-legend{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:8px}
-  .sp-trend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 4px;margin:4px 0 10px}
-  .sp-ed{display:inline-flex;flex-direction:column;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:4px 9px;line-height:1.2;min-width:58px}
+  .sp-trend{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px 4px;margin:4px 0 10px}
+  .sp-ed{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:4px 9px;line-height:1.2;min-width:58px}
+  .sp-ed .ph{visibility:hidden} .sp-trend .sp-arrow{align-self:center}
   .sp-ed small{color:var(--muted);font-size:10.5px} .sp-ed b{font-size:15px} .sp-ed em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)} .sp-ed em.good{color:var(--for)} .sp-ed em.bad{color:var(--against)}
   .sp-arrow{color:var(--muted)}
   .hl-btn{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:12px;font-weight:500}
@@ -923,12 +924,18 @@ function openTeam(name){
   const st=RES ? RES.teamStats.find(x=>x.team===name) : null;
   const sp=tm.sp;
   const unitRow=(lab,u)=> u && u.rating!=null ? `<tr><td>${lab}</td><td class="r2 num">${(+u.rating).toFixed(1)}</td><td class="r2 num sub">${u.rank?"#"+u.rank:""}</td></tr>` : "";
+  // week-by-week card strips: every card has the same rows, so a missing rank or first-card change is a hidden placeholder
+  const strip=(rows, main, sub, delta)=>rows.map((x,i)=>{ const d=i?delta(x, rows[i-1]):null; const cls=d==null?"":d>0.05?"good":d<-0.05?"bad":"";
+      const sb=sub?sub(x):null;
+      return `<span class="sp-ed${x.now?" now":""}"><small>${x.label}</small><b class="num">${main(x)}</b><small class="num${sb?"":" ph"}">${sb||"#"}</small><em class="num ${cls}${d==null?" ph":""}">${d==null?"+0":(d>0?"+":d<0?"−":"")+Math.abs(d).toFixed(1)}</em></span>`; }).join('<span class="sp-arrow">→</span>');
   const eds=(HIST&&HIST.season===D.season&&HIST.sp)||[];
   const trend = eds.length>1 ? (()=>{ const rows=eds.map(e=>({label:e.label, v:e.ratings[name]})).filter(x=>x.v);
       if(rows.length<2) return "";
-      const cells=rows.map((x,i)=>{ const prev=i?rows[i-1].v:null; const d=prev?x.v[0]-prev[0]:0; const cls=d>0.05?"good":d<-0.05?"bad":"";
-        return `<span class="sp-ed"><small>${x.label}</small><b class="num">${x.v[0].toFixed(1)}</b>${x.v[1]?`<small class="num">#${x.v[1]}</small>`:""}${prev?`<em class="num ${cls}">${d>0?"+":""}${d.toFixed(1)}</em>`:""}</span>`; }).join('<span class="sp-arrow">→</span>');
-      return `<h3>SP+ by week</h3><div class="sp-trend">${cells}</div>`; })() : "";
+      return `<h3>SP+ by week</h3><div class="sp-trend">${strip(rows, x=>x.v[0].toFixed(1), x=>x.v[1]?"#"+x.v[1]:null, (x,p)=>x.v[0]-p.v[0])}</div>`; })() : "";
+  // playoff chance after each recorded week, plus "Now" once things have moved on, as on the Overview chart
+  const oddsTrend = RES ? (()=>{ const rows=chartData(RES,"odds").pts.map(p=>({label:p.label, now:p.now, v:p.val[name]})).filter(x=>x.v!=null);
+      if(rows.length<2) return "";
+      return `<h3>Playoff odds by week</h3><div class="sp-trend">${strip(rows, x=>Math.round(x.v*100)+"%", null, (x,p)=>(x.v-p.v)*100)}</div>`; })() : "";
   const spHtml = sp ? trend + `<h3>SP+ by unit${sp.prior?' <span class="sub">(last season, until this year\'s are published)</span>':""}</h3>
       <table><tr><th></th><th class="c">Rating</th><th class="c">Rank</th></tr>
       ${unitRow("Overall",{rating:sp.rating,rank:sp.rank})}${unitRow("Offense",sp.offense)}${unitRow("Defense",sp.defense)}${unitRow("Special teams",sp.specialTeams)}</table>`
@@ -940,20 +947,29 @@ function openTeam(name){
     const lev = !L ? "" : `<span class="whycell" data-game="${i}" role="button" title="Why?">${scorePill(L.lev>0?L.levN:null, L.clear)}</span>`;
     const isHome=g.home===name, opp=isHome?g.away:g.home;
     const p = isHome ? gP[i] : 1-gP[i];
+    let proj="";
+    if(!g.completed){ const h=D.teams[gH[i]], a=D.teams[gA[i]];
+      const margin=rating[gH[i]]-rating[gA[i]]+gHfa[i];                       // home minus away
+      const u=t=>t.sp&&t.sp.offense&&t.sp.defense&&t.sp.offense.rating!=null&&t.sp.defense.rating!=null ? [+t.sp.offense.rating, +t.sp.defense.rating] : null;
+      const uh=u(h), ua=u(a);
+      const total = uh&&ua ? (uh[0]+ua[1])/2+(ua[0]+uh[1])/2 : g.overUnder!=null ? +g.overUnder : 52;
+      const hs=Math.max(0,Math.round((total+margin)/2)), as=Math.max(0,Math.round((total-margin)/2));
+      const mine=isHome?hs:as, theirs=isHome?as:hs;
+      proj=`<span class="num ${mine>theirs?"good":mine<theirs?"bad":""}" style="font-weight:600">${mine}–${theirs}</span>`; }
     let res;
     if(g.completed){ const won=isHome?g.homeWin:!g.homeWin; const mine=isHome?g.homeScore:g.awayScore, theirs=isHome?g.awayScore:g.homeScore;
       res=`<span class="${won?"good":"bad"}">${won?"W":"L"}${mine!=null?` ${mine}-${theirs}`:""}</span>`; }
     else res=`<span class="num">${Math.round(p*100)}%</span>`;
     const when=g.completed?"":fmtKickShort(g);
-    return `<tr><td class="sub num">${g.week}</td><td>${isHome?"":"@"}${badge(opp)}${g.neutral?' <span class="sub">(N)</span>':""}</td><td class="r2">${res}</td><td class="r2">${lev}</td><td class="sub">${when}${g.spreadText&&!g.completed?` · ${g.spreadText}`:""}</td></tr>`;
+    return `<tr><td class="sub num">${g.week}</td><td>${isHome?"":"@"}${badge(opp)}${g.neutral?' <span class="sub">(N)</span>':""}</td><td class="r2">${res}</td><td class="r2">${proj}</td><td class="r2">${lev}</td><td class="sub">${when}${g.spreadText&&!g.completed?` · ${g.spreadText}`:""}</td></tr>`;
   }).join("");
   const rk=[tm.apRank?`AP #${tm.apRank}`:null, tm.cfpRank?`CFP #${tm.cfpRank}`:null].filter(Boolean).join(" · ");
   $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
     <h2>${name}</h2>
     <div class="kv"><span>${tm.conference}</span>${rk?`<span>${rk}</span>`:""}${st?`<span>Proj. <b class="num">${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}</b></span><span>Playoff <b class="num">${Math.round(st.pIn*100)}%</b></span><span>Title <b class="num">${st.pTitle>=0.005?Math.round(st.pTitle*100)+"%":st.pTitle>0?"<1%":"0%"}</b></span>`:""}</div>
-    ${spHtml}
-    <h3>Schedule <span class="sub" style="font-weight:400">· leverage is for ${T||"the whole field"}; tap a score for the why</span></h3>
-    <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
+    ${oddsTrend}${spHtml}
+    <h3>Schedule <span class="sub" style="font-weight:400">· projected score is the model's; leverage is for ${T||"the whole field"}; tap a leverage score for the why</span></h3>
+    <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c" title="The model's expected score: its margin from the SP+ gap and home advantage, around a total from the two teams' SP+ offense and defense">Proj. score</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
 }
 
