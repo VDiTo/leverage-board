@@ -283,7 +283,7 @@
   svg.hist .tl.me path{stroke-width:3.2;opacity:1} svg.hist .tl.hl path{stroke-width:3.4;opacity:1} svg.hist .tl.dim{opacity:.18}
   .hist-legend{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:8px}
   .sp-trend{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px 4px;margin:4px 0 10px}
-  .sp-ed{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:4px 9px;line-height:1.2;min-width:58px}
+  .sp-ed{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:4px 6px;line-height:1.2;flex:0 0 76px;width:76px;box-sizing:border-box}
   .sp-ed .ph{visibility:hidden} .sp-trend .sp-arrow{align-self:center}
   .sp-ed small{color:var(--muted);font-size:10.5px} .sp-ed b{font-size:15px} .sp-ed em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)} .sp-ed em.good{color:var(--for)} .sp-ed em.bad{color:var(--against)}
   .sp-arrow{color:var(--muted)}
@@ -923,7 +923,7 @@ function openTeam(name){
   const tm=D.teams[idx.get(name)]; if(!tm) return;
   const st=RES ? RES.teamStats.find(x=>x.team===name) : null;
   const sp=tm.sp;
-  const unitRow=(lab,u)=> u && u.rating!=null ? `<tr><td>${lab}</td><td class="r2 num">${(+u.rating).toFixed(1)}</td><td class="r2 num sub">${u.rank?"#"+u.rank:""}</td></tr>` : "";
+  const unitRow=(lab,u)=> u && u.rating!=null ? `<tr><td>${lab}</td><td class="num" style="text-align:center">${(+u.rating).toFixed(1)}</td><td class="num sub" style="text-align:center">${u.rank?"#"+u.rank:""}</td></tr>` : "";
   // week-by-week card strips: every card has the same rows, so a missing rank or first-card change is a hidden placeholder
   const strip=(rows, main, sub, delta)=>rows.map((x,i)=>{ const d=i?delta(x, rows[i-1]):null; const cls=d==null?"":d>0.05?"good":d<-0.05?"bad":"";
       const sb=sub?sub(x):null;
@@ -1070,6 +1070,8 @@ function projectField(r){
 // Line chart: the current top 20 by playoff chance, and where each stood after every completed week.
 // drawChart renders into any container (the Overview card or the full-screen sheet) with hover/tap tooltips.
 let CHART_METRIC="odds";   // "odds" = playoff chance by week, "sp" = SP+ rating by edition
+// the recorded playoff-chance points for this season; the week-0 point (a handful of games) is folded into week 1's
+const histPoints=()=>{ const pts=(HIST&&HIST.season===D.season&&HIST.points)||[]; return pts.some(p=>p.week===1) ? pts.filter(p=>p.week!==0) : pts; };
 const curRatingsHash=()=>{ let h=5381; const str=D.teams.filter(t=>!t.fcs).map(t=>t.team+":"+t.rating).join("|"); for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0; return h.toString(36); };
 function chartData(r, metric){
   const st=r.teamStats.filter(t=>!t.fcs).slice().sort((a,b)=>b.pIn-a.pIn);
@@ -1082,9 +1084,9 @@ function chartData(r, metric){
     if(!eds.length || eds[eds.length-1].hash!==curRatingsHash()) pts.push({label:"Now", now:true, val:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,+(+t.rating).toFixed(1)])), rank:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,t.sp&&t.sp.rank||null]))});
     return {top, pts, metric};
   }
-  const pts=((hist&&hist.points)||[]).map(p=>({label:p.label, val:p.pIn}));
+  const rec=histPoints(); const pts=rec.map(p=>({label:p.label, val:p.pIn}));
   // "Now" only once something has moved since the last recorded week: newer results, a game in progress, or a new SP+ edition
-  const last=hist&&hist.points&&hist.points[hist.points.length-1];
+  const last=rec[rec.length-1];
   const lastWeek = last ? (last.key==="pre" ? -1 : last.week) : -1;
   const moved = !last || (r.played||[]).some(g=>g.week>lastWeek) || r.games.some(g=>g.live) || (last.ratingsHash && last.ratingsHash!==curRatingsHash());
   if(moved) pts.push({label:"Now", val:Object.fromEntries(st.map(t=>[t.team,t.pIn])), now:true});
@@ -1141,7 +1143,7 @@ function drawChart(el, r, big){
 }
 function renderHistory(r){
   const el=$("#hist"); if(!el) return;
-  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. <strong>SP+ rating</strong> shows each team's rating in every SP+ update of the season, which is what drives the model.${T?` <strong>${T}</strong> is drawn heavier.`:""} Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
+  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. Week 0's handful of games counts with week 1. <strong>SP+ rating</strong> shows each team's rating in every SP+ update of the season, which is what drives the model.${T?` <strong>${T}</strong> is drawn heavier.`:""} Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
   drawChart(el, r, false);
   if(chartData(r, CHART_METRIC).pts.length<2) el.insertAdjacentHTML("afterbegin", `<div class="sub" style="padding:6px 0">The chart fills in as weeks are completed: the daily refresh records every team's chance after each week.</div>`);
 }
@@ -1149,7 +1151,7 @@ function renderHistory(r){
 // straight from history.json, so the figures are the model's own answers at the time rather than a re-simulation.
 function renderMovers(r){
   const el=$("#movers"); if(!el) return;
-  const pts=(HIST&&HIST.season===D.season&&HIST.points)||[];
+  const pts=histPoints();
   const last=pts[pts.length-1], prev=pts[pts.length-2];
   if(!last||!prev){
     $("#moversTitle").textContent="Biggest winners and losers last week";
@@ -1161,9 +1163,9 @@ function renderMovers(r){
   const all=Object.keys(last.pIn).filter(t=>prev.pIn[t]!=null && conf.has(t)).map(t=>({team:t, before:prev.pIn[t], after:last.pIn[t], d:last.pIn[t]-prev.pIn[t]}));
   const up=all.filter(x=>x.d>=0.005).sort((a,b)=>b.d-a.d).slice(0,8);
   const down=all.filter(x=>x.d<=-0.005).sort((a,b)=>a.d-b.d).slice(0,8);
-  const wk = last.key==="pre" ? "the preseason" : last.label.replace("Wk ","week ");
+  const wk = last.key==="pre" ? "the preseason" : (prev.key==="pre" && last.week===1 ? "the opening weeks" : last.label.replace("Wk ","week "));
   $("#moversTitle").textContent=`Biggest winners and losers, ${last.label}`;
-  $("#moversExplain").innerHTML=`<p>Where each team's playoff chance stood after <strong>${last.label}</strong> against where it stood after <strong>${prev.label}</strong>, as the model recorded them at the time on ${(HIST.N||r.N).toLocaleString()} simulated seasons each. A move folds in every result from ${wk}, not just the team's own game, plus any SP+ update that landed with them. Change is in percentage points. Tap a change for the why: how much came from the results and how much from the SP+ update.</p>`;
+  $("#moversExplain").innerHTML=`<p>Where each team's playoff chance stood after <strong>${last.label}</strong> against where it stood after <strong>${prev.label}</strong>, as the model recorded them at the time on ${(HIST.N||r.N).toLocaleString()} simulated seasons each. A move folds in every result from ${wk}, not just the team's own game, plus any SP+ update that landed with them. Week 0's handful of games counts with week 1. Change is in percentage points. Tap a change for the why: how much came from the results and how much from the SP+ update.</p>`;
   const fmt=v=>{ const m=Math.abs(v)*100; return (v>0?"+":"−")+(m<9.95?m.toFixed(1):Math.round(m)); };
   const tip=team=>{ const m=moveParts(team); return (m&&m.res!=null ? `Results ${fmtMove(m.res)}, SP+ update ${fmtMove(m.sp)}. ` : "") + "Tap for the why"; };
   const table=(list,color,max)=>list.length ? `<div class="scroll"><table>${list.map(x=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub">${conf.get(x.team)}</td>
@@ -1177,7 +1179,7 @@ function renderMovers(r){
 // A team's move between the last two recorded points, split into what the week's results did on their own and what
 // the SP+ update that followed did (the snapshot records the week rerun on the previous ratings as pInPrevSp).
 function moveParts(team){
-  const pts=(HIST&&HIST.season===D.season&&HIST.points)||[]; const last=pts[pts.length-1], prev=pts[pts.length-2];
+  const pts=histPoints(); const last=pts[pts.length-1], prev=pts[pts.length-2];
   if(!last||!prev||last.pIn[team]==null||prev.pIn[team]==null) return null;
   const d=last.pIn[team]-prev.pIn[team];
   const sameSp=last.ratingsHash===prev.ratingsHash, split=!!(last.pInPrevSp&&last.pInPrevSp[team]!=null);
@@ -1190,11 +1192,12 @@ function openMove(team){
   const m=moveParts(team); if(!m) return;
   const {last, prev, d, res, sp}=m; const tm=D.teams[idx.get(team)]; const conf=tm.conference;
   const cls=v=>v>0.0005?"good":v<-0.0005?"bad":"";
-  const wkLabel = last.key==="pre" ? "the preseason" : "week "+last.week;
+  const fromWk = prev.key==="pre" ? 0 : prev.week+1;
+  const wkLabel = last.key==="pre" ? "the preseason" : fromWk<last.week ? `weeks ${fromWk}–${last.week}` : "week "+last.week;
   const sgn=n=>(n>=0.05?"+":n<=-0.05?"−":"")+Math.abs(n).toFixed(1);
   const trim=n=>n.toFixed(1).replace(/\.0$/,"");
   // its own games that week, against the closing spread
-  const own=D.games.filter(g=>g.week===last.week&&g.completed&&(g.home===team||g.away===team)).map(g=>{
+  const own=D.games.filter(g=>g.week>=fromWk&&g.week<=last.week&&g.completed&&(g.home===team||g.away===team)).map(g=>{
     const home=g.home===team, opp=home?g.away:g.home, won=home?g.homeWin:!g.homeWin, mine=home?g.homeScore:g.awayScore, theirs=home?g.awayScore:g.homeScore;
     let vs="";
     if(g.spread!=null&&mine!=null){ const fav = home ? -g.spread : g.spread; const margin=mine-theirs;   // fav > 0: this team was favoured by that much
@@ -1221,7 +1224,7 @@ function openMove(team){
     const tot=Math.abs(res)+Math.abs(sp); const wr=tot>0?Math.abs(res)/tot*100:50;
     splitHtml=`<div class="mv-bar"><i class="${cls(res)}" style="width:${wr.toFixed(1)}%"></i><i class="${cls(sp)}" style="width:${(100-wr).toFixed(1)}%"></i></div>
       <div class="mv-legend"><span>Results <b class="num ${cls(res)}">${fmtMove(res)}</b></span><span>SP+ update <b class="num ${cls(sp)}">${fmtMove(sp)}</b></span></div>
-      <p>Of the <b class="num">${fmtMove(d)}</b> points, <b class="num ${cls(res)}">${fmtMove(res)}</b> came from ${wkLabel}'s results with the ratings held where they were, and <b class="num ${cls(sp)}">${fmtMove(sp)}</b> from the SP+ update that landed afterwards.</p>`;
+      <p>Of the <b class="num">${fmtMove(d)}</b> points, <b class="num ${cls(res)}">${fmtMove(res)}</b> came from the results of ${wkLabel} with the ratings held where they were, and <b class="num ${cls(sp)}">${fmtMove(sp)}</b> from the SP+ update that landed afterwards.</p>`;
   } else splitHtml=`<p>The results-only rerun of ${last.label} is not on record yet, so this move is not split between results and the SP+ update.</p>`;
   $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
     <h2>${badge(team)}</h2>
@@ -1229,7 +1232,7 @@ function openMove(team){
     <div class="plain">
       <div class="big ${cls(d)}">${fmtMove(d)} pts</div>
       ${splitHtml}
-      <h3>${short(team)}'s ${wkLabel}</h3>${own}
+      <h3>${short(team)} in ${wkLabel}</h3>${own}
       <h3>SP+</h3>${spTxt}
       <h3>Around the ${conf}</h3>${peerTxt}
       <p class="sub">Both points are the model's own answers at the time, on ${(HIST.N||RES.N).toLocaleString()} simulated seasons each. The results part reruns the week on the previous SP+ edition; the SP+ part is the rest.</p>
