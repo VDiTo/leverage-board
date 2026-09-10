@@ -1175,6 +1175,7 @@ function openMove(team){
   const {last, prev, d, res, sp}=m; const tm=D.teams[idx.get(team)]; const conf=tm.conference;
   const cls=v=>v>0.0005?"good":v<-0.0005?"bad":"";
   const wkLabel = last.key==="pre" ? "the preseason" : "week "+last.week;
+  const sgn=n=>(n>=0.05?"+":n<=-0.05?"−":"")+Math.abs(n).toFixed(1);
   const trim=n=>n.toFixed(1).replace(/\.0$/,"");
   // its own games that week, against the closing spread
   const own=D.games.filter(g=>g.week===last.week&&g.completed&&(g.home===team||g.away===team)).map(g=>{
@@ -1189,13 +1190,13 @@ function openMove(team){
   const eds=HIST.sp||[]; const e0=eds.find(e=>e.hash===prev.ratingsHash), e1=eds.find(e=>e.hash===last.ratingsHash);
   const r0=e0&&e0.ratings[team], r1=e1&&e1.ratings[team];
   const spTxt = m.sameSp ? `<p>SP+ did not change between ${prev.label} and ${last.label}, so the whole move comes from results.</p>`
-    : r0&&r1 ? `<p>${short(team)} went from <b class="num">${r0[0].toFixed(1)}</b>${r0[1]?` (#${r0[1]})`:""} in the ${e0.label} SP+ to <b class="num">${r1[0].toFixed(1)}</b>${r1[1]?` (#${r1[1]})`:""} in the ${e1.label} update, <b class="num ${cls(r1[0]-r0[0])}">${r1[0]-r0[0]>=0?"+":""}${(r1[0]-r0[0]).toFixed(1)}</b>. Ratings set the win chance in every simulated game and the team's own strength in the ranking, so a rating move shifts the odds of everything still to play.</p>`
+    : r0&&r1 ? `<p>${short(team)} went from <b class="num">${r0[0].toFixed(1)}</b>${r0[1]?` (#${r0[1]})`:""} in the ${e0.label} SP+ to <b class="num">${r1[0].toFixed(1)}</b>${r1[1]?` (#${r1[1]})`:""} in the ${e1.label} update, <b class="num ${cls(r1[0]-r0[0])}">${sgn(r1[0]-r0[0])}</b>. Ratings set the win chance in every simulated game and the team's own strength in the ranking, so a rating move shifts the odds of everything still to play.</p>`
     : `<p>SP+ was updated between the two points, but both editions are not on record.</p>`;
   // conference context: who rose and fell around it
   const peers=D.teams.filter(t=>!t.fcs&&t.conference===conf&&t.team!==team&&last.pIn[t.team]!=null&&prev.pIn[t.team]!=null)
     .map(t=>({team:t.team, d:last.pIn[t.team]-prev.pIn[t.team], sp:e0&&e1&&e0.ratings[t.team]&&e1.ratings[t.team]?e1.ratings[t.team][0]-e0.ratings[t.team][0]:null}))
     .filter(x=>Math.abs(x.d)>=0.01).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,6);
-  const peerTxt = peers.length ? `<p>${peers.map(x=>`${badge(x.team)} <b class="num ${cls(x.d)}">${fmtMove(x.d)}</b>${x.sp!=null&&Math.abs(x.sp)>=0.05?` <span class="sub num">(SP+ ${x.sp>0?"+":""}${x.sp.toFixed(1)})</span>`:""}`).join(", ")}.</p>
+  const peerTxt = peers.length ? `<p>${peers.map(x=>`${badge(x.team)} <b class="num ${cls(x.d)}">${fmtMove(x.d)}</b>${x.sp!=null&&Math.abs(x.sp)>=0.05?` <span class="sub num">(SP+ ${sgn(x.sp)})</span>`:""}`).join(", ")}.</p>
       <p class="sub">${P4.includes(conf)?`The ${conf} champion takes an automatic bid, so rivals getting stronger costs ${short(team)} title chances as well as at-large ground.`:`The best Group of Six champion takes an automatic bid, so the ${conf} race and the other Group of Six races both matter.`}</p>`
     : `<p>No other ${conf} team moved by a point or more.</p>`;
   // the split
