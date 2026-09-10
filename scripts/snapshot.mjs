@@ -3,6 +3,8 @@
 //    masked, so a point is "what the model said once that week was in the books"). Past points are kept as they were;
 //    the latest week's point is recomputed if SP+ has been updated since it was recorded.
 //  - sp: every distinct SP+ edition (rating and rank per team), keyed to the latest completed week at the time.
+//  - pInPrevSp on a point whose SP+ edition differs from the previous point's: the same week's results simulated on the
+//    previous edition's ratings, so a team's week-to-week move splits into "results" and "SP+ update" parts.
 // Env: N=25000 (seasons per point), FORCE=1 recomputes every point.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -20,12 +22,13 @@ const document = { querySelector: () => fake, querySelectorAll: () => [], addEve
 const fresh = () => JSON.parse(readFileSync(REPO + "/data.json", "utf8"));
 
 // playoff chance per FBS team with every game after week `mask` treated as unplayed (mask null = preseason, "all" = as is)
-const runner = new Function("document", "window", "localStorage", "D0", "mask", "N", "done", src + `
+const runner = new Function("document", "window", "localStorage", "D0", "mask", "ratings", "N", "done", src + `
   D = D0; splitWeekZero();
+  if (ratings) D.teams.forEach(t => { if (ratings[t.team]) t.rating = ratings[t.team][0]; });
   D.games.forEach(g => { if (mask === null || (mask !== "all" && g.week > mask)) { g.completed = false; g.homeWin = null; g.homeScore = null; g.awayScore = null; } });
   T = ""; build();
   simulate("", N, () => {}, r => done(Object.fromEntries(r.teamStats.filter(t => !t.fcs).map(t => [t.team, +t.pIn.toFixed(4)]))));`);
-const point = mask => new Promise(res => runner(document, {}, { getItem: () => null, setItem: () => { } }, fresh(), mask, N, res));
+const point = (mask, ratings) => new Promise(res => runner(document, {}, { getItem: () => null, setItem: () => { } }, fresh(), mask, ratings || null, N, res));
 
 const D = fresh();
 // weeks with every game final, using the site's own week-0 split (Aug 29-30 games are "week 0")
@@ -61,6 +64,18 @@ for (const w of complete) {
   console.log((old ? "recomputed " : "") + key, ((Date.now() - t1) / 1000).toFixed(1) + "s");
 }
 H.points.sort((p, q) => (p.key === "pre" ? -1 : p.week) - (q.key === "pre" ? -1 : q.week));
+
+// --- results-only counterpart for points where SP+ moved since the previous point ---
+for (let i = 1; i < H.points.length; i++) {
+  const p = H.points[i], q = H.points[i - 1];
+  if (p.ratingsHash === q.ratingsHash) { delete p.pInPrevSp; continue; }
+  if (p.pInPrevSp && p.pInPrevSpHash === q.ratingsHash) continue;
+  const ed = (H.sp || []).find(e => e.hash === q.ratingsHash);
+  if (!ed) continue;                                       // edition not recorded (history predates SP+ tracking)
+  const t2 = Date.now();
+  p.pInPrevSp = await point(p.week, ed.ratings); p.pInPrevSpHash = q.ratingsHash;
+  console.log(p.key + " on " + ed.label + " SP+ (results-only counterpart)", ((Date.now() - t2) / 1000).toFixed(1) + "s");
+}
 
 // --- SP+ editions ---
 const lastEd = H.sp[H.sp.length - 1];

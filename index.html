@@ -265,6 +265,10 @@
   .movers table{width:100%} .movers td.k{min-width:0}
   .movers td.ch{width:82px} .movers .ch .ramp{font-size:13px}
   .movers .ba{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap} .movers .ba b{color:var(--ink);font-weight:600}
+  .movers .mv-why{cursor:pointer} .movers .mv-why:hover,.movers .mv-why:focus-visible{outline:1.5px solid var(--gold)}
+  .mv-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--panel2);margin:2px 0 6px}
+  .mv-bar i{display:block;background:var(--muted)} .mv-bar i.good{background:var(--for)} .mv-bar i.bad{background:var(--against)}
+  .mv-legend{display:flex;gap:18px;font-size:13px;color:var(--muted);margin-bottom:10px}
   .movers .mine{grid-column:1/-1;margin-top:8px;font-size:13px;color:var(--muted)} .movers .mine b{color:var(--ink);font-weight:600}
   .hist-wrap{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 6px 4px}
   .hist-wrap.big{padding:12px 8px 6px}
@@ -762,6 +766,7 @@ function run(force, opts){
 // team popup: full schedule with results, plus SP+ by unit
 document.addEventListener("click",e=>{
   const w=e.target.closest(".lev.why"); if(w){ openWhy(+w.dataset.game); return; }
+  const mv=e.target.closest(".mv-why"); if(mv){ openMove(mv.dataset.team); return; }
   const cell=e.target.closest(".cell[data-game], .whycell[data-game]"); if(cell){ openWhy(+cell.dataset.game, true); return; }
   if(e.target.closest(".sumlab")){ openSumInfo(); return; }
   const tl=e.target.closest("a.tolink"); if(tl){ e.preventDefault(); UI.slateView=tl.dataset.view; pref.set("slateView",UI.slateView); renderSlate(RES); return; }
@@ -1142,15 +1147,77 @@ function renderMovers(r){
   const down=all.filter(x=>x.d<=-0.005).sort((a,b)=>a.d-b.d).slice(0,8);
   const wk = last.key==="pre" ? "the preseason" : last.label.replace("Wk ","week ");
   $("#moversTitle").textContent=`Biggest winners and losers, ${last.label}`;
-  $("#moversExplain").innerHTML=`<p>Where each team's playoff chance stood after <strong>${last.label}</strong> against where it stood after <strong>${prev.label}</strong>, as the model recorded them at the time on ${(HIST.N||r.N).toLocaleString()} simulated seasons each. A move folds in every result from ${wk}, not just the team's own game, plus any SP+ update that landed with them. Change is in percentage points.</p>`;
+  $("#moversExplain").innerHTML=`<p>Where each team's playoff chance stood after <strong>${last.label}</strong> against where it stood after <strong>${prev.label}</strong>, as the model recorded them at the time on ${(HIST.N||r.N).toLocaleString()} simulated seasons each. A move folds in every result from ${wk}, not just the team's own game, plus any SP+ update that landed with them. Change is in percentage points. Tap a change for the why: how much came from the results and how much from the SP+ update.</p>`;
   const fmt=v=>{ const m=Math.abs(v)*100; return (v>0?"+":"−")+(m<9.95?m.toFixed(1):Math.round(m)); };
+  const tip=team=>{ const m=moveParts(team); return (m&&m.res!=null ? `Results ${fmtMove(m.res)}, SP+ update ${fmtMove(m.sp)}. ` : "") + "Tap for the why"; };
   const table=(list,color,max)=>list.length ? `<div class="scroll"><table>${list.map(x=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub">${conf.get(x.team)}</td>
       <td class="ba num">${pct(x.before)}% → <b>${pct(x.after)}%</b></td>
-      <td class="ch"><span class="ramp num" style="${ramp(Math.abs(x.d),color,max)}">${fmt(x.d)}</span></td></tr>`; }).join("")}</table></div>`
+      <td class="ch"><span class="ramp num mv-why" role="button" tabindex="0" data-team="${x.team.replace(/"/g,"&quot;")}" title="${tip(x.team)}" style="${ramp(Math.abs(x.d),color,max)}">${fmt(x.d)}</span></td></tr>`; }).join("")}</table></div>`
     : `<div class="sub" style="padding:6px 0">No team moved by half a point or more.</div>`;
   const mine = T && !up.concat(down).some(x=>x.team===T) && last.pIn[T]!=null && prev.pIn[T]!=null
     ? `<div class="mine"><b>${T}</b>: ${pct(prev.pIn[T])}% after ${prev.label} → <b>${pct(last.pIn[T])}%</b> after ${last.label} (<b class="${last.pIn[T]-prev.pIn[T]>=0.0005?"good":last.pIn[T]-prev.pIn[T]<=-0.0005?"bad":""}">${fmt(last.pIn[T]-prev.pIn[T])}</b>)</div>` : "";
   el.innerHTML=`<div class="movers"><div><h3 class="up">Winners</h3>${table(up,"var(--for)",Math.max(0.01,...up.map(x=>x.d)))}</div><div><h3 class="down">Losers</h3>${table(down,"var(--against)",Math.max(0.01,...down.map(x=>-x.d)))}</div>${mine}</div>`;
+}
+// A team's move between the last two recorded points, split into what the week's results did on their own and what
+// the SP+ update that followed did (the snapshot records the week rerun on the previous ratings as pInPrevSp).
+function moveParts(team){
+  const pts=(HIST&&HIST.season===D.season&&HIST.points)||[]; const last=pts[pts.length-1], prev=pts[pts.length-2];
+  if(!last||!prev||last.pIn[team]==null||prev.pIn[team]==null) return null;
+  const d=last.pIn[team]-prev.pIn[team];
+  const sameSp=last.ratingsHash===prev.ratingsHash, split=!!(last.pInPrevSp&&last.pInPrevSp[team]!=null);
+  const res = split ? last.pInPrevSp[team]-prev.pIn[team] : sameSp ? d : null;
+  const sp  = split ? last.pIn[team]-last.pInPrevSp[team] : sameSp ? 0 : null;
+  return {last, prev, d, res, sp, sameSp};
+}
+const fmtMove=v=>{ const m=Math.abs(v)*100; return (v>0.00005?"+":v<-0.00005?"−":"")+(m<9.95?m.toFixed(1):Math.round(m)); };
+function openMove(team){
+  const m=moveParts(team); if(!m) return;
+  const {last, prev, d, res, sp}=m; const tm=D.teams[idx.get(team)]; const conf=tm.conference;
+  const cls=v=>v>0.0005?"good":v<-0.0005?"bad":"";
+  const wkLabel = last.key==="pre" ? "the preseason" : "week "+last.week;
+  const trim=n=>n.toFixed(1).replace(/\.0$/,"");
+  // its own games that week, against the closing spread
+  const own=D.games.filter(g=>g.week===last.week&&g.completed&&(g.home===team||g.away===team)).map(g=>{
+    const home=g.home===team, opp=home?g.away:g.home, won=home?g.homeWin:!g.homeWin, mine=home?g.homeScore:g.awayScore, theirs=home?g.awayScore:g.homeScore;
+    let vs="";
+    if(g.spread!=null&&mine!=null){ const fav = home ? -g.spread : g.spread; const margin=mine-theirs;   // fav > 0: this team was favoured by that much
+      if(fav>0) vs = margin>=fav ? ` It was favoured by ${trim(fav)} and covered.` : ` It was favoured by ${trim(fav)}, so the margin fell ${trim(fav-margin)} short of the spread.`;
+      else if(fav<0) vs = ` It was a ${trim(-fav)}-point underdog${won?" and won outright":margin-fav>=0?" and covered":""}.`; }
+    return `<p><b class="${won?"good":"bad"}">${won?"Beat":"Lost to"}</b> ${badge(opp)} ${mine!=null?`<b class="num">${mine}–${theirs}</b>`:""} ${g.neutral?"at a neutral site":home?"at home":"on the road"}.${vs}</p>`; }).join("")
+    || `<p>${short(team)} did not play in ${wkLabel}.</p>`;
+  // SP+ between the two editions
+  const eds=HIST.sp||[]; const e0=eds.find(e=>e.hash===prev.ratingsHash), e1=eds.find(e=>e.hash===last.ratingsHash);
+  const r0=e0&&e0.ratings[team], r1=e1&&e1.ratings[team];
+  const spTxt = m.sameSp ? `<p>SP+ did not change between ${prev.label} and ${last.label}, so the whole move comes from results.</p>`
+    : r0&&r1 ? `<p>${short(team)} went from <b class="num">${r0[0].toFixed(1)}</b>${r0[1]?` (#${r0[1]})`:""} in the ${e0.label} SP+ to <b class="num">${r1[0].toFixed(1)}</b>${r1[1]?` (#${r1[1]})`:""} in the ${e1.label} update, <b class="num ${cls(r1[0]-r0[0])}">${r1[0]-r0[0]>=0?"+":""}${(r1[0]-r0[0]).toFixed(1)}</b>. Ratings set the win chance in every simulated game and the team's own strength in the ranking, so a rating move shifts the odds of everything still to play.</p>`
+    : `<p>SP+ was updated between the two points, but both editions are not on record.</p>`;
+  // conference context: who rose and fell around it
+  const peers=D.teams.filter(t=>!t.fcs&&t.conference===conf&&t.team!==team&&last.pIn[t.team]!=null&&prev.pIn[t.team]!=null)
+    .map(t=>({team:t.team, d:last.pIn[t.team]-prev.pIn[t.team], sp:e0&&e1&&e0.ratings[t.team]&&e1.ratings[t.team]?e1.ratings[t.team][0]-e0.ratings[t.team][0]:null}))
+    .filter(x=>Math.abs(x.d)>=0.01).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,6);
+  const peerTxt = peers.length ? `<p>${peers.map(x=>`${badge(x.team)} <b class="num ${cls(x.d)}">${fmtMove(x.d)}</b>${x.sp!=null&&Math.abs(x.sp)>=0.05?` <span class="sub num">(SP+ ${x.sp>0?"+":""}${x.sp.toFixed(1)})</span>`:""}`).join(", ")}.</p>
+      <p class="sub">${P4.includes(conf)?`The ${conf} champion takes an automatic bid, so rivals getting stronger costs ${short(team)} title chances as well as at-large ground.`:`The best Group of Six champion takes an automatic bid, so the ${conf} race and the other Group of Six races both matter.`}</p>`
+    : `<p>No other ${conf} team moved by a point or more.</p>`;
+  // the split
+  let splitHtml;
+  if(res!=null&&sp!=null){
+    const tot=Math.abs(res)+Math.abs(sp); const wr=tot>0?Math.abs(res)/tot*100:50;
+    splitHtml=`<div class="mv-bar"><i class="${cls(res)}" style="width:${wr.toFixed(1)}%"></i><i class="${cls(sp)}" style="width:${(100-wr).toFixed(1)}%"></i></div>
+      <div class="mv-legend"><span>Results <b class="num ${cls(res)}">${fmtMove(res)}</b></span><span>SP+ update <b class="num ${cls(sp)}">${fmtMove(sp)}</b></span></div>
+      <p>Of the <b class="num">${fmtMove(d)}</b> points, <b class="num ${cls(res)}">${fmtMove(res)}</b> came from ${wkLabel}'s results with the ratings held where they were, and <b class="num ${cls(sp)}">${fmtMove(sp)}</b> from the SP+ update that landed afterwards.</p>`;
+  } else splitHtml=`<p>The results-only rerun of ${last.label} is not on record yet, so this move is not split between results and the SP+ update.</p>`;
+  $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
+    <h2>${badge(team)}</h2>
+    <div class="kv"><span>${conf}</span><span>${prev.label} → ${last.label}</span><span>Playoff <b class="num">${pct(prev.pIn[team])}% → ${pct(last.pIn[team])}%</b></span></div>
+    <div class="plain">
+      <div class="big ${cls(d)}">${fmtMove(d)} pts</div>
+      ${splitHtml}
+      <h3>${short(team)}'s ${wkLabel}</h3>${own}
+      <h3>SP+</h3>${spTxt}
+      <h3>Around the ${conf}</h3>${peerTxt}
+      <p class="sub">Both points are the model's own answers at the time, on ${(HIST.N||RES.N).toLocaleString()} simulated seasons each. The results part reruns the week on the previous SP+ edition; the SP+ part is the rest.</p>
+    </div>`;
+  $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
 }
 // full-screen chart in the modal sheet
 function openChart(r){
