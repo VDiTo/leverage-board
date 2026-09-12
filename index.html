@@ -845,7 +845,7 @@ function openWhySimple(g){
     why=`<p>Winning is worth <b class="num">${impact.toFixed(1)} points</b> of playoff odds to ${T}: ${size(g.impN)} swing on your own schedule.</p>`;
   } else if(!g.clear || !g.sure){
     headline=`<div class="big">${!g.clear?"Doesn't really move the needle for "+T+".":"Leans "+want+", but it's within the noise."}</div>`;
-    why=!g.clear ? `<p>Across ${RES.N.toLocaleString()} simulated seasons this result almost never changed whether ${T} made the field.</p>`
+    why=!g.clear ? `<p>Across ${RES.N.toLocaleString()} simulated seasons this result almost never changed whether ${T} made the field.${impact>=0.005?` What little effect there is leans <b>${want}</b>: a ${impact.toFixed(2)}-point swing, ${g.sure?"small but consistent":`inside the ±${(2*g.se*100).toFixed(2)} margin of error`}.`:""}</p>`
       : `<p>The estimate is a ${impact.toFixed(2)}-point swing toward ${want}, but the margin of error is ±${(2*g.se*100).toFixed(2)}, so the direction isn't settled. More simulated seasons would sharpen it.</p>`;
   } else {
     headline=`<div class="big for">Pull for ${want}.</div>`;
@@ -1444,7 +1444,10 @@ function card(g, showWeek){
       return `<span class="chip${boxed?(g.involvesMe?" mine":" want"):""}">${badge(team)}${liveScore(team)} <span class="winpill num" style="background:color-mix(in srgb, var(--for) ${mix}%, transparent);${mix>=65?"color:#fff":""}">${pctTxt}</span></span>`;
     }
     return `<span class="chip">${badge(team)}${liveScore(team)}</span>`; };
-  const noise = Math.abs(g.swing)<0.001 ? (T?"no measurable effect":"never changes the field") : `too close to call (±${(2*g.se*100).toFixed(2)}${T?" pts":"%"})`;
+  // under the 0.1-point cutoff the card still says which way the game leans, and by how much, unless the lean rounds to nothing
+  const noise = Math.abs(g.swing)<0.001
+    ? (!T ? "never changes the field" : impact<0.005 ? "no measurable effect" : `leans ${short(want)} by ${impact.toFixed(2)} pts${g.sure?"":", within noise"}`)
+    : `too close to call (±${(2*g.se*100).toFixed(2)}${T?" pts":"%"})`;
   // the selected team's own game: tint the card by its chance of winning, same ramp as the board
   const own = g.involvesMe ? " own" : "";
   const curWk = RES ? Math.min(...RES.games.map(x=>x.week)) : null;
