@@ -57,10 +57,32 @@
   /* print fallback: just the board and its explanation, on a light landscape page */
   @media print{
     @page{size:landscape;margin:0.3in}
+    @page review{size:portrait;margin:0.35in}
     html,body{background:#fff;color:#10233a;font-size:8pt}
     header .bar,header .prog,#cacheNote,nav.tabs,.foot,.modal,section.tab,.info,.controls{display:none!important}
     body.print-board #tab-board, body.print-slate #tab-slate{display:block!important}
-    body:not(.print-slate) #tab-board{display:block!important}
+    body:not(.print-slate):not(.print-review) #tab-board{display:block!important}
+    body.print-review #tab-review{display:block!important;page:review;font-size:7.4pt;color:#10233a;zoom:var(--rvzoom,1)}
+    body.print-review .rv-grid table tr:nth-child(n+8),body.print-review .movers table tr:nth-child(n+7){display:none} body.print-review .rv-keep table tr:nth-child(n){display:table-row}
+    body.print-review .h2-right,body.print-review .controls,body.print-review #reviewNote,body.print-review .prog,body.print-review .explain,body.print-review #tab-review>h2{display:none!important}
+    body.print-review .rv-head h2.rv-title{font-size:15pt;color:#10233a} body.print-review .rv-head{margin:0 0 4pt}
+    body.print-review .rv-stats{grid-template-columns:repeat(6,1fr);gap:5pt;margin:4pt 0}
+    body.print-review .stat{background:#f4f6f9;border-color:#dfe5ec;padding:4pt 6pt} body.print-review .rv-stat span{font-size:6.5pt} body.print-review .rv-stat b{font-size:11pt} body.print-review .rv-stat b em{font-size:8pt} body.print-review .rv-stat small{font-size:7pt}
+    body.print-review .rv-split p{font-size:7.4pt} body.print-review .mv-bar{height:5pt} body.print-review .mv-legend{font-size:7pt;margin-bottom:3pt}
+    body.print-review #review h3{margin:7pt 0 2pt;font-size:7.4pt;color:#3a4a60}
+    body.print-review #review table{font-size:6.8pt} body.print-review #review td,body.print-review #review th{padding:1.2pt 3pt;border-bottom-color:#e6eaf0} body.print-review #review th{color:#5a6b80;background:#fff}
+    body.print-review #review td.k{background:#fff;color:#10233a} body.print-review #review tr.me td.k{color:#8a6f2e}
+    body.print-review .rv-game{padding:3pt 0;font-size:7pt} body.print-review .rv-game .sc{font-size:8pt}
+    body.print-review .rv-delta{font-size:7pt;padding:0 4pt;min-width:34pt} body.print-review .pill{font-size:6.8pt;padding:0 5pt;min-width:26pt}
+    body.print-review .rv-grid{grid-template-columns:1fr 1fr!important;gap:2pt 16pt} body.print-review .rv-two{grid-template-columns:1fr 1fr!important;gap:2pt 10pt}
+    body.print-review .movers{grid-template-columns:1fr 1fr!important;gap:2pt 16pt} body.print-review .movers td.ch small{font-size:6pt}
+    body.print-review .rv-grid>div,body.print-review .movers>div{min-width:0} body.print-review table{table-layout:auto}
+    body.print-review #review .sub,body.print-review #review .rk,body.print-review #review .rv-ba,body.print-review .movers .ba{font-size:6.8pt}
+    body.print-review #review td,body.print-review #review th,body.print-review #review .pill,body.print-review #review .rv-delta{line-height:1.2}
+    body.print-review .rv-game div:not(.sc){line-height:1.3}
+    body.print-review .rv-ba b,body.print-review .rv-game,body.print-review .plain{color:#10233a} body.print-review .rv-ba,body.print-review .sub,body.print-review .rv-stat span{color:#5a6b80}
+    body.print-review .rv-note{font-size:6.5pt;margin-top:6pt;padding-top:3pt}
+    body.print-review .scroll{overflow:visible}
     .explain{display:block!important;background:#fff;border:0;padding:0;color:#3a4a60;max-width:none}
     .g{break-inside:avoid;color:#10233a} .g-top,.g-line,.g-line b{color:#3a4a60} .g-match{color:#10233a} .chip small{color:#5a6b80}
     .g.own{background:color-mix(in srgb, #c9a44c 10%, white)!important;color:#10233a} .g.own .g-top,.g.own .g-line{color:#3a4a60}
@@ -325,6 +347,30 @@
     .controls label.chk select{flex:1;min-width:0} .controls button.ghost{width:100%}
     .slate-div.pulse{display:block;line-height:1.55;letter-spacing:.03em} .slate-div.pulse::after{content:none}
     .slate-div.pulse .pulse-live{display:block} .slate-div.pulse .pulse-sep{display:none} }
+  /* ---- week in review ---- */
+  .rv-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0 10px}
+  .rv-head h2.rv-title{margin:0;font-size:22px}
+  .rv-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:8px 0 10px}
+  .rv-stat{display:flex;flex-direction:column;gap:2px}
+  .rv-stat span{color:var(--muted);font-size:12px}
+  .rv-stat b{font-size:19px;font-weight:600;white-space:nowrap;display:block}
+  .rv-stat b em{font-style:normal;color:var(--muted);font-weight:400;font-size:14px;margin:0 5px}
+  .rv-stat b small{font-size:12px;color:var(--muted);font-weight:500}
+  .rv-stat small{font-weight:700;font-size:12.5px;color:var(--muted)}
+  .rv-split{max-width:760px;margin:0 0 6px} .rv-split p{margin:0;font-size:13.5px}
+  .rv-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;align-items:start}
+  .rv-two{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;align-items:start}
+  .rv-grid>div,.rv-two>div,#review .movers>div{min-width:0}   /* tables scroll inside their column instead of widening the page */
+  @media (max-width:760px){ .rv-grid,.rv-two{grid-template-columns:1fr} }
+  #review h3{margin:18px 0 6px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  #review .movers h3{margin-top:4px}
+  .rv-ba{white-space:nowrap;color:var(--muted)} .rv-ba em{font-style:normal;margin:0 2px} .rv-ba b{color:var(--ink);font-weight:600}
+  .rv-delta{display:inline-block;min-width:48px;text-align:center;border-radius:5px;padding:2px 7px;font-weight:700;font-size:13px;color:var(--ink)}
+  .rv-game{padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+  .rv-game .sc{font-size:15px;font-weight:600;margin-bottom:2px}
+  #review table{font-size:12.5px} #review th{position:static} #review td,#review th{padding:5px 6px} #review td.k{min-width:0;position:static;box-shadow:none}
+  #review td.ch{text-align:center;width:90px}
+  .rv-note{font-size:12.5px;color:var(--muted);margin-top:16px;border-top:1px solid var(--line);padding-top:8px}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -354,6 +400,7 @@
   <button data-tab="board" aria-selected="false">Top 25 board</button>
   <button data-tab="slate" aria-selected="false">This week</button>
   <button data-tab="season" aria-selected="false">Season</button>
+  <button data-tab="review" aria-selected="false">Week in review</button>
 </nav>
 
 <div class="wrap">
@@ -423,6 +470,18 @@
       <label class="chk"><span id="seasonMinText">Min leverage</span> <select id="seasonMin" aria-label="Minimum leverage score"><option value="0">0</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25" selected>25</option></select></label>
     </div>
     <div id="season"></div>
+  </section>
+
+  <section class="tab" id="tab-review" hidden>
+    <h2>Week in review<button id="reviewPrint" class="ghost h2-right" title="Lay the report out for one printed page, or save it as a PDF from the print dialog">Print / PDF</button></h2>
+    <div class="explain" id="reviewExplain"><p>What a week's results did to the playoff picture: the selected team's chances, its SP+ rating, the win chance and weight of every game it has left, the biggest winners and losers, and how the projected field changed.</p></div>
+    <div class="controls">
+      <select id="reviewWeek" aria-label="Week to review"></select>
+      <button id="reviewRecompute" class="ghost" title="Simulate the three states again">Recompute</button>
+    </div>
+    <div class="prog"><i id="reviewBar"></i></div>
+    <div class="sub" id="reviewNote" hidden></div>
+    <div id="review"></div>
   </section>
 
   <div class="foot" id="foot"></div>
@@ -560,25 +619,26 @@ function splitWeekZero(){
   if(wins.length<2) return;
   wk1.forEach(g=>{ if(win(g)===wins[0]) g.week=0; });
 }
-function build(){
-  if(window.applyLive) window.applyLive();
-  splitWeekZero();
-  nT = D.teams.length;
-  idx = new Map(D.teams.map((t,i)=>[t.team,i]));
-  rating = Float64Array.from(D.teams.map(t=>t.rating));
-  confOf = D.teams.map(t=>t.conference);
-  tierOf = D.conferenceTiers;
-  confList = [...new Set(confOf)].filter(c=>tierOf[c]!=="IND" && tierOf[c]!=="FCS");
-  confIdx = new Int32Array(nT).fill(-1);
-  members = confList.map(()=>[]);
+// Everything the season loop needs, from a data object, with no side effects: the page builds its own state from D,
+// and the Week in review tab builds masked copies (results after a given week hidden, an earlier SP+ edition applied)
+// to simulate how things stood at the time.
+function buildParams(Dx){
+  const nT = Dx.teams.length;
+  const idx = new Map(Dx.teams.map((t,i)=>[t.team,i]));
+  const rating = Float64Array.from(Dx.teams.map(t=>t.rating));
+  const confOf = Dx.teams.map(t=>t.conference);
+  const tierOf = Dx.conferenceTiers;
+  const confList = [...new Set(confOf)].filter(c=>tierOf[c]!=="IND" && tierOf[c]!=="FCS");
+  const confIdx = new Int32Array(nT).fill(-1);
+  const members = confList.map(()=>[]);
   confList.forEach((c,k)=>{ for(let i=0;i<nT;i++) if(confOf[i]===c){ confIdx[i]=k; members[k].push(i); } });
-  isP4 = confList.map(c=>P4.includes(c));
-  const g = D.games; nG = g.length;
-  gH=new Int32Array(nG); gA=new Int32Array(nG); gP=new Float64Array(nG); gPsp=new Float64Array(nG); gPline=new Float64Array(nG).fill(NaN); gLine=new Uint8Array(nG); gHfa=new Float64Array(nG);
-  gConf=new Uint8Array(nG); gDone=new Uint8Array(nG); gRes=new Uint8Array(nG); gWeek=new Int32Array(nG);
-  const {hfa,sdMargin}=D.config, spreadSd=D.config.spreadSd||13.5;
+  const isP4 = confList.map(c=>P4.includes(c));
+  const g = Dx.games, nG = g.length;
+  const gH=new Int32Array(nG), gA=new Int32Array(nG), gP=new Float64Array(nG), gPsp=new Float64Array(nG), gPline=new Float64Array(nG).fill(NaN), gLine=new Uint8Array(nG), gHfa=new Float64Array(nG);
+  const gConf=new Uint8Array(nG), gDone=new Uint8Array(nG), gRes=new Uint8Array(nG), gWeek=new Int32Array(nG);
+  const {hfa,sdMargin}=Dx.config, spreadSd=Dx.config.spreadSd||13.5;
   const useLines = false;
-  const tg = D.teams.map(()=>[]);
+  const tg = Dx.teams.map(()=>[]);
   g.forEach((x,i)=>{
     gH[i]=idx.get(x.home); gA[i]=idx.get(x.away); gWeek[i]=x.week;
     gConf[i]=x.conferenceGame?1:0; gDone[i]=x.completed?1:0; gRes[i]=x.homeWin?1:0; gHfa[i]=x.neutral?0:hfa;
@@ -588,12 +648,18 @@ function build(){
     if(useLines && !isNaN(gPline[i])){ gP[i]=gPline[i]; gLine[i]=1; } else gP[i]=gPsp[i];
     // a game in progress: pregame SP+ edge, current margin and time left give a live win probability
     if(x.live && !x.completed && window.inGameP){
-      const f=Math.max(0.02, Math.min(1, (x.live.period>=5 ? 0.02 : ((4-Math.max(1,x.live.period))*900 + (/^(d+):(dd)$/.test(x.live.clock)?(+RegExp.$1)*60+(+RegExp.$2):0))/3600)));
+      const f=Math.max(0.02, Math.min(1, (x.live.period>=5 ? 0.02 : ((4-Math.max(1,x.live.period))*900 + (/^(\d+):(\d\d)$/.test(x.live.clock)?(+RegExp.$1)*60+(+RegExp.$2):0))/3600)));
       gP[i]=window.inGameP((rating[gH[i]]-rating[gA[i]])+gHfa[i], x.live.hs-x.live.as, f, sdMargin); gLine[i]=0;
     }
   });
-  teamGames = tg.map(a=>Int32Array.from(a));
-  gamesPerTeam = Int32Array.from(tg.map(a=>a.length));
+  const teamGames = tg.map(a=>Int32Array.from(a));
+  const gamesPerTeam = Int32Array.from(tg.map(a=>a.length));
+  return { nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,teamGames,gamesPerTeam,members,confIdx,isP4,confList,config:Dx.config,idx,confOf,tierOf };
+}
+function build(){
+  if(window.applyLive) window.applyLive();
+  splitWeekZero();
+  ({ nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,teamGames,gamesPerTeam,members,confIdx,isP4,confList,idx,confOf,tierOf } = buildParams(D));
 }
 
 // ---------- simulation ----------
@@ -610,36 +676,44 @@ function build(){
 // them, otherwise inline in timed chunks. The page keeps its worker pool between runs.
 const SIM = { pool:[], token:0 };
 function simParams(){
-  return { nT,nG,gH,gA,gP,gLine,gDone,gRes,gConf,gHfa,rating,teamGames,members,confIdx,isP4,confList,config:D.config };
+  return { nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,teamGames,gamesPerTeam,members,confIdx,isP4,confList,config:D.config };
 }
+// what the workers are sent: the season loop's inputs only (the typed arrays are copied across)
+const coreParams = P => ({ nT:P.nT,nG:P.nG,gH:P.gH,gA:P.gA,gP:P.gP,gLine:P.gLine,gDone:P.gDone,gRes:P.gRes,gConf:P.gConf,gHfa:P.gHfa,rating:P.rating,teamGames:P.teamGames,members:P.members,confIdx:P.confIdx,isP4:P.isP4,confList:P.confList,config:P.config });
 function simulate(target, N, onProgress, done){
   const ti = target ? idx.get(target) : -1;
-  const P = simParams(), list = SimCore.shards(N), token = ++SIM.token;
+  simulateP(SIM, simParams(), ti, N, onProgress, done, null);
+}
+// N seasons on a parameter set. `pool` keeps that caller's workers between runs (the page and the Week in review tab
+// each have one, so neither abandons the other's run). X is the context finish() reads instead of the page's globals:
+// {P, D, T} for a simulation built from a copy of the data; null for the page's own state.
+function simulateP(pool, P, ti, N, onProgress, done, X){
+  const list = SimCore.shards(N), token = ++pool.token, core = coreParams(P);
   const canWork = typeof Worker!=="undefined" && typeof location!=="undefined" && location.protocol!=="file:";
-  if(!canWork){ simulateInline(P, ti, N, list, onProgress, done); return; }
+  if(!canWork){ simulateInline(P, ti, N, list, onProgress, done, X); return; }
   const k = Math.max(1, Math.min(list.length, navigator.hardwareConcurrency||2, 8));
   // a run still in flight is abandoned: drop its workers rather than let them keep burning CPU
-  if(SIM.busy){ SIM.pool.forEach(w=>w.terminate()); SIM.pool=[]; }
-  while(SIM.pool.length<k){ try{ SIM.pool.push(new Worker("sim.js")); }catch(e){ break; } }
-  if(!SIM.pool.length){ simulateInline(P, ti, N, list, onProgress, done); return; }
-  const workers=SIM.pool.slice(0,k), jobs=workers.map(()=>[]);
+  if(pool.busy){ pool.pool.forEach(w=>w.terminate()); pool.pool=[]; }
+  while(pool.pool.length<k){ try{ pool.pool.push(new Worker("sim.js")); }catch(e){ break; } }
+  if(!pool.pool.length){ simulateInline(P, ti, N, list, onProgress, done, X); return; }
+  const workers=pool.pool.slice(0,k), jobs=workers.map(()=>[]);
   list.forEach((sh,i)=>jobs[i%workers.length].push(sh));
   const prog=new Array(workers.length).fill(0); let left=workers.filter((w,i)=>jobs[i].length).length;
-  const acc=SimCore.newAcc(nT,nG,ti<0); let failed=false;
-  SIM.busy=true;
+  const acc=SimCore.newAcc(P.nT,P.nG,ti<0); let failed=false;
+  pool.busy=true;
   workers.forEach((w,i)=>{
     if(!jobs[i].length) return;
     w.onmessage=e=>{ const m=e.data; if(m.token!==token) return;
       prog[i]=m.done; onProgress(Math.min(1, prog.reduce((x,y)=>x+y,0)/N));
-      if(m.type==="done"){ SimCore.mergeAcc(acc, m.acc); if(--left===0){ SIM.busy=false; done(finish(acc,N,ti)); } } };
-    w.onerror=e=>{ if(failed) return; failed=true; SIM.busy=false; SIM.pool.forEach(x=>x.terminate()); SIM.pool=[];
-      console.warn("simulation worker failed, running inline", e.message||e); simulateInline(P, ti, N, list, onProgress, done); };
-    w.postMessage({P, ti, shards:jobs[i], token});
+      if(m.type==="done"){ SimCore.mergeAcc(acc, m.acc); if(--left===0){ pool.busy=false; done(finish(acc,N,ti,X)); } } };
+    w.onerror=e=>{ if(failed) return; failed=true; pool.busy=false; pool.pool.forEach(x=>x.terminate()); pool.pool=[];
+      console.warn("simulation worker failed, running inline", e.message||e); simulateInline(P, ti, N, list, onProgress, done, X); };
+    w.postMessage({P:core, ti, shards:jobs[i], token});
   });
 }
 // no workers (old browsers, file:// pages, the headless harness): the same shards, one after another, in timed chunks
-function simulateInline(P, ti, N, list, onProgress, done){
-  const acc=SimCore.newAcc(nT,nG,ti<0);
+function simulateInline(P, ti, N, list, onProgress, done, X){
+  const acc=SimCore.newAcc(P.nT,P.nG,ti<0);
   let si=0, sim=null, inShard=0, n=0;
   function chunk(){
     const end=Math.min(N, n+250);
@@ -649,7 +723,7 @@ function simulateInline(P, ti, N, list, onProgress, done){
       if(inShard>=list[si].n){ si++; sim=null; }
     }
     onProgress(n/N);
-    if(n<N && si<list.length) setTimeout(chunk,0); else done(finish(acc,N,ti));
+    if(n<N && si<list.length) setTimeout(chunk,0); else done(finish(acc,N,ti,X));
   }
   chunk();
 }
@@ -685,15 +759,18 @@ function smoothWithPrevious(r, prev){
   r.smoothed=(prev.smoothed||0)+1;
   return r;
 }
-function finish(acc,N,ti){
+function finish(acc,N,ti,X){
+  // X = {P, D, T} when the run was built from a copy of the data (Week in review); otherwise the page's own state
+  const P = X ? X.P : simParams(), Dx = X ? X.D : D, forTeam = X ? X.T : T;
+  const {nT,nG,gH,gA,gP,gPsp,gPline,gLine,gDone,gRes,gWeek,gamesPerTeam} = P;
   const games=[], played=[];
   for(let i=0;i<nG;i++){
-    const src=D.games[i];
+    const src=Dx.games[i];
     const out = gDone[i] ? played : games;
     const fin = { done:!!gDone[i], homeWin:gRes[i]===1, homeScore:src.homeScore??null, awayScore:src.awayScore??null };
     if(ti<0){
       const p=gP[i], chg=acc.fieldChg[i]/N, se=Math.sqrt(chg*(1-chg)/N);
-      const top=[]; if(acc.fieldChg[i]>0){ for(let j=0;j<nT;j++){ const c=acc.teamFlip[i*nT+j]; if(c>0) top.push({team:D.teams[j].team, share:c/acc.fieldChg[i]}); } top.sort((a,b)=>b.share-a.share); }
+      const top=[]; if(acc.fieldChg[i]>0){ for(let j=0;j<nT;j++){ const c=acc.teamFlip[i*nT+j]; if(c>0) top.push({team:Dx.teams[j].team, share:c/acc.fieldChg[i]}); } top.sort((a,b)=>b.share-a.share); }
       out.push({...fin,i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,tbd:!!src.tbd,tv:src.tv||null,
         spread:src.spread??null,spreadText:src.spreadText||"",overUnder:src.overUnder??null,
         pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe:false, live:src.live||null,
@@ -727,10 +804,10 @@ function finish(acc,N,ti){
   });
   normalizeGames(games, played);
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
-  const teamStats=D.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
+  const teamStats=Dx.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
     pIn:acc.fieldN[i]/N, pTitle:acc.titleN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N}));
-  return { mode: ti<0?"field":"team", forTeam:T, pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
+  return { mode: ti<0?"field":"team", forTeam, pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
            avgWins:acc.winSum/N, myGames:ti>=0?gamesPerTeam[ti]:0, games, played, teamStats, N };
 }
 
@@ -987,6 +1064,7 @@ function showTab(name){
   UI.tab=name; pref.set("tab",name);
   document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",String(x.dataset.tab===name)));
   document.querySelectorAll("section.tab").forEach(s=>{ s.hidden = s.id!=="tab-"+name; });
+  if(name==="review") runReview();
 }
 $("#tabs").addEventListener("click",e=>{
   const b=e.target.closest("button[data-tab]"); if(!b) return;
@@ -1050,6 +1128,7 @@ function render(){
     + (lined?`Win probabilities for the ${lined} upcoming games with a posted line come from the point spread; the rest use the SP+ rating gap with home advantage. `
             :`Win probabilities come from the SP+ rating gap with home advantage. `)
     + `Final ordering is a strength-plus-résumé stand-in for the committee, not the committee itself.`;
+  if(UI.tab==="review") runReview();
 }
 
 // The most likely 12-team field: each Power Four conference's most probable champion, the strongest Group of Six
@@ -1567,6 +1646,261 @@ function renderSeason(r){
     + (below?`<div class="sub" style="padding:10px 0">${below} game${below>1?"s":""} below leverage ${UI.seasonMin} hidden.</div>`:"")
     + (quiet?`<details class="quiet"><summary>${quiet} more games with no measurable effect on ${T}</summary><div class="sub" style="margin-top:6px">They move the odds by less than a tenth of a point either way.</div></details>`:"");
 }
+// ---------- week in review ----------
+// One page on what a week's results did. Three simulations frame it: how things stood before the week (results through
+// the week before, on the SP+ edition of the time), the week's results on those same ratings, and the same results on
+// the SP+ update that followed. Every section is a difference between those states, so each move splits into what the
+// results did and what the ratings update did. The states are built from copies of the data, so the page's own result
+// is untouched, and finished reports are kept on the device like the main result.
+const REVIEW = { pool:{pool:[],token:0}, key:null, data:null, run:0, week:null };
+const REVIEW_VERSION = 1;
+const weekOfKey = k => k==="pre" ? -1 : +String(k).slice(1);
+// weeks with a result to report on: completed weeks, plus the current week once it has a final; week 0 counts with week 1
+function reviewWeeks(){
+  const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b), out=[];
+  for(const w of weeks){ const gs=D.games.filter(g=>g.week===w), done=gs.filter(g=>g.completed).length; if(done) out.push({week:w, partial:done<gs.length, done, total:gs.length}); }
+  return out.some(x=>x.week===1) ? out.filter(x=>x.week!==0) : out;
+}
+// the SP+ edition in force once `week` was in the books (-1 = preseason): the latest edition recorded at or before that
+// week; the data file's own ratings when there is no history to draw on
+function spEditionFor(week){
+  const eds=(HIST&&HIST.season===D.season&&HIST.sp)||[];
+  const cur={ key:"now", label:"current", hash:curRatingsHash(), ratings:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,[+(+t.rating).toFixed(1), t.sp&&t.sp.rank||null]])) };
+  const fit=eds.filter(e=>weekOfKey(e.key)<=week);
+  const e = fit.length ? fit[fit.length-1] : eds[0];
+  if(!e) return cur;
+  return e.hash===cur.hash ? {...cur, key:e.key, label:e.label} : e;
+}
+// a copy of the data as it stood: every game after `mask` unplayed, the given SP+ edition applied
+function reviewState(mask, E){
+  const c=JSON.parse(JSON.stringify(D));
+  c.games.forEach(g=>{ g.live=null; if(g.week>mask){ g.completed=false; g.homeWin=null; g.homeScore=null; g.awayScore=null; } });
+  if(E&&E.ratings) c.teams.forEach(t=>{ const r=E.ratings[t.team]; if(r) t.rating=r[0]; });
+  return c;
+}
+function reviewKey(w){
+  const wk=reviewWeeks(), i=wk.findIndex(x=>x.week===w); if(i<0) return null;
+  const prev = i>0 ? wk[i-1].week : -1, E0=spEditionFor(prev), E1=spEditionFor(w), N=+$("#sims").value;
+  return { w, prev, partial:wk[i].partial, E0, E1, N, key:`rv${REVIEW_VERSION}|${D.updatedAt}|F${strHash(window.LIVE?LIVE.finalsKey:"")}|${T}|${w}|${E0.hash}|${E1.hash}|${N}` };
+}
+// what the report keeps from a run: the headline figures, every FBS team's stats, the team's own games and the notable
+// others, the week's results, and a compact line per remaining game (win chance, swing, leverage) for before/after lookups
+function slimReview(r, fromWk, W){
+  const G=g=>({ i:g.i, week:g.week, home:g.home, away:g.away, involvesMe:g.involvesMe, pHomeWin:g.pHomeWin, pSp:g.pSp, pH:g.pH, pA:g.pA, swing:g.swing, lev:g.lev, se:g.se, clear:g.clear, sure:g.sure, levN:g.levN, impN:g.impN,
+    fieldTop:g.fieldTop||null, swapsAvg:g.swapsAvg||0, why:g.why||null, spreadText:g.spreadText||"", homeWin:g.homeWin, homeScore:g.homeScore, awayScore:g.awayScore, realized:g.realized, pBefore:g.pBefore });
+  const own=r.games.filter(g=>g.involvesMe), top=r.games.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,80);
+  return { mode:r.mode, N:r.N, pIn:r.pIn, pChamp:r.pChamp, medRank:r.medRank, avgBlock:r.avgBlock, avgWins:r.avgWins, myGames:r.myGames,
+    teamStats:r.teamStats.filter(t=>!t.fcs).map(t=>({team:t.team, conf:t.conf, pIn:t.pIn, pTitle:t.pTitle, avgSeed:t.avgSeed, pP4Champ:t.pP4Champ, pG6:t.pG6, wins:t.wins, games:t.games, block:t.block, ahead:t.ahead})),
+    games:own.concat(top).map(G), played:(r.played||[]).filter(g=>g.week>=fromWk&&g.week<=W).map(G),
+    brief:r.games.map(g=>[g.i, +g.pHomeWin.toFixed(4), +g.swing.toFixed(5), +g.lev.toFixed(4)]) };
+}
+function loadReview(key){ try{ const all=JSON.parse(localStorage.getItem("lb.review")||"[]"); const c=all.find(x=>x.key===key); return c?c.data:null; }catch(e){ return null; } }
+function saveReview(key,data){ try{ let all=JSON.parse(localStorage.getItem("lb.review")||"[]"); all=all.filter(x=>x.key!==key); all.push({key,at:Date.now(),data}); while(all.length>4) all.shift(); localStorage.setItem("lb.review", JSON.stringify(all)); }catch(e){} }
+const reviewFrom = K => K.prev<0 ? Math.min(...D.games.map(g=>g.week)) : K.prev+1;   // first week in the report's window
+
+function runReview(force){
+  const el=$("#review"); if(!D||!RES) return;
+  const weeks=reviewWeeks(), sel=$("#reviewWeek");
+  if(!weeks.length){ sel.innerHTML=""; $("#reviewNote").hidden=true; el.innerHTML=`<div class="sub" style="padding:10px 0">No results yet: the report fills in once a week's games have been played.</div>`; return; }
+  if(REVIEW.week===null||!weeks.some(x=>x.week===REVIEW.week)) REVIEW.week=weeks[weeks.length-1].week;
+  sel.innerHTML=weeks.map(x=>`<option value="${x.week}" ${x.week===REVIEW.week?"selected":""}>Week ${x.week}${x.partial?" so far":""}</option>`).join("");
+  const K=reviewKey(REVIEW.week);
+  if(!force && REVIEW.key===K.key && REVIEW.data){ renderReview(); return; }
+  if(!force){ const c=loadReview(K.key); if(c){ REVIEW.key=K.key; REVIEW.data=c; renderReview(); return; } }
+  const id=++REVIEW.run; REVIEW.key=null; REVIEW.data=null;
+  const N=K.N, ti=T?idx.get(T):-1, spChanged=K.E0.hash!==K.E1.hash;
+  const states=[{mask:K.prev,E:K.E0,tag:"before",txt:`how things stood before week ${K.w}`},{mask:K.w,E:K.E0,tag:"results",txt:`week ${K.w}'s results on the ratings of the time`}];
+  if(spChanged) states.push({mask:K.w,E:K.E1,tag:"after",txt:`the same results on the SP+ update that followed`});
+  const out={}, bar=$("#reviewBar"), note=$("#reviewNote");
+  note.hidden=false; el.innerHTML="";
+  const step=k=>{
+    if(id!==REVIEW.run) return;
+    if(k>=states.length){
+      const data={ w:K.w, prev:K.prev, partial:K.partial, N, team:T, spChanged, E0:{key:K.E0.key,label:K.E0.label,hash:K.E0.hash,ratings:K.E0.ratings}, E1:{key:K.E1.key,label:K.E1.label,hash:K.E1.hash,ratings:K.E1.ratings},
+        before:out.before, mid:out.results, after: spChanged?out.after:out.results };
+      REVIEW.key=K.key; REVIEW.data=data; saveReview(K.key,data); note.hidden=true; bar.style.width="0"; renderReview(); return; }
+    const s=states[k];
+    note.textContent=`Simulating ${s.txt}… (${k+1} of ${states.length}, ${N.toLocaleString()} seasons each)`;
+    const Dx=reviewState(s.mask, s.E), P=buildParams(Dx);
+    simulateP(REVIEW.pool, P, ti, N, p=>{ if(id===REVIEW.run) bar.style.width=((k+p)/states.length*100).toFixed(1)+"%"; },
+      r=>{ if(id!==REVIEW.run) return; out[s.tag]=slimReview(r, reviewFrom(K), K.w); step(k+1); }, {P, D:Dx, T});
+  };
+  step(0);
+}
+
+function renderReview(){
+  const R=REVIEW.data, el=$("#review"); if(!R) return;
+  const {w:W, prev, before:B, mid:M, after:A, spChanged}=R;
+  const fromWk=reviewFrom({prev}), wkTxt = fromWk<W ? `weeks ${fromWk}–${W}` : `week ${W}`;
+  const wkGames=D.games.filter(g=>g.week>=fromWk&&g.week<=W&&g.completed);
+  const dates=wkGames.map(g=>Date.parse(g.start)).filter(x=>x>0), fmtD=t=>new Date(t).toLocaleDateString(undefined,{month:"short",day:"numeric"});
+  const span=dates.length?`${fmtD(Math.min(...dates))}${Math.max(...dates)-Math.min(...dates)>432e5?" – "+fmtD(Math.max(...dates)):""}`:"";
+  const st=(r,team)=>r.teamStats.find(t=>t.team===team);
+  const sp0=R.E0.ratings||{}, sp1=R.E1.ratings||{};
+  const Bb=new Map(B.brief.map(x=>[x[0],x]));
+  const cls=v=>v>0.0005?"good":v<-0.0005?"bad":"";
+  const fmtPts=v=>{ const m=Math.abs(v)*100; return (v>0.00005?"+":v<-0.00005?"−":"")+(m<0.95?m.toFixed(2):m<9.95?m.toFixed(1):Math.round(m)); };
+  const sgn=(n,d=1)=>(n>=0.05?"+":n<=-0.05?"−":"")+Math.abs(n).toFixed(d);
+  const arrowP=(a,b)=>`<span class="rv-ba num">${pct(a)}% <em>→</em> <b class="${cls(b-a)}">${pct(b)}%</b></span>`;
+  const arrowW=(a,b)=>`<span class="rv-ba num">${fmtWin(a)}% <em>→</em> <b class="${b-a>0.005?"good":b-a<-0.005?"bad":""}">${fmtWin(b)}%</b></span>`;
+  const arrowN=(a,b,d=1)=>`<span class="rv-ba num">${a.toFixed(d)} <em>→</em> <b>${b.toFixed(d)}</b></span>`;
+  const delta=(v,color,max)=>`<span class="rv-delta num" style="${ramp(Math.abs(v),color,max)}">${fmtPts(v)}</span>`;
+  const favTxt=p=>p>=0.75?`${fmtWin(p)}% favourite`:p<0.45?`${fmtWin(p)}% underdog`:`${fmtWin(p)}% (toss-up)`;
+  const pWinPre=g=>{ const bb=Bb.get(g.i); const ph = bb ? bb[1] : g.pSp; return g.homeWin ? ph : 1-ph; };   // the winner's chance, on the ratings before the week
+  const scoreOf=g=>{ const wS=g.homeWin?g.homeScore:g.awayScore, lS=g.homeWin?g.awayScore:g.homeScore; return wS!=null?`<b class="num">${wS}–${lS}</b>`:""; };
+  const gameCell=g=>{ const winner=g.homeWin?g.home:g.away, loser=g.homeWin?g.away:g.home; return `${badge(winner)} ${scoreOf(g)} ${badge(loser)}`; };
+  const h3=t=>`<h3>${t}</h3>`;
+  const table=(head,rows,empty,keep)=>rows.length?`<div class="scroll${keep?" rv-keep":""}"><table><tr>${head}</tr>${rows.join("")}</table></div>`:`<div class="sub" style="padding:4px 0 8px">${empty}</div>`;   // keep: never trimmed in print
+
+  $("#reviewExplain").innerHTML=`<p>What ${wkTxt}${R.partial?" (so far)":""} did to the playoff picture${T?` for <strong>${T}</strong>`:""}. Three simulations frame it, ${R.N.toLocaleString()} seasons each: how things stood <strong>before</strong> the week (results through ${prev<0?"the preseason":"week "+prev}, on the ${R.E0.label} SP+), the week's <strong>results</strong> on those same ratings, and the same results on the <strong>SP+ update</strong> that followed${spChanged?` (${R.E1.label})`:" (none this week)"}. Every change is a difference between those states, so a move splits into what the results did and what the ratings update did. Change is in percentage points of playoff chance unless labelled otherwise. Print / PDF lays the page out for a single sheet.</p>`;
+
+  const head=`<div class="rv-head"><div><h2 class="rv-title">Week ${W} in review${T?` · ${T}`:""}</h2><div class="sub">${span?span+" · ":""}${wkGames.length} results${R.partial?" so far":""} · SP+ ${spChanged?`updated, ${R.E0.label} → ${R.E1.label}`:"unchanged"} · ${R.N.toLocaleString()} simulated seasons per state</div></div></div>`;
+
+  // ----- winners and losers, projected field and SP+ movers: the same in both modes -----
+  const mv=A.teamStats.filter(t=>st(B,t.team)).map(t=>{ const b=st(B,t.team).pIn, m=st(M,t.team).pIn; return {team:t.team, conf:t.conf, before:b, after:t.pIn, d:t.pIn-b, res:m-b, sp:t.pIn-m}; });
+  const up=mv.filter(x=>x.d>=0.005).sort((a,b)=>b.d-a.d).slice(0,8), down=mv.filter(x=>x.d<=-0.005).sort((a,b)=>a.d-b.d).slice(0,8);
+  const mvRow=(x,color,max)=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub">${x.conf}</td><td class="num">${arrowP(x.before,x.after)}</td><td class="ch"><span class="rv-delta num" style="${ramp(Math.abs(x.d),color,max)}">${fmtMove(x.d)}</span>${spChanged?`<small class="sub num" style="display:block;text-align:center;font-size:10.5px">results ${fmtMove(x.res)} · SP+ ${fmtMove(x.sp)}</small>`:""}</td></tr>`; };
+  const mvTable=(list,color)=>list.length?`<div class="scroll"><table>${list.map(x=>mvRow(x,color,Math.max(0.01,...list.map(y=>Math.abs(y.d))))).join("")}</table></div>`:`<div class="sub" style="padding:4px 0">No team moved by half a point or more.</div>`;
+  const mine=T&&!up.concat(down).some(x=>x.team===T)?(()=>{ const x=mv.find(y=>y.team===T); return x?`<div class="mine"><b>${T}</b>: ${arrowP(x.before,x.after)} (<b class="${cls(x.d)}">${fmtMove(x.d)}</b>)</div>`:""; })():"";
+  const movers=`<div class="movers"><div>${h3('<span class="good">Winners</span>')}${mvTable(up,"var(--for)")}</div><div>${h3('<span class="bad">Losers</span>')}${mvTable(down,"var(--against)")}</div>${mine}</div>`;
+
+  const fB=projectField(B), fA=projectField(A);
+  const seedB=new Map(fB.map(t=>[t.team,t.seed])), seedA=new Map(fA.map(t=>[t.team,t.seed]));
+  const outB=fB.nextOut.map(t=>t.team), ord=["first","second","third","fourth"];
+  const fieldRows=fA.map(t=>{ const s0=seedB.get(t.team), b=st(B,t.team);
+    const chg = s0==null ? `<b class="good">In</b> <span class="sub">(was ${outB.indexOf(t.team)>=0?ord[outB.indexOf(t.team)]+" out":pct(b?b.pIn:0)+"%"})</span>`
+      : s0===t.seed ? `<span class="sub">—</span>` : `<b class="${s0>t.seed?"good":"bad"}">${s0>t.seed?"▲":"▼"} ${Math.abs(s0-t.seed)}</b> <span class="sub">was #${s0}</span>`;
+    return `<tr class="${t.team===T?"me":""}"><td class="r num"><b>${t.seed}</b></td><td class="k">${tn(t.team)}</td><td class="sub">${t.tag}</td><td class="num">${b?arrowP(b.pIn,t.pIn):pct(t.pIn)+"%"}</td><td>${chg}</td></tr>`; });
+  const dropped=fB.filter(t=>!seedA.has(t.team)).map(t=>{ const a=st(A,t.team), k=fA.nextOut.findIndex(x=>x.team===t.team); return `${tn(t.team)} <span class="sub">was seed ${t.seed}, now ${k>=0?ord[k]+" out":pct(a?a.pIn:0)+"%"}</span>`; });
+  const nextOut=fA.nextOut.map(t=>`${tn(t.team)} <span class="sub num">${pct(t.pIn)}%${seedB.has(t.team)?", was seed "+seedB.get(t.team):""}</span>`);
+  const swaps=fA.filter(t=>!seedB.has(t.team)).length;
+  const field=h3(`Projected field: ${swaps?`${swaps} change${swaps>1?"s":""}`:"unchanged"}`)+table(`<th>Seed</th><th>Team</th><th>Path</th><th class="c">Playoff</th><th>Change</th>`, fieldRows, "", true)
+    +`<div class="sub" style="margin-top:6px">${dropped.length?`<b>Out:</b> ${dropped.join(" · ")}<br>`:""}<b>Next out:</b> ${nextOut.join(" · ")}</div>`;
+
+  let spBlock;
+  if(spChanged){
+    // rating moves among teams that matter: in the SP+ top 50 on either edition, or with a real playoff chance
+    const spm=Object.keys(sp1).filter(t=>sp0[t]&&idx.has(t)).map(t=>({team:t, r0:sp0[t][0], r1:sp1[t][0], k0:sp0[t][1], k1:sp1[t][1], d:sp1[t][0]-sp0[t][0]}))
+      .filter(x=>(x.k0&&x.k0<=50)||(x.k1&&x.k1<=50)||((st(A,x.team)||{}).pIn>=0.02));
+    const spRow=x=>`<tr class="${x.team===T?"me":""}"><td class="k">${tn(x.team)}</td><td class="num">${arrowN(x.r0,x.r1)}${x.k0&&x.k1?` <span class="sub">#${x.k0} → #${x.k1}</span>`:""}</td><td class="num ${cls(x.d)}" style="font-weight:700;text-align:right">${sgn(x.d)}</td></tr>`;
+    const spUp=spm.filter(x=>x.d>=0.05).sort((a,b)=>b.d-a.d).slice(0,6), spDown=spm.filter(x=>x.d<=-0.05).sort((a,b)=>a.d-b.d).slice(0,6);
+    const mineSp=T&&sp0[T]&&sp1[T]&&!spUp.concat(spDown).some(x=>x.team===T)?`<div class="sub" style="margin-top:4px"><b>${T}</b>: ${arrowN(sp0[T][0],sp1[T][0])} (${sgn(sp1[T][0]-sp0[T][0])})</div>`:"";
+    spBlock=h3(`SP+ update, ${R.E0.label} → ${R.E1.label}`)+`<div class="rv-two"><div>${table("<th>Biggest risers</th><th></th><th></th>",spUp.map(spRow),"No rating rose by a tenth.")}</div><div>${table("<th>Biggest fallers</th><th></th><th></th>",spDown.map(spRow),"No rating fell by a tenth.")}</div></div>${mineSp}`;
+  } else spBlock=h3("SP+ update")+`<div class="sub">SP+ did not change between these two states, so every move above comes from the results. The next update is folded in once the daily refresh records it.</div>`;
+
+  // ----- headline and team sections -----
+  let top, body;
+  if(T){
+    const d=A.pIn-B.pIn, dRes=M.pIn-B.pIn, dSp=A.pIn-M.pIn, r0=sp0[T], r1=sp1[T];
+    const tm=D.teams[idx.get(T)], ind=D.conferenceTiers[tm.conference]==="IND", sB=st(B,T), sA=st(A,T);
+    const card=(lab,a,b,dtxt,good)=>`<div class="stat rv-stat"><span>${lab}</span><b class="num">${a}<em>→</em>${b}</b><small class="num ${good>0?"good":good<0?"bad":""}">${dtxt}</small></div>`;
+    const rec=r=>`${r.avgWins.toFixed(1)}–${(r.myGames-r.avgWins).toFixed(1)}`;
+    const eps=(v,e)=>v>e?1:v<-e?-1:0;
+    const cards=`<div class="rv-stats">
+      ${card("Playoff chance", pct(B.pIn)+"%", pct(A.pIn)+"%", fmtMove(d)+" pts", eps(d,0.0005))}
+      ${r0&&r1 ? card("SP+ rating", `${r0[0].toFixed(1)}${r0[1]?` <small>#${r0[1]}</small>`:""}`, `${r1[0].toFixed(1)}${r1[1]?` <small>#${r1[1]}</small>`:""}`, sgn(r1[0]-r0[0])+(r0[1]&&r1[1]&&r0[1]!==r1[1]?` · ${r1[1]<r0[1]?"up":"down"} ${Math.abs(r1[1]-r0[1])} place${Math.abs(r1[1]-r0[1])>1?"s":""}`:""), eps(r1[0]-r0[0],0.05)) : card("SP+ rating", "—", (+tm.rating).toFixed(1), "no edition on record", 0)}
+      ${card("Projected record", rec(B), rec(A), sgn(A.avgWins-B.avgWins)+" wins", eps(A.avgWins-B.avgWins,0.05))}
+      ${card("Median final ranking", "#"+B.medRank, "#"+A.medRank, A.medRank===B.medRank?"no change":`${A.medRank<B.medRank?"up":"down"} ${Math.abs(A.medRank-B.medRank)}`, -eps(A.medRank-B.medRank,0))}
+      ${ind ? card("National title", pct(sB.pTitle)+"%", pct(sA.pTitle)+"%", fmtPts(sA.pTitle-sB.pTitle)+" pts", eps(sA.pTitle-sB.pTitle,0.0005))
+            : card(`${tm.conference} title (auto-bid)`, pct(B.pChamp)+"%", pct(A.pChamp)+"%", fmtPts(A.pChamp-B.pChamp)+" pts", eps(A.pChamp-B.pChamp,0.0005))}
+      ${card("Blockers ahead (need ≤6)", B.avgBlock.toFixed(1), A.avgBlock.toFixed(1), sgn(A.avgBlock-B.avgBlock), -eps(A.avgBlock-B.avgBlock,0.05))}
+    </div>`;
+    const tot=Math.abs(dRes)+Math.abs(dSp), wr=tot>0?Math.abs(dRes)/tot*100:50;
+    const split = spChanged
+      ? `<div class="rv-split"><div class="mv-bar"><i class="${cls(dRes)}" style="width:${wr.toFixed(1)}%"></i><i class="${cls(dSp)}" style="width:${(100-wr).toFixed(1)}%"></i></div>
+         <div class="mv-legend"><span>Results <b class="num ${cls(dRes)}">${fmtMove(dRes)}</b></span><span>SP+ update <b class="num ${cls(dSp)}">${fmtMove(dSp)}</b></span></div>
+         <p>Of the <b class="num ${cls(d)}">${fmtMove(d)}</b> points, <b class="num ${cls(dRes)}">${fmtMove(dRes)}</b> came from the results of ${wkTxt} with the ratings held where they were, and <b class="num ${cls(dSp)}">${fmtMove(dSp)}</b> from the SP+ update that followed${r0&&r1?` (${short(T)} ${sgn(r1[0]-r0[0])}${r0[1]&&r1[1]?`, #${r0[1]} → #${r1[1]}`:""})`:""}.</p></div>`
+      : `<div class="rv-split"><p class="sub">SP+ did not change between these two states, so the whole <b class="num ${cls(d)}">${fmtMove(d)}</b> comes from the results.</p></div>`;
+    top=cards+split;
+
+    // the team's own game(s)
+    const ownPlayed=M.played.filter(g=>g.involvesMe).sort((a,b)=>a.week-b.week);
+    const own=ownPlayed.length ? ownPlayed.map(g=>{ const src=D.games[g.i]||{}; const home=g.home===T, opp=home?g.away:g.home, won=home?g.homeWin:!g.homeWin;
+        const mine=home?g.homeScore:g.awayScore, theirs=home?g.awayScore:g.homeScore, bb=Bb.get(g.i), pPre=bb?(home?bb[1]:1-bb[1]):(home?g.pSp:1-g.pSp);
+        const pActual=g.homeWin?g.pH:g.pA, pOther=g.homeWin?g.pA:g.pH;
+        return `<div class="rv-game"><div class="sc"><b class="${won?"good":"bad"}">${won?"Beat":"Lost to"}</b> ${badge(opp)} <span class="num">${mine!=null?`${mine}–${theirs}`:""}</span> <span class="sub" style="font-weight:400">${src.neutral?"at a neutral site":home?"at home":"on the road"}, week ${g.week}</span></div>
+          <div>${short(T)} was a ${favTxt(pPre)}${g.spreadText?` (closed ${g.spreadText})`:""}. Playoff odds <b class="num">${pct(g.pBefore)}%</b> at kickoff → <b class="num ${cls(g.realized)}">${pct(pActual)}%</b> with the ${won?"win":"loss"} (<b class="num ${cls(g.realized)}">${fmtPts(g.realized)}</b>); ${won?"a loss":"a win"} would have left them at <b class="num">${pct(pOther)}%</b>.</div></div>`; }).join("")
+      : `<div class="sub" style="padding:4px 0 8px">${short(T)} did not play in ${wkTxt}.</div>`;
+
+    // other results, by how far they moved the team's odds (on the ratings of the time)
+    const myGames=D.games.filter(x=>x.home===T||x.away===T), onSched=n=>myGames.find(x=>x.home===n||x.away===n);
+    const reason=g=>{ const why=g.why; if(!why) return "";
+      const want=g.swing>0?g.home:g.away, other=g.swing>0?g.away:g.home;
+      const list=[["rank",why.rank],["autobid",why.autobid],["resume",why.resume]].filter(([,v])=>v>=0.15).sort((a,b)=>b[1]-a[1]); if(!list.length) return "";
+      const k=list[0][0], ch=(st(A,g.home)||{}).conf, ca=(st(A,g.away)||{}).conf;
+      if(k==="rank") return `${short(other)} competes with ${short(T)} for an at-large spot`;
+      if(k==="autobid") return `shapes the ${ch&&ch===ca?ch:"conference"} title race and its auto-bid`;
+      const s=onSched(want)?want:other, gm=onSched(s); return gm?`${short(s)} is on ${short(T)}'s schedule (week ${gm.week}); its record feeds ${short(T)}'s résumé`:""; };
+    const others=M.played.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>Math.abs(b.realized)-Math.abs(a.realized)).slice(0,7);
+    const maxR=Math.max(0.001,...others.map(g=>Math.abs(g.realized)));
+    const otherRows=others.map(g=>`<tr><td>${gameCell(g)}</td><td class="sub">${favTxt(pWinPre(g))}</td><td class="ch">${delta(g.realized,g.realized>0?"var(--for)":"var(--against)",maxR)}</td><td class="sub">${reason(g)}</td></tr>`);
+    const netOther=M.played.filter(g=>!g.involvesMe).reduce((s,g)=>s+g.realized,0), netOwn=ownPlayed.reduce((s,g)=>s+g.realized,0);
+    const quiet=M.played.filter(g=>!g.involvesMe&&!g.clear).length;
+    const results=h3(`Other results that moved ${short(T)}`)+table(`<th>Result</th><th>Winner was</th><th class="c">Effect</th><th>Why it mattered</th>`, otherRows, `No other result in ${wkTxt} moved ${short(T)}'s odds by a tenth of a point.`)
+      +`<div class="sub" style="margin-top:6px">Each effect is that result on its own, with every other result as it happened: ${ownPlayed.length?`${short(T)}'s own game${ownPlayed.length>1?"s":""} <b class="num ${cls(netOwn)}">${fmtPts(netOwn)}</b>, `:""}everyone else's <b class="num ${cls(netOther)}">${fmtPts(netOther)}</b> net${quiet?`, ${quiet} of them barely moving the needle`:""}. Together the results moved the odds <b class="num ${cls(dRes)}">${fmtMove(dRes)}</b>${Math.abs(dRes-netOther-netOwn)>=0.002?", which is not the one-at-a-time effects added up: results compound, and several small ones together can change what a season needs":""}.</div>`;
+
+    // the road ahead: every remaining game, before and after
+    const ownUp=A.games.filter(g=>g.involvesMe).sort((a,b)=>a.week-b.week);
+    const roadRows=ownUp.map(g=>{ const src=D.games[g.i]||{}; const home=g.home===T, opp=home?g.away:g.home, bb=Bb.get(g.i);
+      const p0=bb?(home?bb[1]:1-bb[1]):null, p1=home?g.pHomeWin:1-g.pHomeWin, pW=home?g.pH:g.pA, pL=home?g.pA:g.pH, sw0=bb?Math.abs(bb[2])*100:null, sw1=Math.abs(g.swing)*100;
+      return `<tr><td class="sub num">${g.week}</td><td class="k">${home?"":"@"}${badge(opp)}${src.neutral?' <span class="sub">(N)</span>':""}</td><td class="num">${p0!=null?arrowW(p0,p1):fmtWin(p1)+"%"}</td><td class="num good" style="text-align:center">${pct(pW)}%</td><td class="num bad" style="text-align:center">${pct(pL)}%</td><td class="num">${sw0!=null?arrowN(sw0,sw1):sw1.toFixed(1)}</td><td style="text-align:center">${scorePill(g.lev>0?g.levN:null,g.sure)}</td><td class="sub">${fmtKickShort(src)}${g.spreadText?" · "+g.spreadText:""}</td></tr>`; });
+    const road=h3(`The road ahead: ${short(T)}'s remaining games`)+table(`<th>Wk</th><th>Opponent</th><th>Win chance</th><th class="c">Playoff if win</th><th class="c">Playoff if loss</th><th>Swing (pts)</th><th class="c">Leverage</th><th>Kickoff</th>`, roadRows, `${short(T)} has no games left.`, true)
+      +`<div class="sub" style="margin-top:4px">Win chance and swing show before → after the week. Swing is the gap in playoff chance between winning and losing the game; leverage is that swing discounted by how one-sided the game is, 0–100 against ${short(T)}'s biggest remaining game.</div>`;
+
+    // other games that matter most now
+    const watch=A.games.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,7);
+    const watchRows=watch.map(g=>{ const want=g.swing>0?g.home:g.away, bb=Bb.get(g.i), sw0=bb?Math.abs(bb[2])*100:null, sw1=Math.abs(g.swing)*100, moved=sw0==null||sw1.toFixed(1)===sw0.toFixed(1)?"":sw1>sw0?`<span class="good">▲</span>`:`<span class="bad">▼</span>`;
+      return `<tr><td class="sub num">${g.week}</td><td>${badge(g.away)} <span class="sub">at</span> ${badge(g.home)}</td><td>${tn(want,short(want))}</td><td class="num">${sw0!=null?arrowN(sw0,sw1):sw1.toFixed(1)} ${moved}</td><td style="text-align:center">${scorePill(g.levN,g.sure)}</td></tr>`; });
+    const watchBlock=h3("Other games that matter most now")+table(`<th>Wk</th><th>Game</th><th>Pull for</th><th>Swing (pts)</th><th class="c">Leverage</th>`, watchRows, "No other game moves the odds by a tenth of a point.");
+
+    // upsets, for the wider picture
+    // upsets with a playoff angle first (a team with a real chance on either side); the rest only if there are few of those
+    const allUps=M.played.filter(g=>!g.involvesMe&&pWinPre(g)<0.45&&idx.has(g.home)&&idx.has(g.away)).sort((a,b)=>pWinPre(a)-pWinPre(b));
+    const matters=g=>[g.home,g.away].some(n=>{ const b=st(B,n), a=st(A,n); return (b&&b.pIn>=0.01)||(a&&a.pIn>=0.01); });
+    const upsets=allUps.filter(matters).concat(allUps.filter(g=>!matters(g))).slice(0,7);
+    const upRows=upsets.map(g=>{ const winner=g.homeWin?g.home:g.away, loser=g.homeWin?g.away:g.home, sw=st(B,winner), sa=st(A,winner), lb=st(B,loser), la=st(A,loser);
+      return `<tr><td>${gameCell(g)}</td><td class="sub num">${fmtWin(pWinPre(g))}% chance</td><td class="num">${la&&lb?`${short(loser)} ${arrowP(lb.pIn,la.pIn)}`:""}</td><td class="num">${sa&&sw?`${short(winner)} ${arrowP(sw.pIn,sa.pIn)}`:""}</td></tr>`; });
+    const upBlock=h3("Upsets of the week")+table(`<th>Result</th><th>Winner had</th><th>Loser's playoff chance</th><th>Winner's</th>`, upRows, `No upset in ${wkTxt}: every winner had at least a 45% chance.`);
+
+    body=`<div class="rv-grid"><div>${h3(`${short(T)}'s week`)}${own}${results}</div><div>${upBlock}</div></div>
+      ${road}
+      <div class="rv-grid"><div>${watchBlock}</div><div>${field}</div></div>
+      ${h3("Winners and losers across the field")}${movers}
+      ${spBlock}`;
+  } else {
+    // no team: the field as a whole
+    const tiers=r=>{ const ts=r.teamStats; return [ts.filter(t=>t.pIn>=0.9).length, ts.filter(t=>t.pIn>=0.75&&t.pIn<0.9).length, ts.filter(t=>t.pIn>=0.25&&t.pIn<0.75).length, ts.filter(t=>t.pIn>=0.1&&t.pIn<0.25).length]; };
+    const tB=tiers(B), tA=tiers(A), labs=["Locks (90%+)","Likely (75–90%)","Bubble (25–75%)","Long shots (10–25%)"];
+    const card=(lab,a,b)=>`<div class="stat rv-stat"><span>${lab}</span><b class="num">${a}<em>→</em>${b}</b><small class="num">${a===b?"no change":(b>a?"+":"−")+Math.abs(b-a)+" team"+(Math.abs(b-a)>1?"s":"")}</small></div>`;
+    top=`<div class="rv-stats">${labs.map((l,i)=>card(l,tB[i],tA[i])).join("")}</div>`;
+    const big=M.played.filter(g=>g.clear).sort((a,b)=>Math.abs(b.realized)-Math.abs(a.realized)).slice(0,8);
+    const bigRows=big.map(g=>`<tr><td>${gameCell(g)}</td><td class="sub">${favTxt(pWinPre(g))}</td><td class="num">${pct(g.swing)}% of seasons</td><td class="sub">${(g.fieldTop||[]).slice(0,2).map(t=>short(t.team)).join(", ")}</td></tr>`);
+    const bigBlock=h3("Results that reshaped the field")+table(`<th>Result</th><th>Winner was</th><th>Field differs in</th><th>Mostly</th>`, bigRows, `No result in ${wkTxt} changed who makes the field.`)
+      +`<div class="sub" style="margin-top:4px">"Field differs in" is how often the twelve teams would be different had the game gone the other way; the list is ordered by that, weighed by how unexpected the result was.</div>`;
+    const watch=A.games.filter(g=>g.clear).sort((a,b)=>b.lev-a.lev).slice(0,8);
+    const watchRows=watch.map(g=>{ const bb=Bb.get(g.i), sw0=bb?bb[2]:null;
+      return `<tr><td class="sub num">${g.week}</td><td>${badge(g.away)} <span class="sub">at</span> ${badge(g.home)}</td><td class="num">${sw0!=null?arrowP(sw0,g.swing):pct(g.swing)+"%"}</td><td class="sub">${(g.fieldTop||[]).slice(0,2).map(t=>short(t.team)).join(", ")}</td><td style="text-align:center">${scorePill(g.levN,g.sure)}</td></tr>`; });
+    const watchBlock=h3("Games that shape the field most now")+table(`<th>Wk</th><th>Game</th><th>Changes the field in</th><th>Mostly</th><th class="c">Leverage</th>`, watchRows, "No remaining game changes who gets in.");
+    body=`<div class="rv-grid"><div>${bigBlock}</div><div>${watchBlock}</div></div>
+      ${h3("Winners and losers")}${movers}
+      <div class="rv-grid"><div>${field}</div><div>${spBlock}</div></div>`;
+  }
+  el.innerHTML=head+top+body+`<div class="rv-note">Three simulations of ${R.N.toLocaleString()} seasons each, on the same fixed random stream, so a difference between two states is the effect of what changed between them and not simulation noise. Playoff chances are the model's committee stand-in (strength plus résumé), not the committee itself. ${R.partial?"This week is not finished: the report covers the results so far.":""}</div>`;
+}
+$("#reviewWeek").onchange=()=>{ REVIEW.week=+$("#reviewWeek").value; runReview(); };
+$("#reviewRecompute").onclick=()=>runReview(true);
+// Print / PDF: one portrait sheet. The report is laid out at the printed width with the print rules applied, and if it
+// still runs long the sheet is scaled down (never below 70%, so a very full week may take a second page).
+$("#reviewPrint").onclick=()=>{
+  const body=document.body, root=document.documentElement, rules=[];
+  for(const ss of document.styleSheets){ try{ for(const r of ss.cssRules){ if(r.media && /print/.test(r.media.mediaText)) for(const x of r.cssRules) rules.push(x.cssText); } }catch(e){} }
+  const tmp=document.createElement("style"); tmp.textContent=rules.join("\n")+"\n.wrap{max-width:749px!important}";
+  body.classList.add("print-review"); document.head.appendChild(tmp);
+  const h=$("#tab-review").offsetHeight; tmp.remove();
+  root.style.setProperty("--rvzoom", String(Math.max(0.7, Math.min(1, 975/Math.max(1,h)))));
+  const off=()=>{ body.classList.remove("print-review"); root.style.removeProperty("--rvzoom"); window.removeEventListener("afterprint",off); };
+  window.addEventListener("afterprint",off); window.print();
+};
 </script>
 </body>
 </html>

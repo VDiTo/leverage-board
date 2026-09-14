@@ -66,6 +66,27 @@ The AP Top 25 and, once released, the CFP committee rankings are pulled each
 week and shown in the schedule board; the committee ranking drives the "#n"
 badges when it exists. TV outlets and kickoff times come from CFBD's media feed.
 
+## Week in review
+
+The Week in review tab is a one-page report on what a week's results did:
+the selected team's playoff chance, SP+ rating, projected record and ranking
+before and after; its own game and the other results that moved its odds;
+the win chance and playoff swing of every game it has left, before and after;
+the biggest winners and losers across the field; the projected 12-team field
+before and after, with who came in, who dropped out and who moved seeds; and
+the week's SP+ update. With no team selected it covers the field as a whole.
+
+It runs three simulations from copies of the data: how things stood **before**
+the week (results through the previous week, on the SP+ edition of the time,
+from `history.json`), the week's **results** on those same ratings, and the
+same results on the **SP+ update** that followed. Every figure is a
+difference between those states, so each move splits into what the results
+did and what the ratings update did. All three use the fixed random stream,
+so the differences are effects, not simulation noise. The current week is
+offered once it has a final ("so far"). Finished reports are kept on the
+device like the main result; Print / PDF lays the report out for a single
+portrait sheet, scaling it down a little if the week was busy.
+
 ## One-page PDFs
 
 The site builds two PDFs on demand, in the browser, from whatever is selected:
