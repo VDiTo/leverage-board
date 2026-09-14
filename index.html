@@ -62,26 +62,28 @@
     header .bar,header .prog,#cacheNote,nav.tabs,.foot,.modal,section.tab,.info,.controls{display:none!important}
     body.print-board #tab-board, body.print-slate #tab-slate{display:block!important}
     body:not(.print-slate):not(.print-review) #tab-board{display:block!important}
-    body.print-review #tab-review{display:block!important;page:review;font-size:7.4pt;color:#10233a;zoom:var(--rvzoom,1)}
-    body.print-review .rv-grid table tr:nth-child(n+8),body.print-review .movers table tr:nth-child(n+7){display:none} body.print-review .rv-keep table tr:nth-child(n){display:table-row}
+    body.print-review{page:review} body.print-review header,body.print-review #liveNote{display:none!important}
+    body.print-review #tab-review{display:block!important;page:review;font-size:8.5pt;color:#10233a;zoom:var(--rvzoom,1)}
+    body.print-review .rv-s table tr:nth-child(n+7){display:none} body.print-review .rv-keep table tr:nth-child(n){display:table-row} body.print-review .rv-p{display:none!important}
+    body.print-review .rv-body{grid-template-columns:1fr 1fr!important;grid-template-areas:"week field" "road road" "mv mv" "watch sp";gap:2pt 18pt}
+    body.print-review .rv-s.week{grid-area:week} body.print-review .rv-s.field{grid-area:field} body.print-review .rv-s.road{grid-area:road} body.print-review .rv-s.mv{grid-area:mv} body.print-review .rv-s.watch{grid-area:watch} body.print-review .rv-s.sp{grid-area:sp}
+    body.print-review .rv-x{display:none!important} body.print-review .rv-po{display:inline} body.print-review #review td:last-child{white-space:normal} body.print-review #review th{white-space:normal;vertical-align:bottom}
     body.print-review .h2-right,body.print-review .controls,body.print-review #reviewNote,body.print-review .prog,body.print-review .explain,body.print-review #tab-review>h2{display:none!important}
-    body.print-review .rv-head h2.rv-title{font-size:15pt;color:#10233a} body.print-review .rv-head{margin:0 0 4pt}
+    body.print-review .rv-head h2.rv-title{font-size:16pt;color:#10233a} body.print-review .rv-head{margin:0 0 4pt} body.print-review .rv-head .sub{font-size:8pt}
     body.print-review .rv-stats{grid-template-columns:repeat(6,1fr);gap:5pt;margin:4pt 0}
-    body.print-review .stat{background:#f4f6f9;border-color:#dfe5ec;padding:4pt 6pt} body.print-review .rv-stat span{font-size:6.5pt} body.print-review .rv-stat b{font-size:11pt} body.print-review .rv-stat b em{font-size:8pt} body.print-review .rv-stat small{font-size:7pt}
-    body.print-review .rv-split p{font-size:7.4pt} body.print-review .mv-bar{height:5pt} body.print-review .mv-legend{font-size:7pt;margin-bottom:3pt}
-    body.print-review #review h3{margin:7pt 0 2pt;font-size:7.4pt;color:#3a4a60}
-    body.print-review #review table{font-size:6.8pt} body.print-review #review td,body.print-review #review th{padding:1.2pt 3pt;border-bottom-color:#e6eaf0} body.print-review #review th{color:#5a6b80;background:#fff}
+    body.print-review .stat{background:#f4f6f9;border-color:#dfe5ec;padding:4pt 6pt} body.print-review .rv-stat span{font-size:7.5pt} body.print-review .rv-stat b{font-size:12pt} body.print-review .rv-stat b em{font-size:9pt} body.print-review .rv-stat small{font-size:8pt}
+    body.print-review .rv-split{margin:2pt 0 4pt} body.print-review .rv-split p{font-size:8.5pt} body.print-review .rv-pill{font-size:8pt;padding:1pt 6pt;background:#f4f6f9;border-color:#dfe5ec}
+    body.print-review #review h3{margin:8pt 0 2pt;font-size:8pt;color:#3a4a60}
+    body.print-review #review table{font-size:8pt} body.print-review #review td,body.print-review #review th{padding:1.5pt 4pt;border-bottom-color:#e6eaf0;line-height:1.25} body.print-review #review th{color:#5a6b80;background:#fff;font-size:7.5pt}
     body.print-review #review td.k{background:#fff;color:#10233a} body.print-review #review tr.me td.k{color:#8a6f2e}
-    body.print-review .rv-game{padding:3pt 0;font-size:7pt} body.print-review .rv-game .sc{font-size:8pt}
-    body.print-review .rv-delta{font-size:7pt;padding:0 4pt;min-width:34pt} body.print-review .pill{font-size:6.8pt;padding:0 5pt;min-width:26pt}
-    body.print-review .rv-grid{grid-template-columns:1fr 1fr!important;gap:2pt 16pt} body.print-review .rv-two{grid-template-columns:1fr 1fr!important;gap:2pt 10pt}
-    body.print-review .movers{grid-template-columns:1fr 1fr!important;gap:2pt 16pt} body.print-review .movers td.ch small{font-size:6pt}
+    body.print-review .rv-game{padding:3pt 0;font-size:8.5pt;line-height:1.35} body.print-review .rv-game .sc{font-size:9.5pt}
+    body.print-review .rv-delta{font-size:8pt;padding:0 5pt;min-width:36pt;line-height:1.3} body.print-review .pill{font-size:7.5pt;padding:0 5pt;min-width:26pt;line-height:1.3}
+    body.print-review .rv-grid{grid-template-columns:1fr 1fr!important;gap:2pt 18pt} body.print-review .rv-two{grid-template-columns:1fr 1fr!important;gap:2pt 6pt}
+    body.print-review .movers{grid-template-columns:1fr 1fr!important;gap:2pt 18pt}
     body.print-review .rv-grid>div,body.print-review .movers>div{min-width:0} body.print-review table{table-layout:auto}
-    body.print-review #review .sub,body.print-review #review .rk,body.print-review #review .rv-ba,body.print-review .movers .ba{font-size:6.8pt}
-    body.print-review #review td,body.print-review #review th,body.print-review #review .pill,body.print-review #review .rv-delta{line-height:1.2}
-    body.print-review .rv-game div:not(.sc){line-height:1.3}
-    body.print-review .rv-ba b,body.print-review .rv-game,body.print-review .plain{color:#10233a} body.print-review .rv-ba,body.print-review .sub,body.print-review .rv-stat span{color:#5a6b80}
-    body.print-review .rv-note{font-size:6.5pt;margin-top:6pt;padding-top:3pt}
+    body.print-review #review .sub,body.print-review #review .rk,body.print-review #review .rv-ba{font-size:8pt}
+    body.print-review .rv-ba b,body.print-review .rv-game{color:#10233a} body.print-review .rv-ba,body.print-review .sub,body.print-review .rv-stat span{color:#5a6b80}
+    body.print-review .rv-note{font-size:7pt;margin-top:6pt;padding-top:3pt;border-top-color:#e6eaf0}
     body.print-review .scroll{overflow:visible}
     .explain{display:block!important;background:#fff;border:0;padding:0;color:#3a4a60;max-width:none}
     .g{break-inside:avoid;color:#10233a} .g-top,.g-line,.g-line b{color:#3a4a60} .g-match{color:#10233a} .chip small{color:#5a6b80}
@@ -357,7 +359,12 @@
   .rv-stat b em{font-style:normal;color:var(--muted);font-weight:400;font-size:14px;margin:0 5px}
   .rv-stat b small{font-size:12px;color:var(--muted);font-weight:500}
   .rv-stat small{font-weight:700;font-size:12.5px;color:var(--muted)}
-  .rv-split{max-width:760px;margin:0 0 6px} .rv-split p{margin:0;font-size:13.5px}
+  .rv-split{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:2px 0 8px} .rv-split p{margin:0;font-size:13.5px;flex:1 1 100%}
+  .rv-pill{display:inline-block;border-radius:6px;padding:3px 10px;font-size:13px;font-weight:600;background:var(--panel2);border:1px solid var(--line)} .rv-pill b{margin-left:3px} .rv-pill.good{border-color:var(--for)} .rv-pill.good b{color:var(--for)} .rv-pill.bad{border-color:var(--against)} .rv-pill.bad b{color:var(--against)}
+  #review .tn{text-decoration:none}
+  .rv-po{display:none}   /* print-only text */
+  .rv-body{display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;align-items:start} .rv-s{min-width:0} .rv-s.road,.rv-s.mv{grid-column:1/-1}
+  @media (max-width:760px){ .rv-body{grid-template-columns:1fr} }
   .rv-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;align-items:start}
   .rv-two{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;align-items:start}
   .rv-grid>div,.rv-two>div,#review .movers>div{min-width:0}   /* tables scroll inside their column instead of widening the page */
@@ -1759,10 +1766,12 @@ function renderReview(){
   // ----- winners and losers, projected field and SP+ movers: the same in both modes -----
   const mv=A.teamStats.filter(t=>st(B,t.team)).map(t=>{ const b=st(B,t.team).pIn, m=st(M,t.team).pIn; return {team:t.team, conf:t.conf, before:b, after:t.pIn, d:t.pIn-b, res:m-b, sp:t.pIn-m}; });
   const up=mv.filter(x=>x.d>=0.005).sort((a,b)=>b.d-a.d).slice(0,8), down=mv.filter(x=>x.d<=-0.005).sort((a,b)=>a.d-b.d).slice(0,8);
-  const mvRow=(x,color,max)=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub">${x.conf}</td><td class="num">${arrowP(x.before,x.after)}</td><td class="ch"><span class="rv-delta num" style="${ramp(Math.abs(x.d),color,max)}">${fmtMove(x.d)}</span>${spChanged?`<small class="sub num" style="display:block;text-align:center;font-size:10.5px">results ${fmtMove(x.res)} · SP+ ${fmtMove(x.sp)}</small>`:""}</td></tr>`; };
-  const mvTable=(list,color)=>list.length?`<div class="scroll"><table>${list.map(x=>mvRow(x,color,Math.max(0.01,...list.map(y=>Math.abs(y.d))))).join("")}</table></div>`:`<div class="sub" style="padding:4px 0">No team moved by half a point or more.</div>`;
+  const mvRow=(x,color,max)=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num rv-p">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub rv-p">${x.conf}</td><td class="num">${arrowP(x.before,x.after)}</td><td class="ch"><span class="rv-delta num" style="${ramp(Math.abs(x.d),color,max)}">${fmtMove(x.d)}</span></td>${spChanged?`<td class="num ${cls(x.res)}" style="text-align:center;font-weight:600">${fmtMove(x.res)}</td><td class="num ${cls(x.sp)}" style="text-align:center;font-weight:600">${fmtMove(x.sp)}</td>`:""}</tr>`; };
+  const mvHead=`<tr><th class="rv-p"></th><th>Team</th><th class="rv-p"></th><th>Playoff chance</th><th class="c">Change</th>${spChanged?`<th class="c">From results</th><th class="c">From SP+ update</th>`:""}</tr>`;
+  const mvTable=(list,color)=>list.length?`<div class="scroll"><table>${mvHead}${list.map(x=>mvRow(x,color,Math.max(0.01,...list.map(y=>Math.abs(y.d))))).join("")}</table></div>`:`<div class="sub" style="padding:4px 0">No team moved by half a point or more.</div>`;
   const mine=T&&!up.concat(down).some(x=>x.team===T)?(()=>{ const x=mv.find(y=>y.team===T); return x?`<div class="mine"><b>${T}</b>: ${arrowP(x.before,x.after)} (<b class="${cls(x.d)}">${fmtMove(x.d)}</b>)</div>`:""; })():"";
-  const movers=`<div class="movers"><div>${h3('<span class="good">Winners</span>')}${mvTable(up,"var(--for)")}</div><div>${h3('<span class="bad">Losers</span>')}${mvTable(down,"var(--against)")}</div>${mine}</div>`;
+  const movers=title=>h3(title)+`<div class="sub rv-x" style="margin:-2px 0 6px">Playoff chance before → after ${wkTxt}; change in percentage points${spChanged?", split into what the results did and what the SP+ update did":""}.</div>
+    <div class="movers"><div>${h3('<span class="good">Winners</span>')}${mvTable(up,"var(--for)")}</div><div>${h3('<span class="bad">Losers</span>')}${mvTable(down,"var(--against)")}</div>${mine}</div>`;
 
   const fB=projectField(B), fA=projectField(A);
   const seedB=new Map(fB.map(t=>[t.team,t.seed])), seedA=new Map(fA.map(t=>[t.team,t.seed]));
@@ -1770,11 +1779,11 @@ function renderReview(){
   const fieldRows=fA.map(t=>{ const s0=seedB.get(t.team), b=st(B,t.team);
     const chg = s0==null ? `<b class="good">In</b> <span class="sub">(was ${outB.indexOf(t.team)>=0?ord[outB.indexOf(t.team)]+" out":pct(b?b.pIn:0)+"%"})</span>`
       : s0===t.seed ? `<span class="sub">—</span>` : `<b class="${s0>t.seed?"good":"bad"}">${s0>t.seed?"▲":"▼"} ${Math.abs(s0-t.seed)}</b> <span class="sub">was #${s0}</span>`;
-    return `<tr class="${t.team===T?"me":""}"><td class="r num"><b>${t.seed}</b></td><td class="k">${tn(t.team)}</td><td class="sub">${t.tag}</td><td class="num">${b?arrowP(b.pIn,t.pIn):pct(t.pIn)+"%"}</td><td>${chg}</td></tr>`; });
+    return `<tr class="${t.team===T?"me":""}"><td class="r num"><b>${t.seed}</b></td><td class="k">${tn(t.team)}</td><td class="sub rv-p">${t.tag}</td><td class="num">${b?arrowP(b.pIn,t.pIn):pct(t.pIn)+"%"}</td><td>${chg}</td></tr>`; });
   const dropped=fB.filter(t=>!seedA.has(t.team)).map(t=>{ const a=st(A,t.team), k=fA.nextOut.findIndex(x=>x.team===t.team); return `${tn(t.team)} <span class="sub">was seed ${t.seed}, now ${k>=0?ord[k]+" out":pct(a?a.pIn:0)+"%"}</span>`; });
   const nextOut=fA.nextOut.map(t=>`${tn(t.team)} <span class="sub num">${pct(t.pIn)}%${seedB.has(t.team)?", was seed "+seedB.get(t.team):""}</span>`);
   const swaps=fA.filter(t=>!seedB.has(t.team)).length;
-  const field=h3(`Projected field: ${swaps?`${swaps} change${swaps>1?"s":""}`:"unchanged"}`)+table(`<th>Seed</th><th>Team</th><th>Path</th><th class="c">Playoff</th><th>Change</th>`, fieldRows, "", true)
+  const field=h3(`Projected field: ${swaps?`${swaps} change${swaps>1?"s":""}`:"unchanged"}`)+table(`<th>Seed</th><th>Team</th><th class="rv-p">Path</th><th class="c">Playoff</th><th>Change</th>`, fieldRows, "", true)
     +`<div class="sub" style="margin-top:6px">${dropped.length?`<b>Out:</b> ${dropped.join(" · ")}<br>`:""}<b>Next out:</b> ${nextOut.join(" · ")}</div>`;
 
   let spBlock;
@@ -1782,7 +1791,7 @@ function renderReview(){
     // rating moves among teams that matter: in the SP+ top 50 on either edition, or with a real playoff chance
     const spm=Object.keys(sp1).filter(t=>sp0[t]&&idx.has(t)).map(t=>({team:t, r0:sp0[t][0], r1:sp1[t][0], k0:sp0[t][1], k1:sp1[t][1], d:sp1[t][0]-sp0[t][0]}))
       .filter(x=>(x.k0&&x.k0<=50)||(x.k1&&x.k1<=50)||((st(A,x.team)||{}).pIn>=0.02));
-    const spRow=x=>`<tr class="${x.team===T?"me":""}"><td class="k">${tn(x.team)}</td><td class="num">${arrowN(x.r0,x.r1)}${x.k0&&x.k1?` <span class="sub">#${x.k0} → #${x.k1}</span>`:""}</td><td class="num ${cls(x.d)}" style="font-weight:700;text-align:right">${sgn(x.d)}</td></tr>`;
+    const spRow=x=>`<tr class="${x.team===T?"me":""}"><td class="k">${tn(x.team)}</td><td class="num"><span class="rv-p">${arrowN(x.r0,x.r1)}${x.k0&&x.k1?` <span class="sub">#${x.k0} → #${x.k1}</span>`:""}</span><span class="rv-po">${x.r1.toFixed(1)}${x.k1?` <span class="sub">#${x.k1}</span>`:""}</span></td><td class="num ${cls(x.d)}" style="font-weight:700;text-align:right">${sgn(x.d)}</td></tr>`;
     const spUp=spm.filter(x=>x.d>=0.05).sort((a,b)=>b.d-a.d).slice(0,6), spDown=spm.filter(x=>x.d<=-0.05).sort((a,b)=>a.d-b.d).slice(0,6);
     const mineSp=T&&sp0[T]&&sp1[T]&&!spUp.concat(spDown).some(x=>x.team===T)?`<div class="sub" style="margin-top:4px"><b>${T}</b>: ${arrowN(sp0[T][0],sp1[T][0])} (${sgn(sp1[T][0]-sp0[T][0])})</div>`:"";
     spBlock=h3(`SP+ update, ${R.E0.label} → ${R.E1.label}`)+`<div class="rv-two"><div>${table("<th>Biggest risers</th><th></th><th></th>",spUp.map(spRow),"No rating rose by a tenth.")}</div><div>${table("<th>Biggest fallers</th><th></th><th></th>",spDown.map(spRow),"No rating fell by a tenth.")}</div></div>${mineSp}`;
@@ -1805,11 +1814,9 @@ function renderReview(){
             : card(`${tm.conference} title (auto-bid)`, pct(B.pChamp)+"%", pct(A.pChamp)+"%", fmtPts(A.pChamp-B.pChamp)+" pts", eps(A.pChamp-B.pChamp,0.0005))}
       ${card("Blockers ahead (need ≤6)", B.avgBlock.toFixed(1), A.avgBlock.toFixed(1), sgn(A.avgBlock-B.avgBlock), -eps(A.avgBlock-B.avgBlock,0.05))}
     </div>`;
-    const tot=Math.abs(dRes)+Math.abs(dSp), wr=tot>0?Math.abs(dRes)/tot*100:50;
     const split = spChanged
-      ? `<div class="rv-split"><div class="mv-bar"><i class="${cls(dRes)}" style="width:${wr.toFixed(1)}%"></i><i class="${cls(dSp)}" style="width:${(100-wr).toFixed(1)}%"></i></div>
-         <div class="mv-legend"><span>Results <b class="num ${cls(dRes)}">${fmtMove(dRes)}</b></span><span>SP+ update <b class="num ${cls(dSp)}">${fmtMove(dSp)}</b></span></div>
-         <p>Of the <b class="num ${cls(d)}">${fmtMove(d)}</b> points, <b class="num ${cls(dRes)}">${fmtMove(dRes)}</b> came from the results of ${wkTxt} with the ratings held where they were, and <b class="num ${cls(dSp)}">${fmtMove(dSp)}</b> from the SP+ update that followed${r0&&r1?` (${short(T)} ${sgn(r1[0]-r0[0])}${r0[1]&&r1[1]?`, #${r0[1]} → #${r1[1]}`:""})`:""}.</p></div>`
+      ? `<div class="rv-split"><span class="rv-pill ${cls(dRes)}">Results <b class="num">${fmtMove(dRes)}</b></span><span class="rv-pill ${cls(dSp)}">SP+ update <b class="num">${fmtMove(dSp)}</b></span>
+         <p class="rv-x">Of the <b class="num ${cls(d)}">${fmtMove(d)}</b> points, <b class="num ${cls(dRes)}">${fmtMove(dRes)}</b> came from the results of ${wkTxt} with the ratings held where they were, and <b class="num ${cls(dSp)}">${fmtMove(dSp)}</b> from the SP+ update that followed${r0&&r1?` (${short(T)} ${sgn(r1[0]-r0[0])}${r0[1]&&r1[1]?`, #${r0[1]} → #${r1[1]}`:""})`:""}.</p></div>`
       : `<div class="rv-split"><p class="sub">SP+ did not change between these two states, so the whole <b class="num ${cls(d)}">${fmtMove(d)}</b> comes from the results.</p></div>`;
     top=cards+split;
 
@@ -1831,13 +1838,13 @@ function renderReview(){
       if(k==="rank") return `${short(other)} competes with ${short(T)} for an at-large spot`;
       if(k==="autobid") return `shapes the ${ch&&ch===ca?ch:"conference"} title race and its auto-bid`;
       const s=onSched(want)?want:other, gm=onSched(s); return gm?`${short(s)} is on ${short(T)}'s schedule (week ${gm.week}); its record feeds ${short(T)}'s résumé`:""; };
-    const others=M.played.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>Math.abs(b.realized)-Math.abs(a.realized)).slice(0,7);
+    const others=M.played.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>Math.abs(b.realized)-Math.abs(a.realized)).slice(0,6);
     const maxR=Math.max(0.001,...others.map(g=>Math.abs(g.realized)));
-    const otherRows=others.map(g=>`<tr><td>${gameCell(g)}</td><td class="sub">${favTxt(pWinPre(g))}</td><td class="ch">${delta(g.realized,g.realized>0?"var(--for)":"var(--against)",maxR)}</td><td class="sub">${reason(g)}</td></tr>`);
+    const otherRows=others.map(g=>`<tr><td>${gameCell(g)}</td><td class="sub">${favTxt(pWinPre(g))}</td><td class="ch">${delta(g.realized,g.realized>0?"var(--for)":"var(--against)",maxR)}</td><td class="sub rv-p">${reason(g)}</td></tr>`);
     const netOther=M.played.filter(g=>!g.involvesMe).reduce((s,g)=>s+g.realized,0), netOwn=ownPlayed.reduce((s,g)=>s+g.realized,0);
     const quiet=M.played.filter(g=>!g.involvesMe&&!g.clear).length;
-    const results=h3(`Other results that moved ${short(T)}`)+table(`<th>Result</th><th>Winner was</th><th class="c">Effect</th><th>Why it mattered</th>`, otherRows, `No other result in ${wkTxt} moved ${short(T)}'s odds by a tenth of a point.`)
-      +`<div class="sub" style="margin-top:6px">Each effect is that result on its own, with every other result as it happened: ${ownPlayed.length?`${short(T)}'s own game${ownPlayed.length>1?"s":""} <b class="num ${cls(netOwn)}">${fmtPts(netOwn)}</b>, `:""}everyone else's <b class="num ${cls(netOther)}">${fmtPts(netOther)}</b> net${quiet?`, ${quiet} of them barely moving the needle`:""}. Together the results moved the odds <b class="num ${cls(dRes)}">${fmtMove(dRes)}</b>${Math.abs(dRes-netOther-netOwn)>=0.002?", which is not the one-at-a-time effects added up: results compound, and several small ones together can change what a season needs":""}.</div>`;
+    const results=h3(`Other results that moved ${short(T)}`)+table(`<th>Result</th><th>Winner was</th><th class="c">Effect</th><th class="rv-p">Why it mattered</th>`, otherRows, `No other result in ${wkTxt} moved ${short(T)}'s odds by a tenth of a point.`)
+      +`<div class="sub rv-x" style="margin-top:6px">Each effect is one result on its own, with every other result as it happened${quiet?` (${quiet} more results barely moved the needle)`:""}. Together the results moved the odds <b class="num ${cls(dRes)}">${fmtMove(dRes)}</b>; effects compound, so they need not add up.</div>`;
 
     // the road ahead: every remaining game, before and after
     const ownUp=A.games.filter(g=>g.involvesMe).sort((a,b)=>a.week-b.week);
@@ -1845,28 +1852,15 @@ function renderReview(){
       const p0=bb?(home?bb[1]:1-bb[1]):null, p1=home?g.pHomeWin:1-g.pHomeWin, pW=home?g.pH:g.pA, pL=home?g.pA:g.pH, sw0=bb?Math.abs(bb[2])*100:null, sw1=Math.abs(g.swing)*100;
       return `<tr><td class="sub num">${g.week}</td><td class="k">${home?"":"@"}${badge(opp)}${src.neutral?' <span class="sub">(N)</span>':""}</td><td class="num">${p0!=null?arrowW(p0,p1):fmtWin(p1)+"%"}</td><td class="num good" style="text-align:center">${pct(pW)}%</td><td class="num bad" style="text-align:center">${pct(pL)}%</td><td class="num">${sw0!=null?arrowN(sw0,sw1):sw1.toFixed(1)}</td><td style="text-align:center">${scorePill(g.lev>0?g.levN:null,g.sure)}</td><td class="sub">${fmtKickShort(src)}${g.spreadText?" · "+g.spreadText:""}</td></tr>`; });
     const road=h3(`The road ahead: ${short(T)}'s remaining games`)+table(`<th>Wk</th><th>Opponent</th><th>Win chance</th><th class="c">Playoff if win</th><th class="c">Playoff if loss</th><th>Swing (pts)</th><th class="c">Leverage</th><th>Kickoff</th>`, roadRows, `${short(T)} has no games left.`, true)
-      +`<div class="sub" style="margin-top:4px">Win chance and swing show before → after the week. Swing is the gap in playoff chance between winning and losing the game; leverage is that swing discounted by how one-sided the game is, 0–100 against ${short(T)}'s biggest remaining game.</div>`;
+      +`<div class="sub rv-x" style="margin-top:4px">Win chance and swing show before → after the week. Swing is the gap in playoff chance between winning and losing the game; leverage is that swing discounted by how one-sided the game is, 0–100 against ${short(T)}'s biggest remaining game.</div>`;
 
     // other games that matter most now
-    const watch=A.games.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,7);
+    const watch=A.games.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,6);
     const watchRows=watch.map(g=>{ const want=g.swing>0?g.home:g.away, bb=Bb.get(g.i), sw0=bb?Math.abs(bb[2])*100:null, sw1=Math.abs(g.swing)*100, moved=sw0==null||sw1.toFixed(1)===sw0.toFixed(1)?"":sw1>sw0?`<span class="good">▲</span>`:`<span class="bad">▼</span>`;
       return `<tr><td class="sub num">${g.week}</td><td>${badge(g.away)} <span class="sub">at</span> ${badge(g.home)}</td><td>${tn(want,short(want))}</td><td class="num">${sw0!=null?arrowN(sw0,sw1):sw1.toFixed(1)} ${moved}</td><td style="text-align:center">${scorePill(g.levN,g.sure)}</td></tr>`; });
     const watchBlock=h3("Other games that matter most now")+table(`<th>Wk</th><th>Game</th><th>Pull for</th><th>Swing (pts)</th><th class="c">Leverage</th>`, watchRows, "No other game moves the odds by a tenth of a point.");
 
-    // upsets, for the wider picture
-    // upsets with a playoff angle first (a team with a real chance on either side); the rest only if there are few of those
-    const allUps=M.played.filter(g=>!g.involvesMe&&pWinPre(g)<0.45&&idx.has(g.home)&&idx.has(g.away)).sort((a,b)=>pWinPre(a)-pWinPre(b));
-    const matters=g=>[g.home,g.away].some(n=>{ const b=st(B,n), a=st(A,n); return (b&&b.pIn>=0.01)||(a&&a.pIn>=0.01); });
-    const upsets=allUps.filter(matters).concat(allUps.filter(g=>!matters(g))).slice(0,7);
-    const upRows=upsets.map(g=>{ const winner=g.homeWin?g.home:g.away, loser=g.homeWin?g.away:g.home, sw=st(B,winner), sa=st(A,winner), lb=st(B,loser), la=st(A,loser);
-      return `<tr><td>${gameCell(g)}</td><td class="sub num">${fmtWin(pWinPre(g))}% chance</td><td class="num">${la&&lb?`${short(loser)} ${arrowP(lb.pIn,la.pIn)}`:""}</td><td class="num">${sa&&sw?`${short(winner)} ${arrowP(sw.pIn,sa.pIn)}`:""}</td></tr>`; });
-    const upBlock=h3("Upsets of the week")+table(`<th>Result</th><th>Winner had</th><th>Loser's playoff chance</th><th>Winner's</th>`, upRows, `No upset in ${wkTxt}: every winner had at least a 45% chance.`);
-
-    body=`<div class="rv-grid"><div>${h3(`${short(T)}'s week`)}${own}${results}</div><div>${upBlock}</div></div>
-      ${road}
-      <div class="rv-grid"><div>${watchBlock}</div><div>${field}</div></div>
-      ${h3("Winners and losers across the field")}${movers}
-      ${spBlock}`;
+    body=`<div class="rv-body"><section class="rv-s week">${h3(`${short(T)}'s week`)}${own}${results}</section><section class="rv-s watch">${watchBlock}</section><section class="rv-s road">${road}</section><section class="rv-s mv">${movers("Winners and losers across the field")}</section><section class="rv-s field">${field}</section><section class="rv-s sp">${spBlock}</section></div>`;
   } else {
     // no team: the field as a whole
     const tiers=r=>{ const ts=r.teamStats; return [ts.filter(t=>t.pIn>=0.9).length, ts.filter(t=>t.pIn>=0.75&&t.pIn<0.9).length, ts.filter(t=>t.pIn>=0.25&&t.pIn<0.75).length, ts.filter(t=>t.pIn>=0.1&&t.pIn<0.25).length]; };
@@ -1876,28 +1870,26 @@ function renderReview(){
     const big=M.played.filter(g=>g.clear).sort((a,b)=>Math.abs(b.realized)-Math.abs(a.realized)).slice(0,8);
     const bigRows=big.map(g=>`<tr><td>${gameCell(g)}</td><td class="sub">${favTxt(pWinPre(g))}</td><td class="num">${pct(g.swing)}% of seasons</td><td class="sub">${(g.fieldTop||[]).slice(0,2).map(t=>short(t.team)).join(", ")}</td></tr>`);
     const bigBlock=h3("Results that reshaped the field")+table(`<th>Result</th><th>Winner was</th><th>Field differs in</th><th>Mostly</th>`, bigRows, `No result in ${wkTxt} changed who makes the field.`)
-      +`<div class="sub" style="margin-top:4px">"Field differs in" is how often the twelve teams would be different had the game gone the other way; the list is ordered by that, weighed by how unexpected the result was.</div>`;
+      +`<div class="sub rv-x" style="margin-top:4px">"Field differs in" is how often the twelve teams would be different had the game gone the other way; the list is ordered by that, weighed by how unexpected the result was.</div>`;
     const watch=A.games.filter(g=>g.clear).sort((a,b)=>b.lev-a.lev).slice(0,8);
     const watchRows=watch.map(g=>{ const bb=Bb.get(g.i), sw0=bb?bb[2]:null;
       return `<tr><td class="sub num">${g.week}</td><td>${badge(g.away)} <span class="sub">at</span> ${badge(g.home)}</td><td class="num">${sw0!=null?arrowP(sw0,g.swing):pct(g.swing)+"%"}</td><td class="sub">${(g.fieldTop||[]).slice(0,2).map(t=>short(t.team)).join(", ")}</td><td style="text-align:center">${scorePill(g.levN,g.sure)}</td></tr>`; });
     const watchBlock=h3("Games that shape the field most now")+table(`<th>Wk</th><th>Game</th><th>Changes the field in</th><th>Mostly</th><th class="c">Leverage</th>`, watchRows, "No remaining game changes who gets in.");
-    body=`<div class="rv-grid"><div>${bigBlock}</div><div>${watchBlock}</div></div>
-      ${h3("Winners and losers")}${movers}
-      <div class="rv-grid"><div>${field}</div><div>${spBlock}</div></div>`;
+    body=`<div class="rv-body"><section class="rv-s week">${bigBlock}</section><section class="rv-s watch">${watchBlock}</section><section class="rv-s mv">${movers("Winners and losers")}</section><section class="rv-s field">${field}</section><section class="rv-s sp">${spBlock}</section></div>`;
   }
-  el.innerHTML=head+top+body+`<div class="rv-note">Three simulations of ${R.N.toLocaleString()} seasons each, on the same fixed random stream, so a difference between two states is the effect of what changed between them and not simulation noise. Playoff chances are the model's committee stand-in (strength plus résumé), not the committee itself. ${R.partial?"This week is not finished: the report covers the results so far.":""}</div>`;
+  el.innerHTML=head+top+body+`<div class="rv-note">Three simulations of ${R.N.toLocaleString()} seasons each on one fixed random stream, so differences between states are effects, not noise. The ranking is a strength-plus-résumé stand-in for the committee.${R.partial?" This week is not finished: the report covers the results so far.":""}</div>`;
 }
 $("#reviewWeek").onchange=()=>{ REVIEW.week=+$("#reviewWeek").value; runReview(); };
 $("#reviewRecompute").onclick=()=>runReview(true);
 // Print / PDF: one portrait sheet. The report is laid out at the printed width with the print rules applied, and if it
-// still runs long the sheet is scaled down (never below 70%, so a very full week may take a second page).
+// still runs long the sheet is scaled down (never below 75%, so a very full week may take a second page).
 $("#reviewPrint").onclick=()=>{
   const body=document.body, root=document.documentElement, rules=[];
   for(const ss of document.styleSheets){ try{ for(const r of ss.cssRules){ if(r.media && /print/.test(r.media.mediaText)) for(const x of r.cssRules) rules.push(x.cssText); } }catch(e){} }
   const tmp=document.createElement("style"); tmp.textContent=rules.join("\n")+"\n.wrap{max-width:749px!important}";
   body.classList.add("print-review"); document.head.appendChild(tmp);
   const h=$("#tab-review").offsetHeight; tmp.remove();
-  root.style.setProperty("--rvzoom", String(Math.max(0.7, Math.min(1, 975/Math.max(1,h)))));
+  root.style.setProperty("--rvzoom", String(Math.max(0.75, Math.min(1, 975/Math.max(1,h)))));
   const off=()=>{ body.classList.remove("print-review"); root.style.removeProperty("--rvzoom"); window.removeEventListener("afterprint",off); };
   window.addEventListener("afterprint",off); window.print();
 };
