@@ -63,8 +63,8 @@
     body.print-board #tab-board, body.print-slate #tab-slate{display:block!important}
     body:not(.print-slate):not(.print-review) #tab-board{display:block!important}
     body.print-review{page:review} body.print-review header,body.print-review #liveNote{display:none!important} body.print-review .wrap{max-width:none;padding:0.3in 0.3in 0.25in} body.print-review{padding:0}
-    body.print-review #tab-review{display:block!important;page:review;font-size:9.5pt;color:#10233a;zoom:var(--rvzoom,1);font-family:Calibri,"Segoe UI",Arial,sans-serif}
-    body.print-review #tab-review h2,body.print-review #tab-review h3,body.print-review .rv-ph b{font-family:Calibri,"Segoe UI",Arial,sans-serif}
+    body.print-review #tab-slate{display:block!important;page:review;font-size:9.5pt;color:#10233a;zoom:var(--rvzoom,1);font-family:Calibri,"Segoe UI",Arial,sans-serif}
+    body.print-review #tab-slate h2,body.print-review #tab-slate h3,body.print-review .rv-ph b{font-family:Calibri,"Segoe UI",Arial,sans-serif}
     body.print-review .rv-s table tr:nth-child(n+7){display:none} body.print-review .rv-keep table tr:nth-child(n),body.print-review .rv-s.week table tr:nth-child(n){display:table-row} body.print-review .rv-p{display:none!important}
     body.print-review .rv-po-row{display:table-row} body.print-review .rv-po-cell{display:table-cell} body.print-review .rv-s.mv>h3{display:none}
     body.print-review .rv-half{display:inline-block;width:2.9em;font-weight:400} body.print-review .rv-half.l{text-align:right;padding-right:.35em} body.print-review .rv-half.r{text-align:left;padding-left:.35em}
@@ -72,7 +72,7 @@
     body.print-review .rv-body{grid-template-columns:1fr 1fr!important;grid-template-areas:"week field" "road road" "mv mv" "watch sp";gap:2pt 18pt}
     body.print-review .rv-s.week{grid-area:week} body.print-review .rv-s.field{grid-area:field} body.print-review .rv-s.road{grid-area:road} body.print-review .rv-s.mv{grid-area:mv} body.print-review .rv-s.watch{grid-area:watch} body.print-review .rv-s.sp{grid-area:sp} body.print-review .rv-two{grid-template-columns:1fr 1fr!important;gap:2pt 6pt}
     body.print-review .rv-x{display:none!important} body.print-review .rv-po{display:inline} body.print-review #review td:last-child{white-space:normal} body.print-review #review th{white-space:normal;vertical-align:bottom}
-    body.print-review .h2-right,body.print-review .controls,body.print-review #reviewNote,body.print-review .prog,body.print-review .explain,body.print-review #tab-review>h2{display:none!important}
+    body.print-review .h2-right,body.print-review .controls,body.print-review #reviewNote,body.print-review .prog,body.print-review .explain,body.print-review #tab-slate>h2,body.print-review #reviewProg{display:none!important}
     body.print-review .rv-ph{display:flex;justify-content:space-between;align-items:baseline;gap:8pt;border-bottom:1.5pt solid #10233a;padding-bottom:3pt;margin-bottom:7pt;font-size:8pt;color:#5a6b80} body.print-review .rv-ph b{font-family:"Iowan Old Style",Georgia,"Times New Roman",serif;font-size:12pt;color:#10233a}
     body.print-review .rv-head h2.rv-title{font-size:15pt;color:#10233a} body.print-review .rv-head{margin:0 0 2pt} body.print-review .rv-head .sub{font-size:8.5pt}
     body.print-review .rv-stats{grid-template-columns:repeat(6,1fr);gap:5pt;margin:4pt 0}
@@ -228,6 +228,7 @@
   .g-verdict.flat{color:var(--muted)}
   .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 6px}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden} .seg[hidden]{display:none!important}
+  .controls [hidden],#tab-slate>h2 button[hidden]{display:none!important}   /* hidden controls stay hidden whatever their display rule */
   .seg button{background:var(--panel2);color:var(--muted);border:0;border-radius:0;padding:6px 11px;font-size:13px;font-weight:500}
   .seg button[aria-pressed=true]{background:var(--gold);color:#10233a;font-weight:650}
   details.quiet{margin-top:12px;color:var(--muted);font-size:13px}
@@ -355,10 +356,10 @@
   /* ---- week in review ---- */
   .rv-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0 10px}
   .rv-head h2.rv-title{margin:0;font-size:22px}
-  .rv-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:8px 0 10px}
+  .rv-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:8px 0 10px}
   .rv-stat{display:flex;flex-direction:column;gap:2px}
   .rv-stat span{color:var(--muted);font-size:12px}
-  .rv-stat b{font-size:19px;font-weight:600;white-space:nowrap;display:block}
+  .rv-stat b{font-size:18px;font-weight:600;display:block;overflow-wrap:anywhere}
   .rv-stat b em{font-style:normal;color:var(--muted);font-weight:400;font-size:14px;margin:0 5px}
   .rv-stat b small{font-size:12px;color:var(--muted);font-weight:500}
   .rv-stat small{font-weight:700;font-size:12.5px;color:var(--muted)}
@@ -410,7 +411,6 @@
   <button data-tab="board" aria-selected="false">Top 25 board</button>
   <button data-tab="slate" aria-selected="false">This week</button>
   <button data-tab="season" aria-selected="false">Season</button>
-  <button data-tab="review" aria-selected="false">Week in review</button>
 </nav>
 
 <div class="wrap">
@@ -460,15 +460,19 @@
   </section>
 
   <section class="tab" id="tab-slate" hidden>
-    <h2><span id="slateTitle">This week</span><button id="pdfWeek" class="ghost h2-right" title="One page: the ten highest-leverage games of this week">Top 10 PDF</button></h2>
+    <h2><span id="slateTitle">This week</span><button id="pdfWeek" class="ghost h2-right" title="One page: the ten highest-leverage games of this week">Top 10 PDF</button><button id="reviewPrint" class="ghost h2-right" title="Lay the report out for one printed page, or save it as a PDF from the print dialog" hidden>Print / PDF</button></h2>
     <div class="explain" id="slateExplain"></div>
     <div class="controls">
       <select id="slateWeek" aria-label="Week"></select>
       <div class="seg" id="slateView"><button data-v="up" aria-pressed="true">Upcoming</button><button data-v="played" aria-pressed="false">Played</button></div>
       <div class="seg" id="slateSort"><button data-v="lev" aria-pressed="true">Leverage</button><button data-v="time" aria-pressed="false">Kickoff</button></div>
-      <label class="chk"><span id="slateMinText">Min leverage</span> <select id="slateMin" aria-label="Minimum leverage score"><option value="0">0</option><option value="5">5</option><option value="10" selected>10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option></select></label>
+      <label class="chk" id="slateMinWrap"><span id="slateMinText">Min leverage</span> <select id="slateMin" aria-label="Minimum leverage score"><option value="0">0</option><option value="5">5</option><option value="10" selected>10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option></select></label>
+      <button id="reviewRecompute" class="ghost" title="Simulate the three states again" hidden>Recompute</button>
     </div>
     <div id="slate"></div>
+    <div class="prog" id="reviewProg" hidden><i id="reviewBar"></i></div>
+    <div class="sub" id="reviewNote" hidden></div>
+    <div id="review" hidden></div>
   </section>
 
   <section class="tab" id="tab-season" hidden>
@@ -480,18 +484,6 @@
       <label class="chk"><span id="seasonMinText">Min leverage</span> <select id="seasonMin" aria-label="Minimum leverage score"><option value="0">0</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25" selected>25</option></select></label>
     </div>
     <div id="season"></div>
-  </section>
-
-  <section class="tab" id="tab-review" hidden>
-    <h2>Week in review<button id="reviewPrint" class="ghost h2-right" title="Lay the report out for one printed page, or save it as a PDF from the print dialog">Print / PDF</button></h2>
-    <div class="explain" id="reviewExplain"><p>What a week's results did to the playoff picture: the selected team's chances, its SP+ rating, the win chance and weight of every game it has left, the biggest winners and losers, and how the projected field changed.</p></div>
-    <div class="controls">
-      <select id="reviewWeek" aria-label="Week to review"></select>
-      <button id="reviewRecompute" class="ghost" title="Simulate the three states again">Recompute</button>
-    </div>
-    <div class="prog"><i id="reviewBar"></i></div>
-    <div class="sub" id="reviewNote" hidden></div>
-    <div id="review"></div>
   </section>
 
   <div class="foot" id="foot"></div>
@@ -611,7 +603,7 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   const sv = pref.get("seasonView"); if(sv==="up"||sv==="played") UI.seasonView=sv;
   const nmin = pref.get("seasonMin"); if(nmin!==null && [...$("#seasonMin").options].some(o=>o.value===nmin)){ $("#seasonMin").value=nmin; UI.seasonMin=+nmin; }
   const tab = pref.get("tab"); if(tab && document.querySelector(`#tabs button[data-tab="${tab}"]`)) showTab(tab);
-  if(location.hash==="#print-review") showTab("review");
+  if(location.hash==="#print-review"){ const rw=reviewWeeks(); if(rw.length) UI.slateWeek=rw[rw.length-1].week; showTab("slate"); }
   // finals from ESPN first (a few seconds at most), then the first simulation, then live polling if it's on
   const go=()=>{ run(); if(window.liveStart && $("#liveOn").checked) window.liveStart(); };
   if(window.liveSync) window.liveSync().then(go, go); else go();
@@ -1075,7 +1067,6 @@ function showTab(name){
   UI.tab=name; pref.set("tab",name);
   document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",String(x.dataset.tab===name)));
   document.querySelectorAll("section.tab").forEach(s=>{ s.hidden = s.id!=="tab-"+name; });
-  if(name==="review") runReview();
 }
 $("#tabs").addEventListener("click",e=>{
   const b=e.target.closest("button[data-tab]"); if(!b) return;
@@ -1139,7 +1130,6 @@ function render(){
     + (lined?`Win probabilities for the ${lined} upcoming games with a posted line come from the point spread; the rest use the SP+ rating gap with home advantage. `
             :`Win probabilities come from the SP+ rating gap with home advantage. `)
     + `Final ordering is a strength-plus-résumé stand-in for the committee, not the committee itself.`;
-  if(UI.tab==="review") runReview();
 }
 
 // The most likely 12-team field: each Power Four conference's most probable champion, the strongest Group of Six
@@ -1565,6 +1555,12 @@ function renderSlate(r){
   // default: the earliest week that still has games to play
   if(UI.slateWeek===null||!weeks.includes(UI.slateWeek)) UI.slateWeek = upWeeks.length ? Math.min(...upWeeks) : weeks[weeks.length-1];
   const ws=$("#slateWeek"); ws.innerHTML=weeks.map(w=>`<option value="${w}" ${w===UI.slateWeek?"selected":""}>Week ${w}</option>`).join("");
+  // a completed week shows the Week in review report in place of the slate
+  const review=reviewWeeks().some(x=>x.week===UI.slateWeek);
+  $("#slateView").hidden=review; $("#slateMinWrap").hidden=review; $("#pdfWeek").hidden=review;
+  $("#reviewPrint").hidden=!review; $("#reviewRecompute").hidden=!review;
+  $("#slate").hidden=review; $("#review").hidden=!review; if(!review){ $("#reviewProg").hidden=true; $("#reviewNote").hidden=true; }
+  if(review){ $("#slateSort").hidden=true; $("#slateTitle").textContent=`Week ${UI.slateWeek} in review`; REVIEW.week=UI.slateWeek; runReview(); return; }
   document.querySelectorAll("#slateSort button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.slateSort)));
   document.querySelectorAll("#slateView button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.slateView)));
   const playedView = UI.slateView==="played";
@@ -1666,10 +1662,10 @@ function renderSeason(r){
 const REVIEW = { pool:{pool:[],token:0}, key:null, data:null, run:0, week:null };
 const REVIEW_VERSION = 1;
 const weekOfKey = k => k==="pre" ? -1 : +String(k).slice(1);
-// weeks with a result to report on: completed weeks, plus the current week once it has a final; week 0 counts with week 1
+// weeks the This week tab reports on instead of listing: every completed week; week 0 counts with week 1
 function reviewWeeks(){
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b), out=[];
-  for(const w of weeks){ const gs=D.games.filter(g=>g.week===w), done=gs.filter(g=>g.completed).length; if(done) out.push({week:w, partial:done<gs.length, done, total:gs.length}); }
+  for(const w of weeks){ const gs=D.games.filter(g=>g.week===w), done=gs.filter(g=>g.completed).length; if(done===gs.length) out.push({week:w, partial:false, done, total:gs.length}); }
   return out.some(x=>x.week===1) ? out.filter(x=>x.week!==0) : out;
 }
 // the SP+ edition in force once `week` was in the books (-1 = preseason): the latest edition recorded at or before that
@@ -1711,11 +1707,7 @@ const reviewFrom = K => K.prev<0 ? Math.min(...D.games.map(g=>g.week)) : K.prev+
 
 function runReview(force){
   const el=$("#review"); if(!D||!RES) return;
-  const weeks=reviewWeeks(), sel=$("#reviewWeek");
-  if(!weeks.length){ sel.innerHTML=""; $("#reviewNote").hidden=true; el.innerHTML=`<div class="sub" style="padding:10px 0">No results yet: the report fills in once a week's games have been played.</div>`; return; }
-  if(REVIEW.week===null||!weeks.some(x=>x.week===REVIEW.week)) REVIEW.week=weeks[weeks.length-1].week;
-  sel.innerHTML=weeks.map(x=>`<option value="${x.week}" ${x.week===REVIEW.week?"selected":""}>Week ${x.week}${x.partial?" so far":""}</option>`).join("");
-  const K=reviewKey(REVIEW.week);
+  const K=reviewKey(REVIEW.week); if(!K) return;
   if(!force && REVIEW.key===K.key && REVIEW.data){ renderReview(); return; }
   if(!force){ const c=loadReview(K.key); if(c){ REVIEW.key=K.key; REVIEW.data=c; renderReview(); return; } }
   const id=++REVIEW.run; REVIEW.key=null; REVIEW.data=null;
@@ -1723,13 +1715,13 @@ function runReview(force){
   const states=[{mask:K.prev,E:K.E0,tag:"before",txt:`how things stood before week ${K.w}`},{mask:K.w,E:K.E0,tag:"results",txt:`week ${K.w}'s results on the ratings of the time`}];
   if(spChanged) states.push({mask:K.w,E:K.E1,tag:"after",txt:`the same results on the SP+ update that followed`});
   const out={}, bar=$("#reviewBar"), note=$("#reviewNote");
-  note.hidden=false; el.innerHTML="";
+  note.hidden=false; $("#reviewProg").hidden=false; el.innerHTML="";
   const step=k=>{
     if(id!==REVIEW.run) return;
     if(k>=states.length){
       const data={ w:K.w, prev:K.prev, partial:K.partial, N, team:T, spChanged, E0:{key:K.E0.key,label:K.E0.label,hash:K.E0.hash,ratings:K.E0.ratings}, E1:{key:K.E1.key,label:K.E1.label,hash:K.E1.hash,ratings:K.E1.ratings},
         before:out.before, mid:out.results, after: spChanged?out.after:out.results };
-      REVIEW.key=K.key; REVIEW.data=data; saveReview(K.key,data); note.hidden=true; bar.style.width="0"; renderReview(); return; }
+      REVIEW.key=K.key; REVIEW.data=data; saveReview(K.key,data); note.hidden=true; $("#reviewProg").hidden=true; bar.style.width="0"; renderReview(); return; }
     const s=states[k];
     note.textContent=`Simulating ${s.txt}… (${k+1} of ${states.length}, ${N.toLocaleString()} seasons each)`;
     const Dx=reviewState(s.mask, s.E), P=buildParams(Dx);
@@ -1763,7 +1755,7 @@ function renderReview(){
   const h3=t=>`<h3>${t}</h3>`;
   const table=(head,rows,empty,keep)=>rows.length?`<div class="scroll${keep?" rv-keep":""}"><table><tr>${head}</tr>${rows.join("")}</table></div>`:`<div class="sub" style="padding:4px 0 8px">${empty}</div>`;   // keep: never trimmed in print
 
-  $("#reviewExplain").innerHTML=`<p>What ${wkTxt}${R.partial?" (so far)":""} did to the playoff picture${T?` for <strong>${T}</strong>`:""}. Three simulations frame it, ${R.N.toLocaleString()} seasons each: how things stood <strong>before</strong> the week (results through ${prev<0?"the preseason":"week "+prev}, on the ${R.E0.label} SP+), the week's <strong>results</strong> on those same ratings, and the same results on the <strong>SP+ update</strong> that followed${spChanged?` (${R.E1.label})`:" (none this week)"}. Every change is a difference between those states, so a move splits into what the results did and what the ratings update did. Change is in percentage points of playoff chance unless labelled otherwise. Print / PDF lays the page out for a single sheet.</p>`;
+  $("#slateExplain").innerHTML=`<p>What ${wkTxt}${R.partial?" (so far)":""} did to the playoff picture${T?` for <strong>${T}</strong>`:""}. Three simulations frame it, ${R.N.toLocaleString()} seasons each: how things stood <strong>before</strong> the week (results through ${prev<0?"the preseason":"week "+prev}, on the ${R.E0.label} SP+), the week's <strong>results</strong> on those same ratings, and the same results on the <strong>SP+ update</strong> that followed${spChanged?` (${R.E1.label})`:" (none this week)"}. Every change is a difference between those states, so a move splits into what the results did and what the ratings update did. Change is in percentage points of playoff chance unless labelled otherwise. Print / PDF lays the page out for a single sheet.</p>`;
 
   const stamp=`${D.season} season · data updated ${new Date(D.updatedAt).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}${D.polls&&D.polls.ap?` · AP week ${D.polls.ap.week}`:""}${D.meta&&D.meta.ratings?` · ${D.meta.ratings}`:""}`;
   const head=`<div class="rv-ph"><b>Leverage Board</b><span>${stamp} · printed ${new Date().toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><div class="rv-head"><div><h2 class="rv-title">Week ${W} in review${T?` · ${T}`:""}</h2><div class="sub">${span?span+" · ":""}${wkGames.length} results${R.partial?" so far":""} · SP+ ${spChanged?`updated, ${R.E0.label} → ${R.E1.label}`:"unchanged"} · ${R.N.toLocaleString()} simulated seasons per state</div></div></div>`;
@@ -1886,7 +1878,6 @@ function renderReview(){
   if(typeof PRINT_URL!=="undefined" && PRINT_URL) setTimeout(prepareReviewPrint, 0);
   el.innerHTML=head+top+body+`<div class="rv-note">Three simulations of ${R.N.toLocaleString()} seasons each on one fixed random stream, so differences between states are effects, not noise. The ranking is a strength-plus-résumé stand-in for the committee.${R.partial?" This week is not finished: the report covers the results so far.":""}</div>`;
 }
-$("#reviewWeek").onchange=()=>{ REVIEW.week=+$("#reviewWeek").value; runReview(); };
 $("#reviewRecompute").onclick=()=>runReview(true);
 // Print / PDF: one portrait sheet. The report is laid out at the printed width with the print rules applied, and if it
 // still runs long the sheet is scaled down (never below 75%, so a very full week may take a second page).
@@ -1900,7 +1891,7 @@ function prepareReviewPrint(){
   // 1003 printable pixels after the wrap padding; the target is checked by printing through DevTools (index.html#print-review)
   const fit = window.RV_FIT || 980;   // 2% under the limit: browsers differ slightly from the headless print this was checked with
   root.style.setProperty("--rvzoom", "1");
-  for(let i=0;i<4;i++){ tmp.textContent=rules.join("\n")+`\n.wrap{max-width:${(758/z).toFixed(1)}px!important;padding:0!important}`; const h=$("#tab-review").offsetHeight; z=Math.max(0.75, Math.min(1, fit/Math.max(1,h))); }
+  for(let i=0;i<4;i++){ tmp.textContent=rules.join("\n")+`\n.wrap{max-width:${(758/z).toFixed(1)}px!important;padding:0!important}`; const h=$("#tab-slate").offsetHeight; z=Math.max(0.75, Math.min(1, fit/Math.max(1,h))); }
   tmp.remove();
   root.style.setProperty("--rvzoom", String(z));
 }

@@ -68,7 +68,8 @@ badges when it exists. TV outlets and kickoff times come from CFBD's media feed.
 
 ## Week in review
 
-The Week in review tab is a one-page report on what a week's results did:
+Pick a completed week on the This week tab and, in place of the slate, it
+shows a one-page report on what that week's results did:
 the selected team's playoff chance, SP+ rating, projected record and ranking
 before and after; its own game and the other results that moved its odds;
 the win chance and playoff swing of every game it has left, before and after;
@@ -82,10 +83,11 @@ from `history.json`), the week's **results** on those same ratings, and the
 same results on the **SP+ update** that followed. Every figure is a
 difference between those states, so each move splits into what the results
 did and what the ratings update did. All three use the fixed random stream,
-so the differences are effects, not simulation noise. The current week is
-offered once it has a final ("so far"). Finished reports are kept on the
+so the differences are effects, not simulation noise. The current week keeps
+the slate until every game in it is final. Finished reports are kept on the
 device like the main result; Print / PDF lays the report out for a single
-portrait sheet, scaling it down a little if the week was busy.
+letter sheet, scaling it down a little if the week was busy
+(`index.html#print-review` opens the page that way for headless printing).
 
 ## One-page PDFs
 
