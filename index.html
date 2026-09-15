@@ -63,9 +63,12 @@
     body.print-board #tab-board, body.print-slate #tab-slate{display:block!important}
     body:not(.print-slate):not(.print-review) #tab-board{display:block!important}
     body.print-review{page:review} body.print-review header,body.print-review #liveNote{display:none!important} body.print-review .wrap{max-width:none;padding:0.3in 0.3in 0.25in} body.print-review{padding:0}
-    body.print-review #tab-review{display:block!important;page:review;font-size:9pt;color:#10233a;zoom:var(--rvzoom,1)}
+    body.print-review #tab-review{display:block!important;page:review;font-size:9.5pt;color:#10233a;zoom:var(--rvzoom,1);font-family:Calibri,"Segoe UI",Arial,sans-serif}
+    body.print-review #tab-review h2,body.print-review #tab-review h3,body.print-review .rv-ph b{font-family:Calibri,"Segoe UI",Arial,sans-serif}
     body.print-review .rv-s table tr:nth-child(n+7){display:none} body.print-review .rv-keep table tr:nth-child(n),body.print-review .rv-s.week table tr:nth-child(n){display:table-row} body.print-review .rv-p{display:none!important}
     body.print-review .rv-po-row{display:table-row} body.print-review .rv-po-cell{display:table-cell} body.print-review .rv-s.mv>h3{display:none}
+    body.print-review .rv-half{display:inline-block;width:2.9em;font-weight:400} body.print-review .rv-half.l{text-align:right;padding-right:.35em} body.print-review .rv-half.r{text-align:left;padding-left:.35em}
+    body.print-review .rv-s.sp td:last-child{font-weight:400!important}
     body.print-review .rv-body{grid-template-columns:1fr 1fr!important;grid-template-areas:"week field" "road road" "mv mv" "watch sp";gap:2pt 18pt}
     body.print-review .rv-s.week{grid-area:week} body.print-review .rv-s.field{grid-area:field} body.print-review .rv-s.road{grid-area:road} body.print-review .rv-s.mv{grid-area:mv} body.print-review .rv-s.watch{grid-area:watch} body.print-review .rv-s.sp{grid-area:sp} body.print-review .rv-two{grid-template-columns:1fr 1fr!important;gap:2pt 6pt}
     body.print-review .rv-x{display:none!important} body.print-review .rv-po{display:inline} body.print-review #review td:last-child{white-space:normal} body.print-review #review th{white-space:normal;vertical-align:bottom}
@@ -76,12 +79,12 @@
     body.print-review .stat{background:#f4f6f9;border-color:#dfe5ec;padding:4pt 6pt} body.print-review .rv-stat span{font-size:8pt;white-space:nowrap} body.print-review .rv-stat b{font-size:12.5pt} body.print-review .rv-stat b em{font-size:9pt} body.print-review .rv-stat small{font-size:8.5pt}
     body.print-review .rv-split{margin:2pt 0 4pt} body.print-review .rv-pill{font-size:8.5pt;padding:1pt 7pt;background:#f4f6f9;border-color:#dfe5ec;color:#10233a}
     body.print-review #review h3{margin:6pt 0 1.5pt;font-size:8.5pt;color:#3a4a60}
-    body.print-review #review table{font-size:8.5pt} body.print-review #review td,body.print-review #review th{padding:1.8pt 4pt;border-bottom-color:#e6eaf0;line-height:1.25} body.print-review #review th{color:#5a6b80;background:#fff;font-size:8pt}
+    body.print-review #review table{font-size:9pt} body.print-review #review td,body.print-review #review th{padding:1.8pt 4pt;border-bottom-color:#e6eaf0;line-height:1.25} body.print-review #review th{color:#5a6b80;background:#fff;font-size:8pt}
     body.print-review #review td.k{background:#fff;color:#10233a} body.print-review #review tr.me td.k{color:#8a6f2e}
     body.print-review .rv-game{padding:3pt 0;font-size:9pt;line-height:1.35} body.print-review .rv-game .sc{font-size:10pt}
     body.print-review .rv-delta{font-size:8.5pt;padding:0 5pt;min-width:36pt;line-height:1.35;color:#10233a} body.print-review .pill{font-size:8pt;padding:0 5pt;min-width:26pt;line-height:1.35;color:#10233a} body.print-review .pill.dim{color:#5a6b80}
     body.print-review .movers{grid-template-columns:1fr 1fr!important;gap:2pt 18pt} body.print-review .movers>div{min-width:0} body.print-review table{table-layout:auto}
-    body.print-review #review .sub,body.print-review #review .rk,body.print-review #review .rv-ba{font-size:8.5pt}
+    body.print-review #review .sub,body.print-review #review .rk,body.print-review #review .rv-ba{font-size:9pt}
     body.print-review .rv-ba b,body.print-review .rv-game,body.print-review #review{color:#10233a} body.print-review .rv-ba,body.print-review .sub,body.print-review .rv-stat span{color:#5a6b80}
     body.print-review .rv-note{font-size:6pt;margin-top:4pt;padding-top:2pt;break-inside:avoid;border-top-color:#e6eaf0;color:#8a96a6}
     body.print-review .scroll{overflow:visible}
@@ -1768,7 +1771,7 @@ function renderReview(){
   // ----- winners and losers, projected field and SP+ movers: the same in both modes -----
   const mv=A.teamStats.filter(t=>st(B,t.team)).map(t=>{ const b=st(B,t.team).pIn, m=st(M,t.team).pIn; return {team:t.team, conf:t.conf, before:b, after:t.pIn, d:t.pIn-b, res:m-b, sp:t.pIn-m}; });
   const up=mv.filter(x=>x.d>=0.005).sort((a,b)=>b.d-a.d).slice(0,8), down=mv.filter(x=>x.d<=-0.005).sort((a,b)=>a.d-b.d).slice(0,8);
-  const mvRow=(x,color,max)=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num rv-p">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub rv-p">${x.conf}</td><td class="num">${arrowP(x.before,x.after)}</td><td class="ch"><span class="rv-delta num" style="${ramp(Math.abs(x.d),color,max)}">${fmtMove(x.d)}</span></td>${spChanged?`<td class="num rv-p ${cls(x.res)}" style="text-align:center;font-weight:600">${fmtMove(x.res)}</td><td class="num rv-p ${cls(x.sp)}" style="text-align:center;font-weight:600">${fmtMove(x.sp)}</td><td class="num rv-po-cell" style="text-align:center;font-weight:600;white-space:nowrap"><span class="${cls(x.res)}">${fmtMove(x.res)}</span> <span class="sub">|</span> <span class="${cls(x.sp)}">${fmtMove(x.sp)}</span></td>`:""}</tr>`; };
+  const mvRow=(x,color,max)=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num rv-p">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub rv-p">${x.conf}</td><td class="num">${arrowP(x.before,x.after)}</td><td class="ch"><span class="rv-delta num" style="${ramp(Math.abs(x.d),color,max)}">${fmtMove(x.d)}</span></td>${spChanged?`<td class="num rv-p ${cls(x.res)}" style="text-align:center;font-weight:600">${fmtMove(x.res)}</td><td class="num rv-p ${cls(x.sp)}" style="text-align:center;font-weight:600">${fmtMove(x.sp)}</td><td class="num rv-po-cell" style="text-align:center;white-space:nowrap"><span class="rv-half l ${cls(x.res)}">${fmtMove(x.res)}</span><span class="sub">|</span><span class="rv-half r ${cls(x.sp)}">${fmtMove(x.sp)}</span></td>`:""}</tr>`; };
   const mvHead=`<tr><th class="rv-p"></th><th>Team</th><th class="rv-p"></th><th>Playoff chance</th><th class="c">Change</th>${spChanged?`<th class="c rv-p">From results</th><th class="c rv-p">From SP+ update</th><th class="c rv-po-cell">Results | SP+</th>`:""}</tr>`;
   const mvTable=(list,color)=>list.length?`<div class="scroll"><table>${mvHead}${list.map(x=>mvRow(x,color,Math.max(0.01,...list.map(y=>Math.abs(y.d))))).join("")}</table></div>`:`<div class="sub" style="padding:4px 0">No team moved by half a point or more.</div>`;
   const mine=T&&!up.concat(down).some(x=>x.team===T)?(()=>{ const x=mv.find(y=>y.team===T); return x?`<div class="mine"><b>${T}</b>: ${arrowP(x.before,x.after)} (<b class="${cls(x.d)}">${fmtMove(x.d)}</b>)</div>`:""; })():"";
