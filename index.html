@@ -57,12 +57,12 @@
   /* print fallback: just the board and its explanation, on a light landscape page */
   @media print{
     @page{size:landscape;margin:0.3in}
-    @page review{size:portrait;margin:0.3in}
+    @page review{size:portrait;margin:0}   /* the sheet is claimed in full, so the browser adds no header or footer of its own */
     html,body{background:#fff;color:#10233a;font-size:8pt}
     header .bar,header .prog,#cacheNote,nav.tabs,.foot,.modal,section.tab,.info,.controls{display:none!important}
     body.print-board #tab-board, body.print-slate #tab-slate{display:block!important}
     body:not(.print-slate):not(.print-review) #tab-board{display:block!important}
-    body.print-review{page:review} body.print-review header,body.print-review #liveNote{display:none!important}
+    body.print-review{page:review} body.print-review header,body.print-review #liveNote{display:none!important} body.print-review .wrap{max-width:none;padding:0.3in 0.3in 0.25in} body.print-review{padding:0}
     body.print-review #tab-review{display:block!important;page:review;font-size:9pt;color:#10233a;zoom:var(--rvzoom,1)}
     body.print-review .rv-s table tr:nth-child(n+7){display:none} body.print-review .rv-keep table tr:nth-child(n){display:table-row} body.print-review .rv-p{display:none!important}
     body.print-review .rv-body{grid-template-columns:1fr 1fr!important;grid-template-areas:"week field" "road road" "mv mv" "watch sp";gap:2pt 18pt}
@@ -1888,10 +1888,13 @@ $("#reviewRecompute").onclick=()=>runReview(true);
 function prepareReviewPrint(){
   const body=document.body, root=document.documentElement, rules=[];
   for(const ss of document.styleSheets){ try{ for(const r of ss.cssRules){ if(r.media && /print/.test(r.media.mediaText)) for(const x of r.cssRules) rules.push(x.cssText); } }catch(e){} }
-  const tmp=document.createElement("style"); tmp.textContent=rules.join("\n")+"\n.wrap{max-width:758px!important}";
-  body.classList.add("print-review"); document.head.appendChild(tmp);
-  const h=$("#tab-review").offsetHeight; tmp.remove();
-  root.style.setProperty("--rvzoom", String(Math.max(0.75, Math.min(1, 960/Math.max(1,h)))));
+  // letter sheet, 0.3in all round, at 96px/in: 758 x 990. Scaling the sheet down also widens the layout, so the height is
+  // measured at the width each scale would give until the scale settles.
+  const tmp=document.createElement("style"); body.classList.add("print-review"); document.head.appendChild(tmp);
+  let z=1;
+  for(let i=0;i<4;i++){ tmp.textContent=rules.join("\n")+`\n.wrap{max-width:${(758/z).toFixed(1)}px!important;padding:0!important}`; const h=$("#tab-review").offsetHeight; z=Math.max(0.75, Math.min(1, 962/Math.max(1,h))); }
+  tmp.remove();
+  root.style.setProperty("--rvzoom", String(z));
 }
 $("#reviewPrint").onclick=()=>{
   prepareReviewPrint();
