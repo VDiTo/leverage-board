@@ -460,7 +460,7 @@
   </section>
 
   <section class="tab" id="tab-slate" hidden>
-    <h2><span id="slateTitle">This week</span><button id="pdfWeek" class="ghost h2-right" title="One page: the ten highest-leverage games of this week">Top 10 PDF</button><button id="reviewPrint" class="ghost h2-right" title="Lay the report out for one printed page, or save it as a PDF from the print dialog" hidden>Print / PDF</button></h2>
+    <h2><span id="slateTitle">This week</span><button id="pdfWeek" class="ghost h2-right" title="One page: the ten highest-leverage games of this week">Top 10 PDF</button><button id="reviewPrint" class="ghost h2-right" title="One page: this week in review, as a PDF" hidden>Report PDF</button></h2>
     <div class="explain" id="slateExplain"></div>
     <div class="controls">
       <select id="slateWeek" aria-label="Week"></select>
@@ -1895,11 +1895,10 @@ function prepareReviewPrint(){
   tmp.remove();
   root.style.setProperty("--rvzoom", String(z));
 }
-$("#reviewPrint").onclick=()=>{
-  prepareReviewPrint();
-  const off=()=>{ document.body.classList.remove("print-review"); document.documentElement.style.removeProperty("--rvzoom"); window.removeEventListener("afterprint",off); };
-  window.addEventListener("afterprint",off); window.print();
-};
+$("#reviewPrint").onclick=()=>window.makePdf("review");
+// the browser's own print (Ctrl+P) while the report is showing gets the one-sheet layout too
+window.addEventListener("beforeprint",()=>{ if(UI.tab==="slate" && REVIEW.data && !$("#review").hidden) prepareReviewPrint(); });
+window.addEventListener("afterprint",()=>{ document.body.classList.remove("print-review"); document.documentElement.style.removeProperty("--rvzoom"); });
 // index.html#print-review: the page opens on the report, laid out for the sheet once it is ready (for headless printing)
 const PRINT_URL = typeof location!=="undefined" && location.hash==="#print-review";
 </script>

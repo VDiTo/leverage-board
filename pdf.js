@@ -1,5 +1,6 @@
 // On-demand PDFs, drawn in the browser from the current simulation result.
-// Uses jsPDF (loaded lazily from cdnjs). Two products: the Top 25 board (landscape) and the Top 10 games of a week (portrait).
+// Uses jsPDF (loaded lazily from cdnjs). Three products: the Top 25 board (landscape), the Top 10 games of a week (portrait)
+// and the Week in review report for a completed week (portrait).
 (function(){
   const JSPDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
   let lib = null;
@@ -38,7 +39,7 @@
   const pillText=bg=> contrast(bg,WHITE)>=2 ? WHITE : NAVY;
   const mixW=(c,pct)=>c.map(v=>Math.round(255+(v-255)*pct/100));           // colour mixed with white
   const mixCurve=v=>Math.round(8+Math.pow(Math.max(0,Math.min(1,v)),0.7)*82);
-  const clean=s=>String(s??"").replace(/–/g,"-").replace(/—/g,"-").replace(/·/g,"|").replace(/≥/g,">=").replace(/[’']/g,"'");
+  const clean=s=>String(s??"").replace(/–/g,"-").replace(/—/g,"-").replace(/·/g,"|").replace(/≥/g,">=").replace(/≤/g,"<=").replace(/−/g,"-").replace(/→/g,"»").replace(/[’']/g,"'");
   const isMobile=()=>/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (matchMedia("(pointer:coarse)").matches && innerWidth<900);
 
   async function deliver(doc, name){
@@ -372,6 +373,175 @@
     return doc;
   }
 
+  // ---- Week in review: the report the This week tab shows for a completed week, on one letter sheet ----
+  // Drawn from the report's own three-state result (REVIEW.data), so every figure matches the page.
+  function buildReview(jsPDF, R){
+    setPalette();
+    const doc=new jsPDF({orientation:"portrait", unit:"pt", format:"letter"});
+    const W=612, H=792, M=22, CW=W-2*M, COL=(CW-14)/2;
+    const {w:Wk, prev, before:B, mid:Mm, after:A, spChanged}=R;
+    const st=(r,team)=>r.teamStats.find(t=>t.team===team);
+    const sp0=R.E0.ratings||{}, sp1=R.E1.ratings||{};
+    const Bb=new Map(B.brief.map(x=>[x[0],x]));
+    const fromWk=reviewFrom({prev}), wkTxt=fromWk<Wk?`weeks ${fromWk}-${Wk}`:`week ${Wk}`;
+    const wkGames=D.games.filter(g=>g.week>=fromWk&&g.week<=Wk&&g.completed);
+    const dates=wkGames.map(g=>Date.parse(g.start)).filter(x=>x>0);
+    const span=dates.length?`${fmtDate(new Date(Math.min(...dates)).toISOString())}${Math.max(...dates)-Math.min(...dates)>432e5?" - "+fmtDate(new Date(Math.max(...dates)).toISOString()):""}`:"";
+    const fmtPts=v=>{ const m=Math.abs(v)*100; return (v>0.00005?"+":v<-0.00005?"-":"")+(m<0.95?m.toFixed(2):m<9.95?m.toFixed(1):Math.round(m)); };
+    const fmtMv=v=>{ const m=Math.abs(v)*100; return (v>0.00005?"+":v<-0.00005?"-":"")+(m<9.95?m.toFixed(1):Math.round(m)); };
+    const sgn=(n,d=1)=>(n>=0.05?"+":n<=-0.05?"-":"")+Math.abs(n).toFixed(d);
+    const colOf=v=>v>0.0005?GREEN:v<-0.0005?RED:MUTED;
+    const nm=team=>nameWithRank(team);
+    const pWinPre=g=>{ const bb=Bb.get(g.i); const ph=bb?bb[1]:g.pSp; return g.homeWin?ph:1-ph; };
+    const favTxt=p=>p>=0.75?`${fmtWin(p)}% favourite`:p<0.45?`${fmtWin(p)}% underdog`:`${fmtWin(p)}% (toss-up)`;
+    const gameTxt=g=>{ const winner=g.homeWin?g.home:g.away, loser=g.homeWin?g.away:g.home, wS=g.homeWin?g.homeScore:g.awayScore, lS=g.homeWin?g.awayScore:g.homeScore;
+      return `${nm(winner)} ${wS!=null?wS+"-"+lS+" ":""}${nm(loser)}`; };
+
+    // drawing helpers
+    const F=(b,s,c)=>{ doc.setFont("helvetica", b?"bold":"normal"); doc.setFontSize(s); doc.setTextColor(...c); };
+    const partsW=(list,size)=>list.reduce((w,p)=>{ F(!!p.b,size,NAVY); return w+doc.getTextWidth(clean(p.t)); },0);
+    const parts=(list,x,y,size)=>{ let cx=x; for(const p of list){ F(!!p.b,size,p.c||NAVY); const s=clean(p.t); doc.text(s,cx,y); cx+=doc.getTextWidth(s); } return cx; };
+    const fitParts=(list,x,y,size,maxW)=>{ let s=size; while(s>5.5 && partsW(list,s)>maxW) s-=0.25; return parts(list,x,y,s); };
+    const arrow=(a,b,cb)=>[{t:a,c:MUTED},{t:" » ",c:MUTED},{t:b,b:true,c:cb||NAVY}];
+    const pillAt=(x,y,label,bg,fg,w,size=7.2)=>{ doc.setFillColor(...bg); doc.roundedRect(x,y-7.6,w,10.4,2,2,"F"); F(true,size,fg); doc.text(clean(label),x+w/2,y-0.2,{align:"center"}); };
+    const levPill=(x,y,w,v)=>{ const mix=mixCurve((v||0)/100), bg=mixW(PILL,mix); pillAt(x+(w-22)/2,y,String(Math.round(v||0)),bg,pillText(bg),22); };
+    const deltaPill=(x,y,w,v,max,f=fmtPts)=>{ const mix=mixCurve(Math.abs(v)/Math.max(1e-6,max)), bg=mixW(v>=0?GREEN:RED,mix); pillAt(x+(w-32)/2,y,f(v),bg,pillText(bg),32); };
+    const h3=(t,x,y)=>{ F(true,7.2,MUTED); doc.text(clean(t).toUpperCase(),x,y+7); return y+12; };
+    const para=(text,x,y,w,size,c)=>{ F(false,size,c||NAVY); const lines=doc.splitTextToSize(clean(text),w); doc.text(lines,x,y+size); return y+lines.length*size*1.3+2; };
+    // a table: cols [{w,h,a}], rows of cells (string | {t,c,b} | {parts} | function(x,y,w)); returns the y below it
+    const table=(x,y,cols,rows,size=7.6)=>{ const rowH=size*1.62, tw=cols.reduce((s,c)=>s+c.w,0);
+      let cx=x; cols.forEach(c=>{ F(false,size-0.5,MUTED); const ax=c.a==="right"?cx+c.w-2:c.a==="center"?cx+c.w/2:cx; doc.text(clean(c.h||""),ax,y+size,{align:c.a||"left"}); cx+=c.w; });
+      doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.line(x,y+size+3,x+tw,y+size+3);
+      let yy=y+size+3+rowH-3;
+      for(const row of rows){ cx=x; row.forEach((cell,i)=>{ const c=cols[i]; const ax=c.a==="right"?cx+c.w-2:c.a==="center"?cx+c.w/2:cx;
+          if(cell==null){} else if(typeof cell==="function") cell(cx,yy,c.w);
+          else if(cell.parts) fitParts(cell.parts,cx,yy,size,c.w-3);
+          else { const o=typeof cell==="string"?{t:cell}:cell; F(!!o.b,size,o.c||NAVY); doc.text(fitText(doc,clean(o.t),c.w-3),ax,yy,{align:c.a||"left"}); }
+          cx+=c.w; });
+        doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(x,yy+3.5,x+tw,yy+3.5); yy+=rowH; }
+      return yy-rowH+7; };
+    const empty=(t,x,y)=>{ F(false,7.4,MUTED); doc.text(clean(t),x,y+8); return y+15; };
+
+    // ---- masthead and title ----
+    let y=M;
+    F(true,11,NAVY); doc.text("Leverage Board", M, y+9);
+    F(false,6.3,MUTED); doc.text(clean(`${D.season} season | data updated ${fmtDate(D.updatedAt)}${D.polls&&D.polls.ap?` | AP week ${D.polls.ap.week}`:""} | ${D.meta&&D.meta.ratings||"SP+"} | ${R.N.toLocaleString()} simulated seasons per state`), W-M, y+9, {align:"right"});
+    doc.setDrawColor(...NAVY); doc.setLineWidth(1); doc.line(M, y+14, W-M, y+14); y+=22;
+    const title=`Week ${Wk} in review${T?` | ${T}`:""}`;
+    F(true,14,NAVY); doc.text(clean(title), M, y+12); doc.setProperties({title:clean(title)});
+    F(false,6.8,MUTED); doc.text(clean(`${span?span+" | ":""}${wkGames.length} results | SP+ ${spChanged?`updated, ${R.E0.label} to ${R.E1.label}`:"unchanged"}`), M, y+22); y+=30;
+
+    // ---- headline cards ----
+    const card=(lab,a,b,small,col)=>({lab,a,b,small,col});
+    let cards;
+    if(T){
+      const d=A.pIn-B.pIn, r0=sp0[T], r1=sp1[T], tm=D.teams[idx.get(T)], ind=D.conferenceTiers[tm.conference]==="IND", sB=st(B,T), sA=st(A,T);
+      const rec=r=>`${r.avgWins.toFixed(1)}-${(r.myGames-r.avgWins).toFixed(1)}`;
+      cards=[ card("Playoff chance", pct(B.pIn)+"%", pct(A.pIn)+"%", fmtMv(d)+" pts", colOf(d)),
+        r0&&r1 ? card("SP+ rating", `${r0[0].toFixed(1)}${r0[1]?" #"+r0[1]:""}`, `${r1[0].toFixed(1)}${r1[1]?" #"+r1[1]:""}`, sgn(r1[0]-r0[0]), colOf(r1[0]-r0[0])) : card("SP+ rating","-",(+tm.rating).toFixed(1),"no edition on record",MUTED),
+        card("Projected record", rec(B), rec(A), sgn(A.avgWins-B.avgWins)+" wins", colOf(A.avgWins-B.avgWins)),
+        card("Median final ranking", "#"+B.medRank, "#"+A.medRank, A.medRank===B.medRank?"no change":`${A.medRank<B.medRank?"up":"down"} ${Math.abs(A.medRank-B.medRank)}`, colOf(B.medRank-A.medRank)),
+        ind ? card("National title", pct(sB.pTitle)+"%", pct(sA.pTitle)+"%", fmtMv(sA.pTitle-sB.pTitle)+" pts", colOf(sA.pTitle-sB.pTitle))
+            : card(`${tm.conference} title (auto-bid)`, pct(B.pChamp)+"%", pct(A.pChamp)+"%", fmtMv(A.pChamp-B.pChamp)+" pts", colOf(A.pChamp-B.pChamp)),
+        card("Blockers ahead", B.avgBlock.toFixed(1), A.avgBlock.toFixed(1), sgn(A.avgBlock-B.avgBlock)+" | need <=6", colOf(B.avgBlock-A.avgBlock)) ];
+    } else {
+      const tiers=r=>{ const ts=r.teamStats; return [ts.filter(t=>t.pIn>=0.9).length, ts.filter(t=>t.pIn>=0.75&&t.pIn<0.9).length, ts.filter(t=>t.pIn>=0.25&&t.pIn<0.75).length, ts.filter(t=>t.pIn>=0.1&&t.pIn<0.25).length]; };
+      const tB=tiers(B), tA=tiers(A), labs=["Locks (90%+)","Likely (75-90%)","Bubble (25-75%)","Long shots (10-25%)"];
+      cards=labs.map((l,i)=>card(l,String(tB[i]),String(tA[i]),tB[i]===tA[i]?"no change":(tA[i]>tB[i]?"+":"-")+Math.abs(tA[i]-tB[i])+" team"+(Math.abs(tA[i]-tB[i])>1?"s":""),MUTED));
+    }
+    { const n=cards.length, gap=6, cw=(CW-(n-1)*gap)/n;
+      cards.forEach((c,i)=>{ const x=M+i*(cw+gap); doc.setFillColor(...PANEL); doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.roundedRect(x,y,cw,40,4,4,"FD");
+        F(false,6.6,MUTED); doc.text(fitText(doc,clean(c.lab),cw-10),x+6,y+11);
+        fitParts([{t:c.a,b:true},{t:" » ",c:MUTED},{t:c.b,b:true}],x+6,y+25,10,cw-10);
+        F(true,7,c.col); doc.text(fitText(doc,clean(c.small),cw-10),x+6,y+34.5); });
+      y+=46; }
+    if(T){
+      const d=A.pIn-B.pIn, dRes=Mm.pIn-B.pIn, dSp=A.pIn-Mm.pIn;
+      if(spChanged){ const lab=(t,v,x)=>{ F(true,7.4,NAVY); const s=clean(t+"  "); const w=doc.getTextWidth(s); F(true,7.4,colOf(v)); const w2=doc.getTextWidth(fmtMv(v)); doc.setFillColor(...PANEL); doc.setDrawColor(...LINE); doc.roundedRect(x,y-1,w+w2+12,13.5,3,3,"FD"); F(true,7.4,NAVY); doc.text(s,x+6,y+8.5); F(true,7.4,colOf(v)); doc.text(fmtMv(v),x+6+w,y+8.5); return x+w+w2+18; };
+        const x2=lab("Results",dRes,M); lab("SP+ update",dSp,x2); }
+      else { F(false,7.2,MUTED); doc.text(clean(`SP+ did not change between these two states, so the whole ${fmtMv(d)} comes from the results.`), M, y+8); }
+      y+=20;
+    }
+
+    // ---- shared blocks ----
+    const fB=projectField(B), fA=projectField(A), seedB=new Map(fB.map(t=>[t.team,t.seed])), seedA=new Map(fA.map(t=>[t.team,t.seed]));
+    const outB=fB.nextOut.map(t=>t.team), ord=["first","second","third","fourth"];
+    const fieldBlock=(x,y0,w)=>{ const swaps=fA.filter(t=>!seedB.has(t.team)).length; let yy=h3(`Projected field: ${swaps?`${swaps} change${swaps>1?"s":""}`:"unchanged"}`,x,y0);
+      const rows=fA.map(t=>{ const s0=seedB.get(t.team), b=st(B,t.team);
+        const chg = s0==null ? {t:`In (was ${outB.indexOf(t.team)>=0?ord[outB.indexOf(t.team)]+" out":pct(b?b.pIn:0)+"%"})`,c:GREEN,b:true} : s0===t.seed ? {t:"-",c:MUTED} : {t:`${s0>t.seed?"up":"down"} ${Math.abs(s0-t.seed)} (was ${s0})`,c:s0>t.seed?GREEN:RED,b:true};
+        return [{t:String(t.seed),c:ACCENT_TEXT,b:true},{t:t.team,b:true,c:t.team===T?ACCENT_TEXT:NAVY},{parts:arrow(pct(b?b.pIn:0)+"%",pct(t.pIn)+"%")},chg]; });
+      yy=table(x,yy,[{w:26,h:"Seed",a:"center"},{w:w-26-84-78,h:"Team"},{w:84,h:"Playoff"},{w:78,h:"Change"}],rows);
+      const dropped=fB.filter(t=>!seedA.has(t.team)).map(t=>{ const a=st(A,t.team), k=fA.nextOut.findIndex(x=>x.team===t.team); return `${t.team} (was seed ${t.seed}, now ${k>=0?ord[k]+" out":pct(a?a.pIn:0)+"%"})`; });
+      const nextOut=fA.nextOut.map(t=>`${t.team} ${pct(t.pIn)}%${seedB.has(t.team)?" (was seed "+seedB.get(t.team)+")":""}`);
+      if(dropped.length) yy=para("Out: "+dropped.join(" | "),x,yy,w,7,MUTED);
+      return para("Next out: "+nextOut.join(" | "),x,yy,w,7,MUTED); };
+    const mv=A.teamStats.filter(t=>st(B,t.team)).map(t=>{ const b=st(B,t.team).pIn, m=st(Mm,t.team).pIn; return {team:t.team, before:b, after:t.pIn, d:t.pIn-b, res:m-b, sp:t.pIn-m}; });
+    const up=mv.filter(x=>x.d>=0.005).sort((a,b)=>b.d-a.d).slice(0,6), down=mv.filter(x=>x.d<=-0.005).sort((a,b)=>a.d-b.d).slice(0,6);
+    const moversBlock=(x,y0,w,list,title,color)=>{ let yy=h3(title,x,y0); if(!list.length) return empty("No team moved by half a point or more.",x,yy);
+      const max=Math.max(0.01,...list.map(v=>Math.abs(v.d)));
+      const cols=[{w:w-84-36-(spChanged?70:0),h:"Team"},{w:84,h:"Playoff chance"},{w:36,h:"Change",a:"center"}]; if(spChanged) cols.push({w:70,h:"Results | SP+",a:"center"});
+      const rows=list.map(v=>{ const r=[{t:v.team,b:true,c:v.team===T?ACCENT_TEXT:NAVY},{parts:arrow(pct(v.before)+"%",pct(v.after)+"%",colOf(v.d))},(cx,cy,cw)=>deltaPill(cx,cy,cw,v.d,max,fmtMv)];
+        if(spChanged) r.push((cx,cy,cw)=>{ F(true,7.6,colOf(v.res)); doc.text(fmtMv(v.res),cx+cw/2-4,cy,{align:"right"}); F(false,7.6,MUTED); doc.text("|",cx+cw/2,cy,{align:"center"}); F(true,7.6,colOf(v.sp)); doc.text(fmtMv(v.sp),cx+cw/2+4,cy); }); return r; });
+      return table(x,yy,cols,rows); };
+    const spBlock=(x,y0,w)=>{ let yy=h3(`SP+ update${spChanged?`, ${R.E0.label} to ${R.E1.label}`:""}`,x,y0);
+      if(!spChanged) return para("SP+ did not change between these two states, so every move comes from the results.",x,yy,w,6.5,MUTED);
+      const spm=Object.keys(sp1).filter(t=>sp0[t]&&idx.has(t)).map(t=>({team:t,r0:sp0[t][0],r1:sp1[t][0],k0:sp0[t][1],k1:sp1[t][1],d:sp1[t][0]-sp0[t][0]})).filter(v=>(v.k0&&v.k0<=50)||(v.k1&&v.k1<=50)||((st(A,v.team)||{}).pIn>=0.02));
+      const rise=spm.filter(v=>v.d>=0.05).sort((a,b)=>b.d-a.d).slice(0,5), fall=spm.filter(v=>v.d<=-0.05).sort((a,b)=>a.d-b.d).slice(0,5);
+      const half=(w-10)/2, tw=half-40-28;
+      const cell=v=>v?[{t:v.team,b:true,c:v.team===T?ACCENT_TEXT:NAVY},{parts:[{t:v.r1.toFixed(1),b:true},{t:v.k1?" #"+v.k1:"",c:MUTED}]},{t:sgn(v.d),b:true,c:colOf(v.d)}]:[null,null,null];
+      const rows=[]; for(let i=0;i<Math.max(rise.length,fall.length);i++) rows.push([...cell(rise[i]),null,...cell(fall[i])]);
+      yy=table(x,yy,[{w:tw,h:"Biggest risers"},{w:40,h:"Now"},{w:28,h:"",a:"right"},{w:10},{w:tw,h:"Biggest fallers"},{w:40,h:"Now"},{w:28,h:"",a:"right"}],rows);
+      if(T&&sp0[T]&&sp1[T]){ F(false,7,MUTED); doc.text(clean(`${T}: ${sp0[T][0].toFixed(1)} » ${sp1[T][0].toFixed(1)} (${sgn(sp1[T][0]-sp0[T][0])})`),x,yy+5); yy+=12; }
+      return yy; };
+
+    if(T){
+      // the team's week and the results that moved it | the projected field
+      let yl=h3(`${short(T)}'s week`,M,y);
+      const ownPlayed=Mm.played.filter(g=>g.involvesMe).sort((a,b)=>a.week-b.week);
+      if(!ownPlayed.length) yl=empty(`${short(T)} did not play in ${wkTxt}.`,M,yl);
+      ownPlayed.forEach(g=>{ const src=D.games[g.i]||{}, home=g.home===T, opp=home?g.away:g.home, won=home?g.homeWin:!g.homeWin, mine=home?g.homeScore:g.awayScore, theirs=home?g.awayScore:g.homeScore;
+        const bb=Bb.get(g.i), pPre=bb?(home?bb[1]:1-bb[1]):(home?g.pSp:1-g.pSp), pActual=g.homeWin?g.pH:g.pA, pOther=g.homeWin?g.pA:g.pH;
+        parts([{t:won?"Beat ":"Lost to ",b:true,c:won?GREEN:RED},{t:nm(opp)+(mine!=null?` ${mine}-${theirs}`:""),b:true},{t:`  ${src.neutral?"at a neutral site":home?"at home":"on the road"}, week ${g.week}`,c:MUTED}],M,yl+9,9.5); yl+=13;
+        yl=para(`${short(T)} was a ${favTxt(pPre)}${g.spreadText?` (closed ${g.spreadText})`:""}. Playoff odds ${pct(g.pBefore)}% at kickoff » ${pct(pActual)}% with the ${won?"win":"loss"} (${fmtPts(g.realized)}); ${won?"a loss":"a win"} would have left them at ${pct(pOther)}%.`,M,yl,COL,7.4); });
+      yl=h3(`Other results that moved ${short(T)}`,M,yl+2);
+      const others=Mm.played.filter(g=>!g.involvesMe).sort((a,b)=>(b.clear-a.clear)||(Math.abs(b.realized)-Math.abs(a.realized))).slice(0,8);
+      const maxR=Math.max(0.001,...others.map(g=>Math.abs(g.realized)));
+      yl = others.length ? table(M,yl,[{w:COL-76-40,h:"Result"},{w:76,h:"Winner was"},{w:40,h:"Effect",a:"center"}], others.map(g=>[{t:gameTxt(g),b:true},{t:favTxt(pWinPre(g)),c:MUTED},(cx,cy,cw)=>deltaPill(cx,cy,cw,g.realized,maxR)])) : empty(`No other result in ${wkTxt} moved ${short(T)}'s odds.`,M,yl);
+      const yr=fieldBlock(M+COL+14,y,COL);
+      y=Math.max(yl,yr)+4;
+      // the road ahead
+      y=h3(`The road ahead: ${short(T)}'s remaining games`,M,y);
+      const ownUp=A.games.filter(g=>g.involvesMe).sort((a,b)=>a.week-b.week);
+      const roadRows=ownUp.map(g=>{ const src=D.games[g.i]||{}, home=g.home===T, opp=home?g.away:g.home, bb=Bb.get(g.i);
+        const p0=bb?(home?bb[1]:1-bb[1]):null, p1=home?g.pHomeWin:1-g.pHomeWin, pW=home?g.pH:g.pA, pL=home?g.pA:g.pH, sw0=bb?Math.abs(bb[2])*100:null, sw1=Math.abs(g.swing)*100;
+        return [{t:String(g.week),c:MUTED},{t:(home?"":"@")+nm(opp)+(src.neutral?" (N)":""),b:true},{parts:p0!=null?arrow(fmtWin(p0)+"%",fmtWin(p1)+"%",p1-p0>0.005?GREEN:p1-p0<-0.005?RED:NAVY):[{t:fmtWin(p1)+"%",b:true}]},{t:pct(pW)+"%",c:GREEN,a:"center"},{t:pct(pL)+"%",c:RED},{parts:sw0!=null?arrow(sw0.toFixed(1),sw1.toFixed(1)):[{t:sw1.toFixed(1),b:true}]},(cx,cy,cw)=>levPill(cx,cy,cw,g.lev>0?g.levN:0),{t:g.spreadText||"-",c:MUTED}]; });
+      y = ownUp.length ? table(M,y,[{w:22,h:"Wk"},{w:118,h:"Opponent"},{w:78,h:"Win chance"},{w:56,h:"Playoff if win",a:"center"},{w:56,h:"Playoff if loss",a:"center"},{w:82,h:"Swing, before » after"},{w:50,h:"Leverage",a:"center"},{w:CW-22-118-78-56-56-82-50,h:"Line"}],roadRows) : empty(`${short(T)} has no games left.`,M,y);
+      y+=4;
+      // winners | losers
+      const y1=moversBlock(M,y,COL,up,"Winners",GREEN), y2=moversBlock(M+COL+14,y,COL,down,"Losers",RED); y=Math.max(y1,y2)+4;
+      // other games that matter | SP+ update
+      let yw=h3("Other games that matter most now",M,y);
+      const watch=A.games.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,6);
+      yw = watch.length ? table(M,yw,[{w:20,h:"Wk"},{w:COL-20-52-62-34,h:"Game"},{w:52,h:"Pull for"},{w:62,h:"Swing (pts)"},{w:34,h:"Leverage",a:"center"}], watch.map(g=>{ const want=g.swing>0?g.home:g.away, bb=Bb.get(g.i), sw0=bb?Math.abs(bb[2])*100:null, sw1=Math.abs(g.swing)*100;
+        return [{t:String(g.week),c:MUTED},{t:`${nm(g.away)} at ${nm(g.home)}`},{t:short(want),b:true},{parts:sw0!=null?arrow(sw0.toFixed(1),sw1.toFixed(1)):[{t:sw1.toFixed(1),b:true}]},(cx,cy,cw)=>levPill(cx,cy,cw,g.levN)]; })) : empty("No other game moves the odds by a tenth of a point.",M,yw);
+      const ys=spBlock(M+COL+14,y,COL); y=Math.max(yw,ys);
+    } else {
+      let yl=h3("Results that reshaped the field",M,y);
+      const big=Mm.played.filter(g=>g.clear).sort((a,b)=>Math.abs(b.realized)-Math.abs(a.realized)).slice(0,8);
+      yl = big.length ? table(M,yl,[{w:COL-70-58,h:"Result"},{w:70,h:"Winner was"},{w:58,h:"Field differs in",a:"right"}], big.map(g=>[{t:gameTxt(g),b:true},{t:favTxt(pWinPre(g)),c:MUTED},{t:pct(g.swing)+"% of seasons",b:true}])) : empty(`No result in ${wkTxt} changed who makes the field.`,M,yl);
+      let yr=h3("Games that shape the field most now",M+COL+14,y);
+      const watch=A.games.filter(g=>g.clear).sort((a,b)=>b.lev-a.lev).slice(0,8);
+      yr = watch.length ? table(M+COL+14,yr,[{w:20,h:"Wk"},{w:COL-20-78-34,h:"Game"},{w:78,h:"Changes the field in"},{w:34,h:"Leverage",a:"center"}], watch.map(g=>{ const bb=Bb.get(g.i), sw0=bb?bb[2]:null;
+        return [{t:String(g.week),c:MUTED},{t:`${nm(g.away)} at ${nm(g.home)}`},{parts:sw0!=null?arrow(pct(sw0)+"%",pct(g.swing)+"%"):[{t:pct(g.swing)+"%",b:true}]},(cx,cy,cw)=>levPill(cx,cy,cw,g.levN)]; })) : empty("No remaining game changes who gets in.",M+COL+14,yr);
+      y=Math.max(yl,yr)+4;
+      const y1=moversBlock(M,y,COL,up,"Winners",GREEN), y2=moversBlock(M+COL+14,y,COL,down,"Losers",RED); y=Math.max(y1,y2)+4;
+      const yf=fieldBlock(M,y,COL), ys=spBlock(M+COL+14,y,COL); y=Math.max(yf,ys);
+    }
+    F(false,6.4,MUTED);
+    doc.text(doc.splitTextToSize(clean(`Three simulations of ${R.N.toLocaleString()} seasons each on one fixed random stream, so differences between states are effects, not noise. The ranking is a strength-plus-resume stand-in for the committee.`), CW), M, Math.min(H-M+2, y+10));
+    return doc;
+  }
+
   // ---- wiring ----
   const PDF_SEASONS = 25000;
   // PDFs always come from at least 25,000 seasons: reuse the on-screen result if it is that big, otherwise run a fresh one
@@ -384,10 +554,13 @@
   }
   async function make(kind){
     if(!RES){ alert("Run the simulation first."); return; }
-    const btn = kind==="board" ? document.querySelector("#pdf") : document.querySelector("#pdfWeek");
+    const btn = kind==="board" ? document.querySelector("#pdf") : kind==="review" ? document.querySelector("#reviewPrint") : document.querySelector("#pdfWeek");
+    if(kind==="review" && !(window.REVIEW && REVIEW.data)){ alert("The report is still being simulated; try again once it appears."); return; }
     const label = btn.textContent; btn.disabled=true; btn.textContent="Building…";
     try{
       const jsPDF = await loadJsPDF();
+      const slug0 = (T||"Field").replace(/s+/g,"-");
+      if(kind==="review"){ btn.textContent="Building…"; await deliver(buildReview(jsPDF, REVIEW.data), `Week-${REVIEW.data.w}-in-review-${slug0}.pdf`); return; }
       const r = await resultForPdf(btn);
       btn.textContent="Building…";
       const slug = (T||"Field").replace(/s+/g,"-");
@@ -397,5 +570,5 @@
     finally{ btn.disabled=false; btn.textContent=label; }
   }
   window.makePdf = make;
-  window.__pdfBuild = { buildBoard, buildWeek, loadJsPDF };
+  window.__pdfBuild = { buildBoard, buildWeek, buildReview, loadJsPDF };
 })();

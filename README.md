@@ -85,9 +85,11 @@ difference between those states, so each move splits into what the results
 did and what the ratings update did. All three use the fixed random stream,
 so the differences are effects, not simulation noise. The current week keeps
 the slate until every game in it is final. Finished reports are kept on the
-device like the main result; Print / PDF lays the report out for a single
-letter sheet, scaling it down a little if the week was busy
-(`index.html#print-review` opens the page that way for headless printing).
+device like the main result. Report PDF draws the report on one letter sheet
+with jsPDF, like the other PDFs (a download on a computer, the share sheet on
+a phone); the browser's own print of the page gives the same one-sheet
+layout (`index.html#print-review` opens the page that way for headless
+printing).
 
 ## One-page PDFs
 
