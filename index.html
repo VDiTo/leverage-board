@@ -1892,7 +1892,8 @@ function prepareReviewPrint(){
   // measured at the width each scale would give until the scale settles.
   const tmp=document.createElement("style"); body.classList.add("print-review"); document.head.appendChild(tmp);
   let z=1;
-  for(let i=0;i<4;i++){ tmp.textContent=rules.join("\n")+`\n.wrap{max-width:${(758/z).toFixed(1)}px!important;padding:0!important}`; const h=$("#tab-review").offsetHeight; z=Math.max(0.75, Math.min(1, 962/Math.max(1,h))); }
+  const fit = window.RV_FIT || 990;   // the sheet's printable height less the wrap padding is 1003; calibrated against Chrome's own output
+  for(let i=0;i<4;i++){ tmp.textContent=rules.join("\n")+`\n.wrap{max-width:${(758/z).toFixed(1)}px!important;padding:0!important}`; const h=$("#tab-review").offsetHeight; z=Math.max(0.75, Math.min(1, fit/Math.max(1,h))); }
   tmp.remove();
   root.style.setProperty("--rvzoom", String(z));
 }
