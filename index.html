@@ -57,7 +57,7 @@
   /* print fallback: just the board and its explanation, on a light landscape page */
   @media print{
     @page{size:landscape;margin:0.3in}
-    @page review{size:portrait;margin:0}   /* the sheet is claimed in full, so the browser adds no header or footer of its own */
+    @page review{size:8.5in 11in;margin:0}   /* the sheet is claimed in full, so the browser adds no header or footer of its own */
     html,body{background:#fff;color:#10233a;font-size:8pt}
     header .bar,header .prog,#cacheNote,nav.tabs,.foot,.modal,section.tab,.info,.controls{display:none!important}
     body.print-board #tab-board, body.print-slate #tab-slate{display:block!important}
@@ -1898,7 +1898,7 @@ function prepareReviewPrint(){
   const tmp=document.createElement("style"); body.classList.add("print-review"); document.head.appendChild(tmp);
   let z=1;
   // 1003 printable pixels after the wrap padding; the target is checked by printing through DevTools (index.html#print-review)
-  const fit = window.RV_FIT || 998;
+  const fit = window.RV_FIT || 980;   // 2% under the limit: browsers differ slightly from the headless print this was checked with
   root.style.setProperty("--rvzoom", "1");
   for(let i=0;i<4;i++){ tmp.textContent=rules.join("\n")+`\n.wrap{max-width:${(758/z).toFixed(1)}px!important;padding:0!important}`; const h=$("#tab-review").offsetHeight; z=Math.max(0.75, Math.min(1, fit/Math.max(1,h))); }
   tmp.remove();
