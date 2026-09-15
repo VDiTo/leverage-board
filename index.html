@@ -57,33 +57,32 @@
   /* print fallback: just the board and its explanation, on a light landscape page */
   @media print{
     @page{size:landscape;margin:0.3in}
-    @page review{size:portrait;margin:0.35in}
+    @page review{size:portrait;margin:0.3in}
     html,body{background:#fff;color:#10233a;font-size:8pt}
     header .bar,header .prog,#cacheNote,nav.tabs,.foot,.modal,section.tab,.info,.controls{display:none!important}
     body.print-board #tab-board, body.print-slate #tab-slate{display:block!important}
     body:not(.print-slate):not(.print-review) #tab-board{display:block!important}
     body.print-review{page:review} body.print-review header,body.print-review #liveNote{display:none!important}
-    body.print-review #tab-review{display:block!important;page:review;font-size:8.5pt;color:#10233a;zoom:var(--rvzoom,1)}
+    body.print-review #tab-review{display:block!important;page:review;font-size:9pt;color:#10233a;zoom:var(--rvzoom,1)}
     body.print-review .rv-s table tr:nth-child(n+7){display:none} body.print-review .rv-keep table tr:nth-child(n){display:table-row} body.print-review .rv-p{display:none!important}
     body.print-review .rv-body{grid-template-columns:1fr 1fr!important;grid-template-areas:"week field" "road road" "mv mv" "watch sp";gap:2pt 18pt}
-    body.print-review .rv-s.week{grid-area:week} body.print-review .rv-s.field{grid-area:field} body.print-review .rv-s.road{grid-area:road} body.print-review .rv-s.mv{grid-area:mv} body.print-review .rv-s.watch{grid-area:watch} body.print-review .rv-s.sp{grid-area:sp}
+    body.print-review .rv-s.week{grid-area:week} body.print-review .rv-s.field{grid-area:field} body.print-review .rv-s.road{grid-area:road} body.print-review .rv-s.mv{grid-area:mv} body.print-review .rv-s.watch{grid-area:watch} body.print-review .rv-s.sp{grid-area:sp} body.print-review .rv-two{grid-template-columns:1fr 1fr!important;gap:2pt 6pt}
     body.print-review .rv-x{display:none!important} body.print-review .rv-po{display:inline} body.print-review #review td:last-child{white-space:normal} body.print-review #review th{white-space:normal;vertical-align:bottom}
     body.print-review .h2-right,body.print-review .controls,body.print-review #reviewNote,body.print-review .prog,body.print-review .explain,body.print-review #tab-review>h2{display:none!important}
-    body.print-review .rv-head h2.rv-title{font-size:16pt;color:#10233a} body.print-review .rv-head{margin:0 0 4pt} body.print-review .rv-head .sub{font-size:8pt}
+    body.print-review .rv-ph{display:flex;justify-content:space-between;align-items:baseline;gap:8pt;border-bottom:1.5pt solid #10233a;padding-bottom:3pt;margin-bottom:7pt;font-size:8pt;color:#5a6b80} body.print-review .rv-ph b{font-family:"Iowan Old Style",Georgia,"Times New Roman",serif;font-size:12pt;color:#10233a}
+    body.print-review .rv-head h2.rv-title{font-size:15pt;color:#10233a} body.print-review .rv-head{margin:0 0 2pt} body.print-review .rv-head .sub{font-size:8.5pt}
     body.print-review .rv-stats{grid-template-columns:repeat(6,1fr);gap:5pt;margin:4pt 0}
-    body.print-review .stat{background:#f4f6f9;border-color:#dfe5ec;padding:4pt 6pt} body.print-review .rv-stat span{font-size:7.5pt} body.print-review .rv-stat b{font-size:12pt} body.print-review .rv-stat b em{font-size:9pt} body.print-review .rv-stat small{font-size:8pt}
-    body.print-review .rv-split{margin:2pt 0 4pt} body.print-review .rv-split p{font-size:8.5pt} body.print-review .rv-pill{font-size:8pt;padding:1pt 6pt;background:#f4f6f9;border-color:#dfe5ec}
-    body.print-review #review h3{margin:8pt 0 2pt;font-size:8pt;color:#3a4a60}
-    body.print-review #review table{font-size:8pt} body.print-review #review td,body.print-review #review th{padding:1.5pt 4pt;border-bottom-color:#e6eaf0;line-height:1.25} body.print-review #review th{color:#5a6b80;background:#fff;font-size:7.5pt}
+    body.print-review .stat{background:#f4f6f9;border-color:#dfe5ec;padding:4pt 6pt} body.print-review .rv-stat span{font-size:8pt} body.print-review .rv-stat b{font-size:12.5pt} body.print-review .rv-stat b em{font-size:9pt} body.print-review .rv-stat small{font-size:8.5pt}
+    body.print-review .rv-split{margin:2pt 0 4pt} body.print-review .rv-pill{font-size:8.5pt;padding:1pt 7pt;background:#f4f6f9;border-color:#dfe5ec;color:#10233a}
+    body.print-review #review h3{margin:6pt 0 1.5pt;font-size:8.5pt;color:#3a4a60}
+    body.print-review #review table{font-size:8.5pt} body.print-review #review td,body.print-review #review th{padding:1.8pt 4pt;border-bottom-color:#e6eaf0;line-height:1.25} body.print-review #review th{color:#5a6b80;background:#fff;font-size:8pt}
     body.print-review #review td.k{background:#fff;color:#10233a} body.print-review #review tr.me td.k{color:#8a6f2e}
-    body.print-review .rv-game{padding:3pt 0;font-size:8.5pt;line-height:1.35} body.print-review .rv-game .sc{font-size:9.5pt}
-    body.print-review .rv-delta{font-size:8pt;padding:0 5pt;min-width:36pt;line-height:1.3} body.print-review .pill{font-size:7.5pt;padding:0 5pt;min-width:26pt;line-height:1.3}
-    body.print-review .rv-grid{grid-template-columns:1fr 1fr!important;gap:2pt 18pt} body.print-review .rv-two{grid-template-columns:1fr 1fr!important;gap:2pt 6pt}
-    body.print-review .movers{grid-template-columns:1fr 1fr!important;gap:2pt 18pt}
-    body.print-review .rv-grid>div,body.print-review .movers>div{min-width:0} body.print-review table{table-layout:auto}
-    body.print-review #review .sub,body.print-review #review .rk,body.print-review #review .rv-ba{font-size:8pt}
-    body.print-review .rv-ba b,body.print-review .rv-game{color:#10233a} body.print-review .rv-ba,body.print-review .sub,body.print-review .rv-stat span{color:#5a6b80}
-    body.print-review .rv-note{font-size:7pt;margin-top:6pt;padding-top:3pt;border-top-color:#e6eaf0}
+    body.print-review .rv-game{padding:3pt 0;font-size:9pt;line-height:1.35} body.print-review .rv-game .sc{font-size:10pt}
+    body.print-review .rv-delta{font-size:8.5pt;padding:0 5pt;min-width:36pt;line-height:1.35;color:#10233a} body.print-review .pill{font-size:8pt;padding:0 5pt;min-width:26pt;line-height:1.35;color:#10233a} body.print-review .pill.dim{color:#5a6b80}
+    body.print-review .movers{grid-template-columns:1fr 1fr!important;gap:2pt 18pt} body.print-review .movers>div{min-width:0} body.print-review table{table-layout:auto}
+    body.print-review #review .sub,body.print-review #review .rk,body.print-review #review .rv-ba{font-size:8.5pt}
+    body.print-review .rv-ba b,body.print-review .rv-game,body.print-review #review{color:#10233a} body.print-review .rv-ba,body.print-review .sub,body.print-review .rv-stat span{color:#5a6b80}
+    body.print-review .rv-note{font-size:6pt;margin-top:4pt;padding-top:2pt;break-inside:avoid;border-top-color:#e6eaf0;color:#8a96a6}
     body.print-review .scroll{overflow:visible}
     .explain{display:block!important;background:#fff;border:0;padding:0;color:#3a4a60;max-width:none}
     .g{break-inside:avoid;color:#10233a} .g-top,.g-line,.g-line b{color:#3a4a60} .g-match{color:#10233a} .chip small{color:#5a6b80}
@@ -362,7 +361,7 @@
   .rv-split{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:2px 0 8px} .rv-split p{margin:0;font-size:13.5px;flex:1 1 100%}
   .rv-pill{display:inline-block;border-radius:6px;padding:3px 10px;font-size:13px;font-weight:600;background:var(--panel2);border:1px solid var(--line)} .rv-pill b{margin-left:3px} .rv-pill.good{border-color:var(--for)} .rv-pill.good b{color:var(--for)} .rv-pill.bad{border-color:var(--against)} .rv-pill.bad b{color:var(--against)}
   #review .tn{text-decoration:none}
-  .rv-po{display:none}   /* print-only text */
+  .rv-po,.rv-ph{display:none}   /* print-only text and masthead */
   .rv-body{display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;align-items:start} .rv-s{min-width:0} .rv-s.road,.rv-s.mv{grid-column:1/-1}
   @media (max-width:760px){ .rv-body{grid-template-columns:1fr} }
   .rv-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;align-items:start}
@@ -608,6 +607,7 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   const sv = pref.get("seasonView"); if(sv==="up"||sv==="played") UI.seasonView=sv;
   const nmin = pref.get("seasonMin"); if(nmin!==null && [...$("#seasonMin").options].some(o=>o.value===nmin)){ $("#seasonMin").value=nmin; UI.seasonMin=+nmin; }
   const tab = pref.get("tab"); if(tab && document.querySelector(`#tabs button[data-tab="${tab}"]`)) showTab(tab);
+  if(location.hash==="#print-review") showTab("review");
   // finals from ESPN first (a few seconds at most), then the first simulation, then live polling if it's on
   const go=()=>{ run(); if(window.liveStart && $("#liveOn").checked) window.liveStart(); };
   if(window.liveSync) window.liveSync().then(go, go); else go();
@@ -1761,7 +1761,8 @@ function renderReview(){
 
   $("#reviewExplain").innerHTML=`<p>What ${wkTxt}${R.partial?" (so far)":""} did to the playoff picture${T?` for <strong>${T}</strong>`:""}. Three simulations frame it, ${R.N.toLocaleString()} seasons each: how things stood <strong>before</strong> the week (results through ${prev<0?"the preseason":"week "+prev}, on the ${R.E0.label} SP+), the week's <strong>results</strong> on those same ratings, and the same results on the <strong>SP+ update</strong> that followed${spChanged?` (${R.E1.label})`:" (none this week)"}. Every change is a difference between those states, so a move splits into what the results did and what the ratings update did. Change is in percentage points of playoff chance unless labelled otherwise. Print / PDF lays the page out for a single sheet.</p>`;
 
-  const head=`<div class="rv-head"><div><h2 class="rv-title">Week ${W} in review${T?` · ${T}`:""}</h2><div class="sub">${span?span+" · ":""}${wkGames.length} results${R.partial?" so far":""} · SP+ ${spChanged?`updated, ${R.E0.label} → ${R.E1.label}`:"unchanged"} · ${R.N.toLocaleString()} simulated seasons per state</div></div></div>`;
+  const stamp=`${D.season} season · data updated ${new Date(D.updatedAt).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}${D.polls&&D.polls.ap?` · AP week ${D.polls.ap.week}`:""}${D.meta&&D.meta.ratings?` · ${D.meta.ratings}`:""}`;
+  const head=`<div class="rv-ph"><b>Leverage Board</b><span>${stamp} · printed ${new Date().toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><div class="rv-head"><div><h2 class="rv-title">Week ${W} in review${T?` · ${T}`:""}</h2><div class="sub">${span?span+" · ":""}${wkGames.length} results${R.partial?" so far":""} · SP+ ${spChanged?`updated, ${R.E0.label} → ${R.E1.label}`:"unchanged"} · ${R.N.toLocaleString()} simulated seasons per state</div></div></div>`;
 
   // ----- winners and losers, projected field and SP+ movers: the same in both modes -----
   const mv=A.teamStats.filter(t=>st(B,t.team)).map(t=>{ const b=st(B,t.team).pIn, m=st(M,t.team).pIn; return {team:t.team, conf:t.conf, before:b, after:t.pIn, d:t.pIn-b, res:m-b, sp:t.pIn-m}; });
@@ -1877,22 +1878,28 @@ function renderReview(){
     const watchBlock=h3("Games that shape the field most now")+table(`<th>Wk</th><th>Game</th><th>Changes the field in</th><th>Mostly</th><th class="c">Leverage</th>`, watchRows, "No remaining game changes who gets in.");
     body=`<div class="rv-body"><section class="rv-s week">${bigBlock}</section><section class="rv-s watch">${watchBlock}</section><section class="rv-s mv">${movers("Winners and losers")}</section><section class="rv-s field">${field}</section><section class="rv-s sp">${spBlock}</section></div>`;
   }
+  if(typeof PRINT_URL!=="undefined" && PRINT_URL) setTimeout(prepareReviewPrint, 0);
   el.innerHTML=head+top+body+`<div class="rv-note">Three simulations of ${R.N.toLocaleString()} seasons each on one fixed random stream, so differences between states are effects, not noise. The ranking is a strength-plus-résumé stand-in for the committee.${R.partial?" This week is not finished: the report covers the results so far.":""}</div>`;
 }
 $("#reviewWeek").onchange=()=>{ REVIEW.week=+$("#reviewWeek").value; runReview(); };
 $("#reviewRecompute").onclick=()=>runReview(true);
 // Print / PDF: one portrait sheet. The report is laid out at the printed width with the print rules applied, and if it
 // still runs long the sheet is scaled down (never below 75%, so a very full week may take a second page).
-$("#reviewPrint").onclick=()=>{
+function prepareReviewPrint(){
   const body=document.body, root=document.documentElement, rules=[];
   for(const ss of document.styleSheets){ try{ for(const r of ss.cssRules){ if(r.media && /print/.test(r.media.mediaText)) for(const x of r.cssRules) rules.push(x.cssText); } }catch(e){} }
-  const tmp=document.createElement("style"); tmp.textContent=rules.join("\n")+"\n.wrap{max-width:749px!important}";
+  const tmp=document.createElement("style"); tmp.textContent=rules.join("\n")+"\n.wrap{max-width:758px!important}";
   body.classList.add("print-review"); document.head.appendChild(tmp);
   const h=$("#tab-review").offsetHeight; tmp.remove();
-  root.style.setProperty("--rvzoom", String(Math.max(0.75, Math.min(1, 975/Math.max(1,h)))));
-  const off=()=>{ body.classList.remove("print-review"); root.style.removeProperty("--rvzoom"); window.removeEventListener("afterprint",off); };
+  root.style.setProperty("--rvzoom", String(Math.max(0.75, Math.min(1, 960/Math.max(1,h)))));
+}
+$("#reviewPrint").onclick=()=>{
+  prepareReviewPrint();
+  const off=()=>{ document.body.classList.remove("print-review"); document.documentElement.style.removeProperty("--rvzoom"); window.removeEventListener("afterprint",off); };
   window.addEventListener("afterprint",off); window.print();
 };
+// index.html#print-review: the page opens on the report, laid out for the sheet once it is ready (for headless printing)
+const PRINT_URL = typeof location!=="undefined" && location.hash==="#print-review";
 </script>
 </body>
 </html>
