@@ -555,15 +555,15 @@
   async function make(kind){
     if(!RES){ alert("Run the simulation first."); return; }
     const btn = kind==="board" ? document.querySelector("#pdf") : kind==="review" ? document.querySelector("#reviewPrint") : document.querySelector("#pdfWeek");
-    if(kind==="review" && !(window.REVIEW && REVIEW.data)){ alert("The report is still being simulated; try again once it appears."); return; }
+    if(kind==="review" && !(typeof REVIEW!=="undefined" && REVIEW.data)){ alert("The report is still being simulated; try again once it appears."); return; }
     const label = btn.textContent; btn.disabled=true; btn.textContent="Building…";
     try{
       const jsPDF = await loadJsPDF();
-      const slug0 = (T||"Field").replace(/s+/g,"-");
+      const slug0 = (T||"Field").replace(/\s+/g,"-");
       if(kind==="review"){ btn.textContent="Building…"; await deliver(buildReview(jsPDF, REVIEW.data), `Week-${REVIEW.data.w}-in-review-${slug0}.pdf`); return; }
       const r = await resultForPdf(btn);
       btn.textContent="Building…";
-      const slug = (T||"Field").replace(/s+/g,"-");
+      const slug = slug0;
       if(kind==="board"){ await deliver(buildBoard(jsPDF, r), `Top-25-Board-${slug}.pdf`); }
       else { const wk = UI.slateWeek ?? Math.min(...r.games.map(g=>g.week)); await deliver(buildWeek(jsPDF, r, wk), `Top-10-Games-Week-${wk}-${slug}.pdf`); }
     } catch(e){ alert("Could not build the PDF: "+e.message); }
