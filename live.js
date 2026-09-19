@@ -29,10 +29,17 @@
 
   async function fetchLive(){
     const now=new Date(), from=new Date(now.getTime()-36*3600e3), to=new Date(now.getTime()+30*3600e3);
-    const url=`${FEED}?groups=80&limit=400&dates=${ymd(from)}-${ymd(to)}`;
-    const r=await fetch(url, {cache:"no-store"}); if(!r.ok) throw new Error("scoreboard "+r.status);
-    const j=await r.json(); const map=new Map();
-    for(const e of (j.events||[])){
+    const get=async dates=>{ const r=await fetch(`${FEED}?groups=80&limit=400&dates=${dates}`, {cache:"no-store"});
+      if(!r.ok) throw new Error("scoreboard "+r.status); return (await r.json()).events||[]; };
+    // the feed sometimes rejects a date range with a 400 while single days still work; then ask day by day and remember it
+    let events=null;
+    if(!LIVE.noRange){ try{ events=await get(`${ymd(from)}-${ymd(to)}`); }catch(e){ LIVE.noRange=true; } }
+    if(!events){
+      const days=[]; for(let t=from.getTime(); ; t+=24*3600e3){ const d=ymd(new Date(Math.min(t,to.getTime()))); if(!days.includes(d)) days.push(d); if(t>=to.getTime()) break; }
+      events=(await Promise.all(days.map(get))).flat();
+    }
+    const map=new Map();
+    for(const e of events){
       const c=e.competitions&&e.competitions[0]; if(!c) continue;
       const st=c.status&&c.status.type||{}; const home=c.competitors.find(x=>x.homeAway==="home"), away=c.competitors.find(x=>x.homeAway==="away");
       if(!home||!away) continue;
