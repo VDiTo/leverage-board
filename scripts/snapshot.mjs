@@ -19,6 +19,10 @@ const a = src.indexOf('fetch("data.json'), b = src.indexOf("\n", src.indexOf(".c
 src = src.slice(0, a) + src.slice(b + 1);
 const fake = new Proxy({}, { get: (t, k) => k === "checked" ? false : k === "value" ? "" : (() => { }), set: () => true });
 const document = { querySelector: () => fake, querySelectorAll: () => [], addEventListener: () => { } };
+// index.html registers print/resize listeners on window as it loads, so those have to be callable here.
+// Everything it *reads* off window (LIVE, makePdf, RV_FIT ...) stays undefined on purpose: each read is
+// truthiness-guarded, and a snapshot simulates the season without live scores or any PDF plumbing.
+const window = { addEventListener: () => { }, removeEventListener: () => { }, scrollTo: () => { } };
 const fresh = () => JSON.parse(readFileSync(REPO + "/data.json", "utf8"));
 
 // playoff chance per FBS team with every game after week `mask` treated as unplayed (mask null = preseason, "all" = as is)
@@ -28,7 +32,7 @@ const runner = new Function("document", "window", "localStorage", "D0", "mask", 
   D.games.forEach(g => { if (mask === null || (mask !== "all" && g.week > mask)) { g.completed = false; g.homeWin = null; g.homeScore = null; g.awayScore = null; } });
   T = ""; build();
   simulate("", N, () => {}, r => done(Object.fromEntries(r.teamStats.filter(t => !t.fcs).map(t => [t.team, +t.pIn.toFixed(4)]))));`);
-const point = (mask, ratings) => new Promise(res => runner(document, {}, { getItem: () => null, setItem: () => { } }, fresh(), mask, ratings || null, N, res));
+const point = (mask, ratings) => new Promise(res => runner(document, window, { getItem: () => null, setItem: () => { } }, fresh(), mask, ratings || null, N, res));
 
 const D = fresh();
 // weeks with every game final, using the site's own week-0 split (Aug 29-30 games are "week 0")
