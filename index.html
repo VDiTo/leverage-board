@@ -379,6 +379,20 @@
   .legend{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center;margin:0 0 8px;font-size:12.5px;color:var(--muted)}
   .legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
   .foot{margin-top:30px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:12px}
+  /* phones: the header controls on a fixed grid (team / seasons + run / toggles + PDF) instead of wrapping ragged */
+  @media (max-width:560px){
+    header{padding:12px 0 10px}
+    header #stamp{font-size:12px;margin-top:2px}
+    header .bar{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;align-items:center}
+    header .bar #team{grid-area:1/1/2/7;width:100%}
+    header .bar #sims{grid-area:2/1/3/4;width:100%}
+    header .bar #run{grid-area:2/4/3/7;width:100%;padding:8px 6px}
+    header .bar label.chk{font-size:12.5px;gap:5px;white-space:nowrap}
+    header .bar label.chk:has(#teamColors){grid-area:3/1/4/3} header .bar label.chk:has(#liveOn){grid-area:3/3/4/5}
+    header .bar #pdf{grid-area:3/5/4/7;width:100%;padding:6px 4px;font-size:13px}
+    header .prog{margin-top:8px}
+    #cacheNote,#liveNote{font-size:11.5px;line-height:1.4;margin-top:4px}
+  }
   @media (max-width:560px){ .odds{font-size:54px} h1{font-size:21px} .g-match{font-size:15px}
     /* phones: controls in a tidy two-column grid; the week-so-far strip wraps like a sentence */
     .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
