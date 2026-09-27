@@ -334,6 +334,8 @@
   svg.hist .tl circle{fill:currentColor;opacity:.9}
   svg.hist .tl.me path{stroke-width:3.2;opacity:1} svg.hist .tl.hl path{stroke-width:3.4;opacity:1} svg.hist .tl.dim{opacity:.18}
   .hist-legend{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:8px}
+  .nm-short{display:none}
+  @media (max-width:640px){ .nm-full{display:none} .nm-short{display:inline} }
   /* one row per progression; once the season outgrows the width it scrolls sideways, opened at the latest week */
   .sp-trend{display:flex;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;align-items:stretch;gap:6px 4px;margin:4px 0 10px;padding-bottom:2px}
   @media (max-width:640px){
@@ -544,6 +546,8 @@ const rankOf = team => { const t=D.teams[idx.get(team)]; if(!t) return null; ret
 const isRanked = team => { const t=D.teams[idx.get(team)]; return !!(t && (t.apRank||t.cfpRank)); };
 const isFcs = team => !!(D.teams[idx.get(team)]||{}).fcs;
 const tn = (team, label) => `<span class="tn" data-team="${team.replace(/"/g,"&quot;")}">${label??team}</span>`;
+// full name, with the short form swapped in on phones by CSS (tables that are tight for width)
+const tnPhone = team => { const s=short(team); return s===team ? tn(team) : tn(team, `<span class="nm-full">${team}</span><span class="nm-short">${s}</span>`); };
 const badge = (team, label) => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${tn(team,label)}` : (isFcs(team) ? `${tn(team,label)} <span class="rk" style="color:var(--muted)">FCS</span>` : tn(team,label)); };
 const fmtKick = g => {
   if(!g.start) return "";
@@ -1400,7 +1404,7 @@ function renderBlockers(r){
     const list=r.teamStats.filter(t=>!t.fcs&&t.pIn>=0.05).sort((a,b)=>b.pIn-a.pIn).slice(0,30);
     const maxP=Math.max(0.01,...list.map(t=>t.pIn));
     $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Playoff</th><th class="c">Proj. record</th><th class="c">Seed</th><th class="c">Title</th></tr>`+
-      list.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(t.team)}</td><td class="sub">${t.conf}</td>
+      list.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tnPhone(t.team)}</td><td class="sub">${t.conf}</td>
         <td><span class="ramp num" style="${ramp(t.pIn,"var(--for)",maxP)}">${pct(t.pIn)}%</span></td>
         <td class="num" style="text-align:center">${t.wins.toFixed(1)}–${(t.games-t.wins).toFixed(1)}</td>
         <td class="num" style="text-align:center">${t.avgSeed<99?t.avgSeed.toFixed(1):"—"}</td>
@@ -1413,7 +1417,7 @@ function renderBlockers(r){
   const blk=r.teamStats.filter(t=>t.team!==T&&!t.fcs).sort((a,b)=>b.block-a.block).slice(0,25);
   const maxB=Math.max(0.01,...blk.map(t=>t.block));
   $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Proj. record</th><th class="c">Blocks you</th><th class="c">Finishes ahead</th></tr>`+
-    blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(t.team)}</td><td class="sub">${t.conf}</td>
+    blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tnPhone(t.team)}</td><td class="sub">${t.conf}</td>
       <td class="num" style="text-align:center">${t.wins.toFixed(1)}–${(t.games-t.wins).toFixed(1)}</td>
       <td class="pc"><span class="ramp num" style="${ramp(t.block,"var(--against)",maxB)}">${pct(t.block)}%</span></td>
       <td class="pc"><span class="ramp num" style="${ramp(t.ahead,"var(--flat)")}">${pct(t.ahead)}%</span></td></tr>`;}).join("");
