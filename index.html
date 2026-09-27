@@ -303,11 +303,12 @@
     #movers .movers>div{min-width:0}
     #movers .movers table{table-layout:fixed;font-size:12px}
     #movers .movers td{padding:5px 4px}
-    #movers .movers td.r{width:32px}
+    /* percentages, so a wider phone spreads its extra room across every column rather than the team name */
+    #movers .movers td.r{width:10%}
     #movers .movers td.k{min-width:0;position:static;box-shadow:none;overflow:hidden;text-overflow:ellipsis}
-    #movers .movers td.sub{width:58px;overflow:hidden;text-overflow:ellipsis}
-    #movers .movers td.ba{width:92px;font-size:11.5px}
-    #movers .movers td.ch{width:50px;text-align:right} #movers .movers .ch .ramp{font-size:12px;padding:2px 5px}
+    #movers .movers td.sub{width:17%;font-size:11.5px;overflow:hidden;text-overflow:ellipsis}
+    #movers .movers td.ba{width:31%;font-size:11.5px;text-align:center}
+    #movers .movers td.ch{width:15%;padding-left:6px;text-align:right} #movers .movers .ch .ramp{font-size:12px;padding:2px 5px}
     /* the blockers / bubble watch table: same idea, widths set on the header row */
     #blockers{table-layout:fixed;font-size:12px}
     #blockers th,#blockers td{padding:5px 4px}
