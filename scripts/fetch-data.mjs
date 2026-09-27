@@ -106,14 +106,14 @@ for (const g of linesRaw) {
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
   });
   const l = lines[0];
-  // Normalise to the HOME team's perspective: negative = home favoured.
+  // Normalize to the HOME team's perspective: negative = home favored.
   let spread = l.spread != null ? +l.spread : null;
   const text = l.formattedSpread || "";
   const m = text.match(/^(.*?)\s([+-]?\d+(?:\.\d+)?)$/);
   if (m) {
     const fav = m[1].trim(), num = +m[2];
     if (fav === home) spread = num;          // "Ole Miss -24.5", Ole Miss at home
-    else if (fav === away) spread = -num;    // favourite is the road team
+    else if (fav === away) spread = -num;    // favorite is the road team
   }
   lineByGame.set(id, {
     spread: spread != null ? +spread.toFixed(1) : null,

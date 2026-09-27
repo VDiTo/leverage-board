@@ -15,7 +15,7 @@
   }
 
   // ---- palette (navy on white, matching the site's default) ----
-  // Palette on a white page. With team colours on, the ink takes the school's darker colour and the accent
+  // Palette on a white page. With team colors on, the ink takes the school's darker color and the accent
   // (rooting boxes, head-to-head borders, leverage pills, "for ___ Fans") takes the other one, each darkened until it
   // reads on white. Green and red keep their meaning (pull for / pull against, win chance) whatever the school.
   const BASE_NAVY=[12,35,64], BASE_ACCENT=[0xc9,0xa4,0x4c], BASE_ACCENT_TEXT=[0x8a,0x6f,0x2e];
@@ -31,13 +31,13 @@
     const darken=(c,min)=>{ let x=c; for(let i=0;i<12 && contrast(x,WHITE)<min;i++) x=mixRgb(x,[0,0,0],0.15); return x; };
     const dark=cols.slice().sort((a,b)=>lum(a)-lum(b))[0];
     NAVY=darken(dark,6);
-    const other=cols.find(c=>c!==dark && lum(c)<=0.75);      // a white or near-white second colour is no accent
+    const other=cols.find(c=>c!==dark && lum(c)<=0.75);      // a white or near-white second color is no accent
     if(other){ ACCENT=darken(other,2.5); ACCENT_TEXT=darken(other,4.5); PILL=ACCENT; }
     else { ACCENT=NAVY; ACCENT_TEXT=NAVY; PILL=NAVY; }
   }
   // text on an accent pill: white once the fill is dark enough to carry it
   const pillText=bg=> contrast(bg,WHITE)>=2 ? WHITE : NAVY;
-  const mixW=(c,pct)=>c.map(v=>Math.round(255+(v-255)*pct/100));           // colour mixed with white
+  const mixW=(c,pct)=>c.map(v=>Math.round(255+(v-255)*pct/100));           // color mixed with white
   const mixCurve=v=>Math.round(8+Math.pow(Math.max(0,Math.min(1,v)),0.7)*82);
   const clean=s=>String(s??"").replace(/–/g,"-").replace(/—/g,"-").replace(/·/g,"|").replace(/≥/g,">=").replace(/≤/g,"<=").replace(/−/g,"-").replace(/→/g,"»").replace(/[’']/g,"'");
   const isMobile=()=>/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (matchMedia("(pointer:coarse)").matches && innerWidth<900);
@@ -223,7 +223,7 @@
     });
 
     // projected bracket as cards, like the Overview: first round with who the winner meets, the byes, the first
-    // teams out, and the title game when the bracket is played through to the SP+ favourite (first round at the higher seed)
+    // teams out, and the title game when the bracket is played through to the SP+ favorite (first round at the higher seed)
     if(typeof projectField==="function"){
       const PF=projectField(r); const S=n=>PF[n-1];
       if(PF.length>=12){
@@ -262,7 +262,7 @@
           doc.setFont("helvetica","bold"); doc.setFontSize(FS); doc.setTextColor(...(mine?ACCENT_TEXT:NAVY));
           doc.text(clean(`#${f2.seed} ${short(f2.team)} vs #${f1.seed} ${short(f1.team)}`), sx+4, sy+PAD+LH-1.5);
           doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.6); doc.setTextColor(...MUTED); doc.text(clean(`${short(fin.w.team)} ${Math.round(fin.p*100)}%`), sx+sw-3, sy+PAD+LH-1.5, {align:"right"}); sy+=h+9; }
-        para("Each game to the SP+ favourite; first round at the higher seed.", 5.4, MUTED);
+        para("Each game to the SP+ favorite; first round at the higher seed.", 5.4, MUTED);
       }
     }
     // footer
@@ -329,7 +329,7 @@
       doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...MUTED);
       const pw=(own.home===T?own.pH:own.pA)*100, pl=(own.home===T?own.pA:own.pH)*100;
       doc.text(clean(`Win and ${T}'s playoff odds are ${pw.toFixed(1)}%; lose and they're ${pl.toFixed(1)}%. A ${(Math.abs(own.swing)*100).toFixed(1)}-point swing, the biggest thing on this page by far.`), M+9, y+35);
-    } else { doc.text("BYE WEEK", M+9, y+11); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text(clean(`${T} is idle. Every game below is about other teams doing you favours.`), M+9, y+25); }
+    } else { doc.text("BYE WEEK", M+9, y+11); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text(clean(`${T} is idle. Every game below is about other teams doing you favors.`), M+9, y+25); }
     y+=50;
     doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.setTextColor(...NAVY); doc.text("Ranked by leverage", M, y);
     const hw=doc.getTextWidth("Ranked by leverage");
@@ -393,7 +393,7 @@
     const colOf=v=>v>0.0005?GREEN:v<-0.0005?RED:MUTED;
     const nm=team=>nameWithRank(team);
     const pWinPre=g=>{ const bb=Bb.get(g.i); const ph=bb?bb[1]:g.pSp; return g.homeWin?ph:1-ph; };
-    const favTxt=p=>p>=0.75?`${fmtWin(p)}% favourite`:p<0.45?`${fmtWin(p)}% underdog`:`${fmtWin(p)}% (toss-up)`;
+    const favTxt=p=>p>=0.75?`${fmtWin(p)}% favorite`:p<0.45?`${fmtWin(p)}% underdog`:`${fmtWin(p)}% (toss-up)`;
     const gameTxt=g=>{ const winner=g.homeWin?g.home:g.away, loser=g.homeWin?g.away:g.home, wS=g.homeWin?g.homeScore:g.awayScore, lS=g.homeWin?g.awayScore:g.homeScore;
       return `${nm(winner)} ${wS!=null?wS+"-"+lS+" ":""}${nm(loser)}`; };
 

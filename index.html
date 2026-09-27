@@ -118,6 +118,7 @@
   nav.tabs button{flex:1 0 auto;background:transparent;color:var(--muted);border:0;border-bottom:3px solid transparent;
     border-radius:0;padding:11px 14px;font-weight:600;font-size:14px;white-space:nowrap}
   nav.tabs button[aria-selected=true]{color:var(--gold);border-bottom-color:var(--gold)}
+  @media (max-width:640px){ nav.tabs button{padding:11px 8px;font-size:13.5px} }   /* five tabs fit a phone without scrolling */
   section.tab{padding-top:6px}
 
   /* ---- overview ---- */
@@ -322,6 +323,16 @@
     #blockers.bub th:nth-child(4){width:15%} #blockers.bub th:nth-child(5){width:17%} #blockers.bub th:nth-child(6),#blockers.bub th:nth-child(7){width:11%}
     #blockers td.pc{padding-left:5px;padding-right:5px}
   }
+  /* conference standings */
+  #confTable td.c{text-align:center} #confTable td small{display:block;color:var(--muted);font-size:11px;font-weight:400}
+  #confTable tr.me td{background:color-mix(in srgb, var(--gold) 12%, var(--field))}
+  @media (max-width:640px){
+    #confTable{table-layout:fixed;font-size:12px}
+    #confTable th,#confTable td{padding:5px 4px} #confTable th{white-space:normal;line-height:1.15;vertical-align:bottom}
+    #confTable td.k{min-width:0;position:static;box-shadow:none;overflow:hidden;text-overflow:ellipsis}
+    #confTable .ramp{font-size:12px;padding:2px 4px}
+    #confTable th:nth-child(1){width:10%} #confTable th:nth-child(3),#confTable th:nth-child(4){width:19%} #confTable th:nth-child(5),#confTable th:nth-child(6){width:14%}
+  }
   .hist-wrap{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 6px 4px}
   .hist-wrap.big{padding:12px 8px 6px}
   .hist-tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;line-height:1.35;color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap;z-index:2}
@@ -463,9 +474,10 @@
 
 <nav class="tabs" id="tabs">
   <button data-tab="overview" aria-selected="true">Overview</button>
-  <button data-tab="board" aria-selected="false">Top 25 board</button>
+  <button data-tab="board" aria-selected="false">Top 25<span class="nm-full"> board</span></button>
   <button data-tab="slate" aria-selected="false">This week</button>
   <button data-tab="season" aria-selected="false">Season</button>
+  <button data-tab="conf" aria-selected="false"><span class="nm-full">Conferences</span><span class="nm-short">Confs</span></button>
 </nav>
 
 <div class="wrap">
@@ -542,6 +554,13 @@
     <div id="season"></div>
   </section>
 
+  <section class="tab" id="tab-conf" hidden>
+    <h2>Conference standings</h2>
+    <div class="explain" id="confExplain"></div>
+    <div class="controls"><select id="confPick" aria-label="Conference"></select></div>
+    <div class="scroll"><table id="confTable"></table></div>
+  </section>
+
   <div class="foot" id="foot"></div>
 </div>
 <div class="modal" id="modal" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
@@ -591,9 +610,9 @@ const fmtKickShort = g => {
 };
 const fmtWin = p => p<0.005?"<1":p>0.995?">99":Math.round(p*100);
 
-// ---------- team colour palette ----------
-// The accent (--gold) becomes the school colour with the better contrast on the dark ground, lightened if needed;
-// the ground itself takes a tint of the other colour. Rooting green/red stay fixed so they keep their meaning.
+// ---------- team color palette ----------
+// The accent (--gold) becomes the school color with the better contrast on the dark ground, lightened if needed;
+// the ground itself takes a tint of the other color. Rooting green/red stay fixed so they keep their meaning.
 const hexRgb = x => { const m=/^#?([0-9a-f]{6})$/i.exec(String(x||"").trim()); if(!m) return null; const n=parseInt(m[1],16); return [n>>16&255,n>>8&255,n&255]; };
 const lum = ([r,g,b]) => { const f=c=>{ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); }; return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b); };
 const contrast = (a,b) => { const la=lum(a), lb=lum(b); return (Math.max(la,lb)+0.05)/(Math.min(la,lb)+0.05); };
@@ -614,23 +633,23 @@ function applyTheme(team){
     root.setProperty("--gold", css(accent));
     document.querySelector('meta[name="theme-color"]').content=css(mixRgb(field,[255,255,255],0.05));
   };
-  // no team: plain light theme (white ground, dark text, slate accent) so no school's colours are implied
+  // no team: plain light theme (white ground, dark text, slate accent) so no school's colors are implied
   if(team==="" || !on || !tm || (!tm.color && !tm.altColor)){ clear(); return; }
   const cols=[tm.color,tm.altColor].map(hexRgb).filter(Boolean);
   if(!cols.length){ clear(); return; }
   document.body.classList.remove("light");
   root.setProperty("--ink","#e9eef5"); root.setProperty("--flat","#2b4a6d");
-  // ground: navy tinted toward the darker school colour
+  // ground: navy tinted toward the darker school color
   const dark = cols.slice().sort((a,b)=>lum(a)-lum(b))[0];
   const field = mixRgb(BASE_FIELD, dark, 0.35);
-  // accent: a school colour that reads on that ground without being white or a washed-out version of the ground.
-  // If the school only has one colour, or neither works, keep the default gold.
+  // accent: a school color that reads on that ground without being white or a washed-out version of the ground.
+  // If the school only has one color, or neither works, keep the default gold.
   const GOLD=[201,164,76];
   let accent=null;
   const tryCol = c => { if(!c || c===dark && cols.length>1) return null; let x=c; for(let i=0;i<4 && contrast(x,field)<4.5;i++) x=mixRgb(x,[255,255,255],0.15); if(contrast(x,field)<4.5) return null; if(lum(x)>0.75) return null; return x; };
   const others = cols.filter(c=>c!==dark);
   for(const c of others){ accent=tryCol(c); if(accent) break; }
-  // single-colour school (or an alternate that doesn't read): lighten the school's own colour until it does
+  // single-color school (or an alternate that doesn't read): lighten the school's own color until it does
   if(!accent){ let x=dark; for(let i=0;i<8 && contrast(x,field)<4.5;i++) x=mixRgb(x,[255,255,255],0.18); accent=x; }
   setAll(field, accent);
 }
@@ -707,7 +726,7 @@ function buildParams(Dx){
     gConf[i]=x.conferenceGame?1:0; gDone[i]=x.completed?1:0; gRes[i]=x.homeWin?1:0; gHfa[i]=x.neutral?0:hfa;
     tg[gH[i]].push(i); tg[gA[i]].push(i);
     gPsp[i]=norm(((rating[gH[i]]-rating[gA[i]])+gHfa[i])/sdMargin);
-    if(typeof x.spread==="number" && isFinite(x.spread)) gPline[i]=norm(-x.spread/spreadSd); // spread is home-perspective, negative = home favoured
+    if(typeof x.spread==="number" && isFinite(x.spread)) gPline[i]=norm(-x.spread/spreadSd); // spread is home-perspective, negative = home favored
     if(useLines && !isNaN(gPline[i])){ gP[i]=gPline[i]; gLine[i]=1; } else gP[i]=gPsp[i];
     // a game in progress: pregame SP+ edge, current margin and time left give a live win probability
     if(x.live && !x.completed && window.inGameP){
@@ -728,7 +747,7 @@ function build(){
 // ---------- simulation ----------
 // Each simulated season is played out once, then every remaining game is flipped in place and the
 // target's fate is re-evaluated with everything else held fixed. That paired comparison is what makes
-// a game's leverage precise: a 25-point favourite's game contributes exactly zero unless flipping it
+// a game's leverage precise: a 25-point favorite's game contributes exactly zero unless flipping it
 // actually changes the target's outcome.
 //
 // Committee stand-in: true strength (rating + per-season noise) plus a résumé built from opponents'
@@ -791,7 +810,7 @@ function simulateInline(P, ti, N, list, onProgress, done, X){
   chunk();
 }
 
-// Normalise to 0-100 on two separate scales: other teams' games against the biggest of those,
+// Normalize to 0-100 on two separate scales: other teams' games against the biggest of those,
 // and the target's own games against the biggest game on its own schedule.
 // Played games are scored on the same scale as the games still to come, so a finished result reads like an upcoming one.
 function normalizeGames(games, played){
@@ -869,7 +888,8 @@ function finish(acc,N,ti,X){
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
   const teamStats=Dx.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
-    pIn:acc.fieldN[i]/N, pTitle:acc.titleN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N}));
+    pIn:acc.fieldN[i]/N, pTitle:acc.titleN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N,
+    confWins:acc.confWinSum[i]/N, pConf:acc.confChampN[i]/N, confPlace:acc.confPlaceSum[i]/N}));
   return { mode: ti<0?"field":"team", forTeam, pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
            avgWins:acc.winSum/N, myGames:ti>=0?gamesPerTeam[ti]:0, games, played, teamStats, N };
 }
@@ -877,7 +897,7 @@ function finish(acc,N,ti,X){
 // ---------- render ----------
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
-const RESULT_VERSION = 10; // bump when the result shape changes so stale saved results are recomputed
+const RESULT_VERSION = 11; // bump when the result shape changes so stale saved results are recomputed
 const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|F${strHash(window.LIVE?LIVE.finalsKey:"")}|${T}|${$("#sims").value}`;
 // results are cached unless a game is in progress; the set of applied finals is part of the cache key
 const liveActive = () => !!(window.LIVE && LIVE.inProgress>0);
@@ -954,12 +974,12 @@ function openWhySimple(g){
     ? `If <b>${g.home}</b> wins, ${T}'s playoff odds are <b class="num">${pct(g.pH)}%</b>. If <b>${g.away}</b> wins, <b class="num">${pct(g.pA)}%</b>.`
     : `If <b>${g.away}</b> wins, ${T}'s playoff odds are <b class="num">${pct(g.pA)}%</b>. If <b>${g.home}</b> wins, <b class="num">${pct(g.pH)}%</b>.`;
   const favLine = g.involvesMe
-    ? (pFav>=0.9 ? `${fav===T?"You're":fav+" is"} a heavy favourite (${fmtWin(pFav)}%), so this game rarely decides anything, which keeps its leverage modest even though losing it would cost a lot.`
-      : pFav>=0.65 ? `${fav===T?"You're":fav+" is"} favoured (${fmtWin(pFav)}%), but there's real risk here, so it carries real leverage.`
+    ? (pFav>=0.9 ? `${fav===T?"You're":fav+" is"} a heavy favorite (${fmtWin(pFav)}%), so this game rarely decides anything, which keeps its leverage modest even though losing it would cost a lot.`
+      : pFav>=0.65 ? `${fav===T?"You're":fav+" is"} favored (${fmtWin(pFav)}%), but there's real risk here, so it carries real leverage.`
       : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so it carries nearly all of its impact as leverage.`)
-    : !T ? (pFav>=0.9 ? `<b>${fav}</b> is a heavy favourite (${fmtWin(pFav)}%), so the result that would shake up the field almost never happens; that's why leverage is low even if impact isn't.` : pFav>=0.65 ? `<b>${fav}</b> is favoured (${fmtWin(pFav)}%), which trims the leverage a little.` : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so nearly all of its impact counts as leverage.`)
-    : pFav>=0.9 ? `<b>${fav}</b> is a heavy favourite (${fmtWin(pFav)}%), so the upset you'd need almost never happens. That's why the leverage is low even if the impact isn't.`
-    : pFav>=0.65 ? `<b>${fav}</b> is favoured (${fmtWin(pFav)}%), so the result is fairly predictable and that trims the leverage.`
+    : !T ? (pFav>=0.9 ? `<b>${fav}</b> is a heavy favorite (${fmtWin(pFav)}%), so the result that would shake up the field almost never happens; that's why leverage is low even if impact isn't.` : pFav>=0.65 ? `<b>${fav}</b> is favored (${fmtWin(pFav)}%), which trims the leverage a little.` : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so nearly all of its impact counts as leverage.`)
+    : pFav>=0.9 ? `<b>${fav}</b> is a heavy favorite (${fmtWin(pFav)}%), so the upset you'd need almost never happens. That's why the leverage is low even if the impact isn't.`
+    : pFav>=0.65 ? `<b>${fav}</b> is favored (${fmtWin(pFav)}%), so the result is fairly predictable and that trims the leverage.`
     : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so nearly all of the impact counts as leverage.`;
 
   let headline, why="";
@@ -1018,7 +1038,7 @@ function openWhyPlayed(g){
   const size = v => v>=75?"a big":v>=40?"a solid":v>=15?"a small":"a tiny";
   const pts=Math.abs(g.realized)*100, ptsTxt=pts<0.95?pts.toFixed(2):pts.toFixed(1);
   const cf=Math.abs(g.swing)*100, cfTxt=cf<0.95?cf.toFixed(2):cf.toFixed(1);
-  const opener=`<p><b>${winner}</b> beat <b>${loser}</b>${score} in week ${g.week}${pWinPre>=0.75?` as a ${fmtWin(pWinPre)}% favourite`:pWinPre<0.4?` as a ${fmtWin(pWinPre)}% underdog`:""}.</p>`;
+  const opener=`<p><b>${winner}</b> beat <b>${loser}</b>${score} in week ${g.week}${pWinPre>=0.75?` as a ${fmtWin(pWinPre)}% favorite`:pWinPre<0.4?` as a ${fmtWin(pWinPre)}% underdog`:""}.</p>`;
   let headline, body;
   if(!T){
     headline=`<div class="big">${g.clear?"Reshaped the playoff field.":"Didn't change who gets in."}</div>`;
@@ -1150,6 +1170,7 @@ $("#seasonView").addEventListener("click",e=>{ const b=e.target.closest("button[
 $("#seasonSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.seasonSort=b.dataset.v; renderSeason(RES); });
 $("#slateMin").onchange=()=>{ UI.slateMin=+$("#slateMin").value; pref.set("slateMin",String(UI.slateMin)); renderSlate(RES); };
 $("#seasonMin").onchange=()=>{ UI.seasonMin=+$("#seasonMin").value; pref.set("seasonMin",String(UI.seasonMin)); renderSeason(RES); };
+$("#confPick").onchange=()=>{ UI.conf=$("#confPick").value; pref.set("conf",UI.conf); renderConf(RES); };
 $("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(RES); };
 
 function labelPdfButtons(){
@@ -1190,6 +1211,7 @@ function render(){
   renderBoard(r);
   renderSlate(r);
   renderSeason(r);
+  renderConf(r);
 
   const lined=r.games.filter(g=>g.line).length;
   $("#foot").innerHTML = `${r.N.toLocaleString()} simulated seasons. Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining. `
@@ -1346,8 +1368,8 @@ function openMove(team){
   const own=D.games.filter(g=>g.week>=fromWk&&g.week<=last.week&&g.completed&&(g.home===team||g.away===team)).map(g=>{
     const home=g.home===team, opp=home?g.away:g.home, won=home?g.homeWin:!g.homeWin, mine=home?g.homeScore:g.awayScore, theirs=home?g.awayScore:g.homeScore;
     let vs="";
-    if(g.spread!=null&&mine!=null){ const fav = home ? -g.spread : g.spread; const margin=mine-theirs;   // fav > 0: this team was favoured by that much
-      if(fav>0) vs = margin>=fav ? ` It was favoured by ${trim(fav)} and covered.` : ` It was favoured by ${trim(fav)}, so the margin fell ${trim(fav-margin)} short of the spread.`;
+    if(g.spread!=null&&mine!=null){ const fav = home ? -g.spread : g.spread; const margin=mine-theirs;   // fav > 0: this team was favored by that much
+      if(fav>0) vs = margin>=fav ? ` It was favored by ${trim(fav)} and covered.` : ` It was favored by ${trim(fav)}, so the margin fell ${trim(fav-margin)} short of the spread.`;
       else if(fav<0) vs = ` It was a ${trim(-fav)}-point underdog${won?" and won outright":margin-fav>=0?" and covered":""}.`; }
     return `<p><b class="${won?"good":"bad"}">${won?"Beat":"Lost to"}</b> ${badge(opp)} ${mine!=null?`<b class="num">${mine}–${theirs}</b>`:""} ${g.neutral?"at a neutral site":home?"at home":"on the road"}.${vs}</p>`; }).join("")
     || `<p>${short(team)} did not play in ${wkLabel}.</p>`;
@@ -1424,7 +1446,7 @@ function renderBlockers(r){
   $("#blockers").className = T ? "blk" : "bub";   // column layout on phones differs by mode
   if(!T){
     $("#blockTitle").textContent="Bubble watch";
-    $("#blockExplain").innerHTML = `<p>Every team with a real shot, ordered by playoff probability. <strong>Seed</strong> is the average seed in the seasons the team makes it; <strong>Title</strong> is how often it wins its conference (which brings an automatic bid).</p>`;
+    $("#blockExplain").innerHTML = `<p>Every team with a real shot, ordered by playoff probability. <strong>Seed</strong> is the average seed in the seasons the team makes it; <strong>Title</strong> is how often it wins the national championship, with the 12-team bracket played out every season.</p>`;
     const list=r.teamStats.filter(t=>!t.fcs&&t.pIn>=0.05).sort((a,b)=>b.pIn-a.pIn).slice(0,30);
     const maxP=Math.max(0.01,...list.map(t=>t.pIn));
     $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Playoff</th><th class="c">Proj. record</th><th class="c">Seed</th><th class="c">Title</th></tr>`+
@@ -1718,6 +1740,36 @@ function renderPlayed(r){
     + (below?`<div class="sub" style="padding:10px 0">${below} game${below>1?"s":""} below impact ${UI.seasonMin} hidden.</div>`:"")
     + (quiet?`<details class="quiet"><summary>${quiet} more played game${quiet>1?"s":""} that barely moved ${T?T+"'s odds":"the field"}</summary><div class="sub" style="margin-top:6px">${T?"Mostly expected results, already priced into the odds before kickoff.":"Mostly expected results that leave the twelve-team field as it was."}</div></details>`:"");
 }
+// Projected final conference table: teams ordered by their average finishing place across the simulated seasons
+// (champion first, then conference win share). Records are regular season; title games aren't in the schedule.
+function renderConf(r){
+  const confs=confList.slice().sort((a,b)=>(P4.includes(b)-P4.includes(a)) || a.localeCompare(b));
+  const mineConf = T ? D.teams[idx.get(T)].conference : null;
+  if(!UI.conf || !confs.includes(UI.conf)) UI.conf = confs.includes(mineConf) ? mineConf : confs.includes(pref.get("conf")) ? pref.get("conf") : confs[0];
+  $("#confPick").innerHTML = confs.map(c=>`<option${c===UI.conf?" selected":""}>${c}</option>`).join("");
+  // records so far and conference games on the schedule, straight from the data
+  const rec=new Map(); const R=t=>{ if(!rec.has(t)) rec.set(t,{w:0,l:0,cw:0,cl:0,cg:0}); return rec.get(t); };
+  D.games.forEach(g=>{
+    const h=R(g.home), a=R(g.away);
+    if(g.conferenceGame){ h.cg++; a.cg++; }
+    if(!g.completed) return;
+    const [w,l]=g.homeWin?[h,a]:[a,h]; w.w++; l.l++;
+    if(g.conferenceGame){ w.cw++; l.cl++; }
+  });
+  const stat=new Map(r.teamStats.map(t=>[t.team,t]));
+  const rows=D.teams.filter(t=>t.conference===UI.conf).map(t=>({...stat.get(t.team), rec:R(t.team)}))
+    .sort((a,b)=>a.confPlace-b.confPlace || b.confWins-a.confWins);
+  $("#confExplain").innerHTML = `<p>Every season the simulation plays out the rest of the schedule and the conference title game. Teams are ordered by their <strong>average finishing place</strong>: the champion first, then everyone else by conference winning percentage. Projected records are averages across ${r.N.toLocaleString()} seasons, with the record so far underneath. <strong>Title</strong> is how often the team wins the conference; <strong>Playoff</strong> is its chance of making the 12-team field.</p>`;
+  const maxC=Math.max(0.01,...rows.map(t=>t.pConf)), maxP=Math.max(0.01,...rows.map(t=>t.pIn));
+  const rl=(w,n)=>`${w.toFixed(1)}–${(n-w).toFixed(1)}`;
+  $("#confTable").innerHTML = `<tr><th class="c">Proj.</th><th>Team</th><th class="c">Conf record</th><th class="c">Overall</th><th class="c">Title</th><th class="c">Playoff</th></tr>`+
+    rows.map((t,i)=>`<tr class="${t.team===T?"me":""}"><td class="r num">${i+1}</td><td class="k">${badge(t.team, short(t.team)===t.team?t.team:`<span class="nm-full">${t.team}</span><span class="nm-short">${short(t.team)}</span>`)}</td>
+      <td class="num c">${rl(t.confWins,t.rec.cg)}<small>now ${t.rec.cw}–${t.rec.cl}</small></td>
+      <td class="num c">${rl(t.wins,t.games)}<small>now ${t.rec.w}–${t.rec.l}</small></td>
+      <td class="pc c"><span class="ramp num" style="${ramp(t.pConf,"var(--gold)",maxC)}">${t.pConf>=0.005?Math.round(t.pConf*100)+"%":t.pConf>0?"<1%":"0%"}</span></td>
+      <td class="pc c"><span class="ramp num" style="${ramp(t.pIn,"var(--for)",maxP)}">${t.pIn>=0.005?Math.round(t.pIn*100)+"%":t.pIn>0?"<1%":"0%"}</span></td></tr>`).join("");
+}
+
 function renderSeason(r){
   document.querySelectorAll("#seasonView button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.seasonView)));
   const playedView = UI.seasonView==="played";
@@ -1832,7 +1884,7 @@ function renderReview(){
   const arrowW=(a,b)=>`<span class="rv-ba num">${fmtWin(a)}% <em>→</em> <b class="${b-a>0.005?"good":b-a<-0.005?"bad":""}">${fmtWin(b)}%</b></span>`;
   const arrowN=(a,b,d=1)=>`<span class="rv-ba num">${a.toFixed(d)} <em>→</em> <b>${b.toFixed(d)}</b></span>`;
   const delta=(v,color,max)=>`<span class="rv-delta num" style="${ramp(Math.abs(v),color,max)}">${fmtPts(v)}</span>`;
-  const favTxt=p=>p>=0.75?`${fmtWin(p)}% favourite`:p<0.45?`${fmtWin(p)}% underdog`:`${fmtWin(p)}% (toss-up)`;
+  const favTxt=p=>p>=0.75?`${fmtWin(p)}% favorite`:p<0.45?`${fmtWin(p)}% underdog`:`${fmtWin(p)}% (toss-up)`;
   const pWinPre=g=>{ const bb=Bb.get(g.i); const ph = bb ? bb[1] : g.pSp; return g.homeWin ? ph : 1-ph; };   // the winner's chance, on the ratings before the week
   const scoreOf=g=>{ const wS=g.homeWin?g.homeScore:g.awayScore, lS=g.homeWin?g.awayScore:g.homeScore; return wS!=null?`<b class="num">${wS}–${lS}</b>`:""; };
   const gameCell=g=>{ const winner=g.homeWin?g.home:g.away, loser=g.homeWin?g.away:g.home; return `${badge(winner)} ${scoreOf(g)} ${badge(loser)}`; };

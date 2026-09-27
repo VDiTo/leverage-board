@@ -27,7 +27,7 @@ who to pull for.
 
 That paired comparison matters. The naive approach (split the seasons by who
 won, compare the two piles) is hopelessly noisy for lopsided games: a 25-point
-favourite loses in maybe 70 of 15,000 seasons, and the target's odds inside
+favorite loses in maybe 70 of 15,000 seasons, and the target's odds inside
 those 70 are a coin flip. Flipping the game in place instead contributes exactly
 zero unless the flip actually changes the target's outcome, so every game gets
 a tight estimate and there are no phantom "big" games. Games that move the odds

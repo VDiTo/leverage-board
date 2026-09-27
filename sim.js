@@ -17,11 +17,13 @@
     // no-team mode: seasons where flipping the game changed the field, slots swapped, and per-team membership flips
     fieldChg:new Float64Array(nG), fieldSwaps:new Float64Array(nG), teamFlip: NONE ? new Float64Array(nG*nT) : null,
     // national titles: the 12-team bracket is played out every season on the same noisy ratings
-    titleN:new Float64Array(nT) };
+    titleN:new Float64Array(nT),
+    // conference standings: conference wins, conference titles (every league) and finishing place within the league
+    confWinSum:new Float64Array(nT), confChampN:new Float64Array(nT), confPlaceSum:new Float64Array(nT) };
   }
   function mergeAcc(into, from){
     for(const k of ["in","champ","rankSum","blockSum","winSum"]) into[k]+=from[k];
-    for(const k of ["ranks","blockers","aheadN","teamWins","fieldN","seedSum","p4ChampN","g6N","titleN","sumH","sumA","sumD","sumD2","fieldChg","fieldSwaps"]){ const a=into[k], b=from[k]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
+    for(const k of ["ranks","blockers","aheadN","teamWins","fieldN","seedSum","p4ChampN","g6N","titleN","confWinSum","confChampN","confPlaceSum","sumH","sumA","sumD","sumD2","fieldChg","fieldSwaps"]){ const a=into[k], b=from[k]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     for(let w=0;w<3;w++){ const a=into.why[w], b=from.why[w]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     if(into.teamFlip && from.teamFlip){ const a=into.teamFlip, b=from.teamFlip; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     return into;
@@ -253,6 +255,18 @@
       }
       if(bestG6>=0){ aq[bestG6]=1; acc.g6N[bestG6]++; }
       for(let k=0;k<nC;k++) if(isP4[k] && champ[k]>=0) acc.p4ChampN[champ[k]]++;
+      // final conference table: the champion first, then everyone else by conference win share (rating breaks ties),
+      // the same ordering that picks the two title-game teams
+      for(let i=0;i<nT;i++) acc.confWinSum[i]+=CW[i];
+      for(let k=0;k<nC;k++){
+        const m=members[k], c=champ[k]; if(c<0) continue;
+        acc.confChampN[c]++;
+        const key=i=>{ const gp=CW[i]+CL[i]; return (gp?CW[i]/gp:0)*100 + rs[i]/50; };
+        for(let j=0;j<m.length;j++){ const i=m[j]; if(i===c){ acc.confPlaceSum[i]+=1; continue; }
+          const ki=key(i); let place=2;
+          for(let q=0;q<m.length;q++){ const o=m[q]; if(o===i||o===c) continue; const ko=key(o); if(ko>ki || (ko===ki && o<i)) place++; }
+          acc.confPlaceSum[i]+=place; }
+      }
 
       // the full 12-team field this season: every auto-bid plus the seven best non-champions, seeded by ranking
       order.sort((p,q)=>score[q]-score[p]);
