@@ -397,6 +397,14 @@
     /* phones: controls in a tidy two-column grid; the week-so-far strip wraps like a sentence */
     .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
     .controls .seg{display:flex} .controls .seg button{flex:1;padding:7px 3px;text-align:center;font-size:12px;white-space:nowrap}
+    /* every cell the same height; a label + dropdown fills its cell with the label on one line */
+    .controls > *{min-height:36px;box-sizing:border-box}
+    .controls > select{width:100%;padding:6px 8px;font-size:14px}
+    .controls label.chk{width:100%;white-space:nowrap;font-size:12.5px;gap:6px}
+    .controls label.chk select{padding:6px 8px;font-size:14px;align-self:stretch}
+    /* section titles: the right-hand button shrinks rather than crowding the title */
+    section.tab > h2{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    section.tab > h2 .h2-right{font-size:12px;padding:4px 8px}
     .controls label.chk select{flex:1;min-width:0} .controls button.ghost{width:100%}
     .slate-div.pulse{display:block;line-height:1.55;letter-spacing:.03em} .slate-div.pulse::after{content:none}
     .slate-div.pulse .pulse-live{display:block} .slate-div.pulse .pulse-sep{display:none} }
@@ -502,7 +510,7 @@
     <div class="explain" id="rankExplain"></div>
     <div class="controls">
       <div class="seg" id="boardSort"><button data-v="rank" aria-pressed="true">By rank</button><button data-v="pIn" aria-pressed="false">By playoff %</button></div>
-      <label class="chk">Unranked teams with playoff chance ≥ <select id="boardMin" aria-label="Minimum playoff chance for unranked teams"><option value="0.05">5%</option><option value="0.10" selected>10%</option><option value="0.25">25%</option><option value="0.50">50%</option><option value="2">none</option></select></label>
+      <label class="chk"><span class="nm-full">Unranked teams with playoff chance ≥</span><span class="nm-short">Unranked at ≥</span> <select id="boardMin" aria-label="Minimum playoff chance for unranked teams"><option value="0.05">5%</option><option value="0.10" selected>10%</option><option value="0.25">25%</option><option value="0.50">50%</option><option value="2">none</option></select></label>
     </div>
     <div class="scroll"><table id="rankings"></table></div>
   </section>
@@ -561,6 +569,8 @@ const isRanked = team => { const t=D.teams[idx.get(team)]; return !!(t && (t.apR
 const isFcs = team => !!(D.teams[idx.get(team)]||{}).fcs;
 const tn = (team, label) => `<span class="tn" data-team="${team.replace(/"/g,"&quot;")}">${label??team}</span>`;
 // full name, with the short form swapped in on phones by CSS (tables that are tight for width)
+const CONF_SHORT = {"Big Ten":"B10","Big 12":"B12","Mountain West":"MW","Mid-American":"MAC","Sun Belt":"SBC","American Athletic":"AAC","Pac-12":"P12","Conference USA":"CUSA","FBS Independents":"Ind","SEC":"SEC","ACC":"ACC","FCS":"FCS"};
+const confPhone = c => { const s=CONF_SHORT[c]; return !s||s===c ? (c??"") : `<span class="nm-full">${c}</span><span class="nm-short">${s}</span>`; };
 const tnPhone = team => { const s=short(team); return s===team ? tn(team) : tn(team, `<span class="nm-full">${team}</span><span class="nm-short">${s}</span>`); };
 const badge = (team, label) => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${tn(team,label)}` : (isFcs(team) ? `${tn(team,label)} <span class="rk" style="color:var(--muted)">FCS</span>` : tn(team,label)); };
 const fmtKick = g => {
@@ -1144,7 +1154,7 @@ $("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(
 
 function labelPdfButtons(){
   $("#pdf").textContent="Board PDF"; $("#pdf").title="Build a one-page board for the selected team (or the whole field)";
-  $("#pdfWeek").textContent=`Top 10 PDF · Week ${UI.slateWeek??""}`.trim(); $("#pdfWeek").title="Build the ten highest-leverage games for the selected week";
+  $("#pdfWeek").innerHTML=`Top 10 PDF<span class="nm-full"> · Week ${UI.slateWeek??""}</span>`;   // phones drop the week: the picker below shows it $("#pdfWeek").title="Build the ten highest-leverage games for the selected week";
 }
 function render(){
   const r=RES;
@@ -1304,7 +1314,7 @@ function renderMovers(r){
   $("#moversExplain").innerHTML=`<p>Where each team's playoff chance stood after <strong>${last.label}</strong> against where it stood after <strong>${prev.label}</strong>, as the model recorded them at the time on ${(HIST.N||r.N).toLocaleString()} simulated seasons each. A move folds in every result from ${wk}, not just the team's own game, plus any SP+ update that landed with them. Week 0's handful of games counts with week 1. Change is in percentage points. Tap a change for the why: how much came from the results and how much from the SP+ update.</p>`;
   const fmt=v=>{ const m=Math.abs(v)*100; return (v>0?"+":"−")+(m<9.95?m.toFixed(1):Math.round(m)); };
   const tip=team=>{ const m=moveParts(team); return (m&&m.res!=null ? `Results ${fmtMove(m.res)}, SP+ update ${fmtMove(m.sp)}. ` : "") + "Tap for the why"; };
-  const table=(list,color,max)=>list.length ? `<div class="scroll"><table>${list.map(x=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub">${conf.get(x.team)}</td>
+  const table=(list,color,max)=>list.length ? `<div class="scroll"><table>${list.map(x=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub">${confPhone(conf.get(x.team))}</td>
       <td class="ba num">${pct(x.before)}% → <b>${pct(x.after)}%</b></td>
       <td class="ch"><span class="ramp num mv-why" role="button" tabindex="0" data-team="${x.team.replace(/"/g,"&quot;")}" title="${tip(x.team)}" style="${ramp(Math.abs(x.d),color,max)}">${fmt(x.d)}</span></td></tr>`; }).join("")}</table></div>`
     : `<div class="sub" style="padding:6px 0">No team moved by half a point or more.</div>`;
@@ -1418,7 +1428,7 @@ function renderBlockers(r){
     const list=r.teamStats.filter(t=>!t.fcs&&t.pIn>=0.05).sort((a,b)=>b.pIn-a.pIn).slice(0,30);
     const maxP=Math.max(0.01,...list.map(t=>t.pIn));
     $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Playoff</th><th class="c">Proj. record</th><th class="c">Seed</th><th class="c">Title</th></tr>`+
-      list.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tnPhone(t.team)}</td><td class="sub">${t.conf}</td>
+      list.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tnPhone(t.team)}</td><td class="sub">${confPhone(t.conf)}</td>
         <td><span class="ramp num" style="${ramp(t.pIn,"var(--for)",maxP)}">${pct(t.pIn)}%</span></td>
         <td class="num" style="text-align:center">${t.wins.toFixed(1)}–${(t.games-t.wins).toFixed(1)}</td>
         <td class="num" style="text-align:center">${t.avgSeed<99?t.avgSeed.toFixed(1):"—"}</td>
@@ -1431,7 +1441,7 @@ function renderBlockers(r){
   const blk=r.teamStats.filter(t=>t.team!==T&&!t.fcs).sort((a,b)=>b.block-a.block).slice(0,25);
   const maxB=Math.max(0.01,...blk.map(t=>t.block));
   $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Proj. record</th><th class="c">Blocks you</th><th class="c">Finishes ahead</th></tr>`+
-    blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tnPhone(t.team)}</td><td class="sub">${t.conf}</td>
+    blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tnPhone(t.team)}</td><td class="sub">${confPhone(t.conf)}</td>
       <td class="num" style="text-align:center">${t.wins.toFixed(1)}–${(t.games-t.wins).toFixed(1)}</td>
       <td class="pc"><span class="ramp num" style="${ramp(t.block,"var(--against)",maxB)}">${pct(t.block)}%</span></td>
       <td class="pc"><span class="ramp num" style="${ramp(t.ahead,"var(--flat)")}">${pct(t.ahead)}%</span></td></tr>`;}).join("");
