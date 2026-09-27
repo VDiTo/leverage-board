@@ -316,9 +316,11 @@
     #blockers td.k{min-width:0;position:static;box-shadow:none;overflow:hidden;text-overflow:ellipsis}
     #blockers td.sub{overflow:hidden;text-overflow:ellipsis}
     #blockers td.pc{width:auto} #blockers .ramp{font-size:12px;padding:2px 4px}
-    #blockers th:nth-child(1){width:32px} #blockers th:nth-child(3){width:52px}
-    #blockers.blk th:nth-child(4){width:62px} #blockers.blk th:nth-child(5),#blockers.blk th:nth-child(6){width:56px}
-    #blockers.bub th:nth-child(4){width:50px} #blockers.bub th:nth-child(5){width:58px} #blockers.bub th:nth-child(6),#blockers.bub th:nth-child(7){width:38px}
+    #blockers td.sub{font-size:11.5px}
+    #blockers th:nth-child(1){width:9%} #blockers th:nth-child(3){width:15%}   /* percentages: a wider phone widens every column */
+    #blockers.blk th:nth-child(4){width:18%} #blockers.blk th:nth-child(5),#blockers.blk th:nth-child(6){width:16%}
+    #blockers.bub th:nth-child(4){width:15%} #blockers.bub th:nth-child(5){width:17%} #blockers.bub th:nth-child(6),#blockers.bub th:nth-child(7){width:11%}
+    #blockers td.pc{padding-left:5px;padding-right:5px}
   }
   .hist-wrap{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 6px 4px}
   .hist-wrap.big{padding:12px 8px 6px}
@@ -332,7 +334,13 @@
   svg.hist .tl circle{fill:currentColor;opacity:.9}
   svg.hist .tl.me path{stroke-width:3.2;opacity:1} svg.hist .tl.hl path{stroke-width:3.4;opacity:1} svg.hist .tl.dim{opacity:.18}
   .hist-legend{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:8px}
-  .sp-trend{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px 4px;margin:4px 0 10px}
+  /* one row per progression; once the season outgrows the width it scrolls sideways, opened at the latest week */
+  .sp-trend{display:flex;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;align-items:stretch;gap:6px 4px;margin:4px 0 10px;padding-bottom:2px}
+  @media (max-width:640px){
+    .sp-trend{gap:4px}
+    .sp-trend .sp-arrow{display:none}   /* the change line on each card already carries the progression */
+    .sp-trend .sp-ed{flex:1 0 54px;width:auto;padding:3px 2px} .sp-trend .sp-ed b{font-size:14px} .sp-trend .sp-ed small{font-size:10px}
+  }
   .sp-ed{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:4px 6px;line-height:1.2;flex:0 0 76px;width:76px;box-sizing:border-box}
   .sp-ed .ph{visibility:hidden} .sp-trend .sp-arrow{align-self:center}
   .sp-ed small{color:var(--muted);font-size:10.5px} .sp-ed b{font-size:15px} .sp-ed em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)} .sp-ed em.good{color:var(--for)} .sp-ed em.bad{color:var(--against)}
@@ -1077,6 +1085,7 @@ function openTeam(name){
     <h3>Schedule <span class="sub" style="font-weight:400">· projected score is the model's; leverage is for ${T||"the whole field"}; tap a leverage score for the why</span></h3>
     <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c" title="The model's expected score: its margin from the SP+ gap and home advantage, around a total from the two teams' SP+ offense and defense">Proj. score</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
+  document.querySelectorAll("#sheet .sp-trend").forEach(s=>{ s.scrollLeft=s.scrollWidth; });   // open at the latest week
 }
 
 // every section description collapses behind an "i" button next to its heading
