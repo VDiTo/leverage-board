@@ -332,6 +332,7 @@
   #rankings tr.me td{border-bottom:3px solid var(--gold);padding-bottom:9px}
   #rankings tr.sep td{height:10px;padding:0;border-bottom:0}
   #rankings th:not(:first-child){text-align:center}
+  #rankings th:first-child{left:0;z-index:2}
   #rankings tr.sum td:not(.k){text-align:center}
   #rankings tr.sum td{padding-top:6px;padding-bottom:8px;vertical-align:middle;border-bottom:2px solid var(--line)}
   .pair{display:inline-flex;gap:3px;align-items:center;white-space:nowrap}
@@ -421,6 +422,7 @@
         <div class="sub" id="oddsLab">chance of making the 12-team field</div>
       </div>
       <div class="heroLab" id="pathLab"></div>
+      <button id="teamSheet" class="ghost" hidden>Schedule &amp; trends</button>
     </div>
     <div class="stats">
       <div class="stat"><b class="num" id="sRec">—</b><span>projected record</span></div>
@@ -1013,9 +1015,11 @@ function openTeam(name){
       if(rows.length<2) return "";
       return `<h3>SP+ by week</h3><div class="sp-trend">${strip(rows, x=>x.v[0].toFixed(1), x=>x.v[1]?"#"+x.v[1]:null, (x,p)=>x.v[0]-p.v[0])}</div>`; })() : "";
   // playoff chance after each recorded week, plus "Now" once things have moved on, as on the Overview chart
-  const oddsTrend = RES ? (()=>{ const rows=chartData(RES,"odds").pts.map(p=>({label:p.label, now:p.now, v:p.val[name]})).filter(x=>x.v!=null);
+  // rank among FBS teams by playoff chance at that point (ties share a rank; none for a team at 0%)
+  const oddsTrend = RES ? (()=>{ const rows=chartData(RES,"odds").pts.map(p=>({label:p.label, now:p.now, v:p.val[name],
+        rk:p.val[name]>0 ? 1+Object.values(p.val).filter(v=>v>p.val[name]).length : null})).filter(x=>x.v!=null);
       if(rows.length<2) return "";
-      return `<h3>Playoff odds by week</h3><div class="sp-trend">${strip(rows, x=>Math.round(x.v*100)+"%", null, (x,p)=>(x.v-p.v)*100)}</div>`; })() : "";
+      return `<h3>Playoff odds by week</h3><div class="sp-trend">${strip(rows, x=>Math.round(x.v*100)+"%", x=>x.rk?"#"+x.rk:null, (x,p)=>(x.v-p.v)*100)}</div>`; })() : "";
   const spHtml = sp ? trend + `<h3>SP+ by unit${sp.prior?' <span class="sub">(last season, until this year\'s are published)</span>':""}</h3>
       <table><tr><th></th><th class="c">Rating</th><th class="c">Rank</th></tr>
       ${unitRow("Overall",{rating:sp.rating,rank:sp.rank})}${unitRow("Offense",sp.offense)}${unitRow("Defense",sp.defense)}${unitRow("Special teams",sp.specialTeams)}</table>`
@@ -1067,6 +1071,7 @@ function showTab(name){
   UI.tab=name; pref.set("tab",name);
   document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",String(x.dataset.tab===name)));
   document.querySelectorAll("section.tab").forEach(s=>{ s.hidden = s.id!=="tab-"+name; });
+  if(name==="board"){ boardScrollKey=null; scrollBoardToWeek(); }
 }
 $("#tabs").addEventListener("click",e=>{
   const b=e.target.closest("button[data-tab]"); if(!b) return;
@@ -1077,6 +1082,7 @@ $("#tabs").addEventListener("click",e=>{
 // PDFs are drawn on demand in the browser (pdf.js) from the current result: any team, any week
 $("#pdf").onclick=()=>window.makePdf("board");
 $("#pdfWeek").onclick=()=>window.makePdf("week");
+$("#teamSheet").onclick=()=>{ if(T) openTeam(T); };
 $("#slateSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.slateSort=b.dataset.v; renderSlate(RES); });
 $("#boardSort").addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(!b) return; UI.boardSort=b.dataset.v; pref.set("boardSort",UI.boardSort); renderBoard(RES); });
 $("#boardMin").onchange=()=>{ UI.boardMin=+$("#boardMin").value; pref.set("boardMin",String(UI.boardMin)); renderBoard(RES); };
@@ -1097,6 +1103,7 @@ function render(){
   const note=$("#cacheNote");
   if(r.cachedAt){ note.hidden=false; note.textContent=`Showing the result saved on this device ${new Date(r.cachedAt).toLocaleString(undefined,{weekday:"short",hour:"numeric",minute:"2-digit"})}. It stays until the data refreshes; press Run simulation to recompute now.`; }
   else note.hidden=true;
+  $("#teamSheet").hidden=!T;
   if(!T){
     const ts=r.teamStats.filter(t=>!t.fcs);
     const locks=ts.filter(t=>t.pIn>=0.9).length, likely=ts.filter(t=>t.pIn>=0.75&&t.pIn<0.9).length, bubble=ts.filter(t=>t.pIn>=0.25&&t.pIn<0.75).length, longs=ts.filter(t=>t.pIn>=0.1&&t.pIn<0.25).length;
@@ -1487,6 +1494,23 @@ function renderBoard(r){
         }).join("")+`</td>`;
       }).join("")+`</tr>`;
     }).join("");
+  scrollBoardToWeek();
+}
+
+// Open the board at the week of interest: the earliest week with a game still to play or in progress.
+// A game more than a day past kickoff and still not final (postponed, or data not refreshed yet) doesn't count.
+// Only on first view and when that week or the team changes, so a live-score refresh keeps the user's scroll.
+var boardScrollKey=null;   // var: showTab can run at startup before this line
+function scrollBoardToWeek(){
+  const box=$("#rankings").parentElement, head=$("#rankings tr");
+  if(!head || $("#tab-board").hidden || box.scrollWidth<=box.clientWidth) return;
+  const stale=Date.now()-864e5;
+  const open=D.games.filter(g=>!g.completed && (g.live || !g.start || Date.parse(g.start)>stale)).map(g=>g.week);
+  const wk=open.length ? Math.min(...open) : Math.max(...D.games.map(g=>g.week));
+  const key=`${T}|${wk}`; if(key===boardScrollKey) return;
+  const th=[...head.children].find(x=>x.textContent==="Wk "+wk); if(!th) return;
+  boardScrollKey=key;
+  box.scrollLeft = th.offsetLeft - head.children[0].offsetWidth;   // land just right of the sticky team column
 }
 
 // One card renderer for both the weekly slate and the season list
