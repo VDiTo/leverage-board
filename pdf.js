@@ -23,6 +23,7 @@
   const MUTED=[79,96,121], LINE=[201,211,223], PANEL=[242,245,249], GREEN=[63,169,107], RED=[198,84,66], WHITE=[255,255,255];
   // conference pill hues, the same as the site's .cpill
   const CONF_HUE={"SEC":[224,180,32], "Big Ten":[61,127,224], "Big 12":[210,69,58], "ACC":[224,122,47]};
+  const confHue=c=>{ const tier=(D.conferenceTiers||{})[c]; return tier==="P4"?CONF_HUE[c]:tier==="G6"?[47,174,154]:[138,148,163]; };
   function setPalette(){
     NAVY=BASE_NAVY; ACCENT=BASE_ACCENT; ACCENT_TEXT=BASE_ACCENT_TEXT; PILL=GREEN;
     const box=document.querySelector("#teamColors");
@@ -126,14 +127,14 @@
 
     // table geometry
     const sideW=160, gap=12, tableX=M, tableW=W-2*M-sideW-gap;
-    const teamW=70, pfW=28, wkW=(tableW-teamW-pfW)/weeks.length;
+    const teamW=70, cfW=24, pfW=28, wkW=(tableW-teamW-cfW-pfW)/weeks.length;
     let y=M+30;
     const rowH=Math.min(17, (H-M-y-40)/(rows.length+2.6));
     const f=Math.min(1, rowH/14);   // long boards: rows and type shrink together
     // header row
     doc.setFontSize(6.2); doc.setTextColor(...MUTED); doc.setFont("helvetica","bold");
-    doc.text("Team", tableX+2, y+7); doc.text("Playoff", tableX+teamW+pfW/2, y+7, {align:"center"});
-    weeks.forEach((w,i)=>doc.text(`Wk ${w}`, tableX+teamW+pfW+wkW*i+wkW/2, y+7, {align:"center"}));
+    doc.text("Team", tableX+2, y+7); doc.text("Conf", tableX+teamW+cfW/2, y+7, {align:"center"}); doc.text("Playoff", tableX+teamW+cfW+pfW/2, y+7, {align:"center"});
+    weeks.forEach((w,i)=>doc.text(`Wk ${w}`, tableX+teamW+cfW+pfW+wkW*i+wkW/2, y+7, {align:"center"}));
     doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.line(tableX, y+10, tableX+tableW, y+10);
     y+=12;
     // summary rows
@@ -144,7 +145,7 @@
       doc.setFont("helvetica","bold"); doc.setFontSize(5.6); doc.setTextColor(...pillText(bg)); doc.text(String(Math.round(v)), cx, cy+1.6, {align:"center"}); };
     const playedBy=new Map(); (r.played||[]).forEach(g=>{ if(!playedBy.has(g.week)) playedBy.set(g.week,[]); playedBy.get(g.week).push(g); });
     doc.setFont("helvetica","bold"); doc.setFontSize(6.4); doc.setTextColor(...MUTED); doc.text("Impact/Leverage", tableX+2, y+7);
-    weeks.forEach((w,i)=>{ const cx=tableX+teamW+pfW+wkW*i+wkW/2;
+    weeks.forEach((w,i)=>{ const cx=tableX+teamW+cfW+pfW+wkW*i+wkW/2;
       const done = playedBy.has(w) && !r.games.some(g=>g.week===w);
       if(done && T){ const net=playedBy.get(w).reduce((a,g)=>a+g.realized,0)*100, mag=Math.abs(net);
         doc.setFont("helvetica","bold"); doc.setFontSize(6.4); doc.setTextColor(...(net>0.005?[47,127,80]:net<-0.005?RED:MUTED));
@@ -163,10 +164,14 @@
       doc.setFont("helvetica","bold"); doc.setFontSize(6.8*f); doc.setTextColor(...(t===T?ACCENT_TEXT:NAVY));
       doc.text(clean((rk?`#${rk} `:"")+short(t)), tableX+2, y+rowH/2+2.4);
       // playoff pill
-      const mixP=mixCurve(s.pIn/maxPIn); doc.setFillColor(...mixW(GREEN,mixP)); doc.roundedRect(tableX+teamW+2, y+rowH/2-5, pfW-4, 10, 2, 2, "F");
-      doc.setFontSize(6.2*f); doc.setTextColor(...pillText(mixW(GREEN,mixP))); doc.text(`${Math.round(s.pIn*100)}%`, tableX+teamW+pfW/2, y+rowH/2+2, {align:"center"});
+      const mixP=mixCurve(s.pIn/maxPIn); doc.setFillColor(...mixW(GREEN,mixP)); doc.roundedRect(tableX+teamW+cfW+2, y+rowH/2-5, pfW-4, 10, 2, 2, "F");
+      doc.setFontSize(6.2*f); doc.setTextColor(...pillText(mixW(GREEN,mixP))); doc.text(`${Math.round(s.pIn*100)}%`, tableX+teamW+cfW+pfW/2, y+rowH/2+2, {align:"center"});
+      // conference pill, the same hues as the site
+      { const hue=confHue(tm.conference), bx=tableX+teamW+1; doc.setFillColor(...mixW(hue,30)); doc.setDrawColor(...mixW(hue,65)); doc.setLineWidth(0.4);
+        doc.roundedRect(bx, y+rowH/2-4.5, cfW-2, 9, 2, 2, "FD"); doc.setFont("helvetica","bold"); doc.setFontSize(5.4*f); doc.setTextColor(...NAVY);
+        doc.text(clean(CONF_SHORT[tm.conference]||tm.conference), bx+(cfW-2)/2, y+rowH/2+1.8, {align:"center"}); }
       weeks.forEach((w,i)=>{
-        const c=m.get(w); const x=tableX+teamW+pfW+wkW*i+1;
+        const c=m.get(w); const x=tableX+teamW+cfW+pfW+wkW*i+1;
         if(!c){ doc.setFont("helvetica","normal"); doc.setFontSize(5.4*f); doc.setTextColor(160,168,180); doc.text("bye", x+3, y+rowH/2+2); return; }
         let fill=null, border=null;
         if(T && t===T){ const a=Math.min(1,Math.abs(c.sw)/100); if(!c.result && a>=0.005) fill=mixW(GREEN,mixCurve(a)); border=ACCENT; }
@@ -181,10 +186,10 @@
         doc.text(fitText(doc, clean(name), wkW-5), x+2.5, y+rowH/2-0.8*f);
         doc.setFontSize(5*f); doc.setTextColor(...(c.result?(c.result.won?[47,127,80]:RED):onDark?[236,241,246]:MUTED));
         doc.text(c.result?c.result.text:`${Math.round(c.pWin*100)}%`, x+2.5, y+rowH/2+4.6*f);
-        // a finished game's impact score, signed by whether the result helped the rooting team
-        if(c.result && c.real){ const v=Math.round(c.real.impN); const zero = v===0 || !c.real.clear;
-          const txt = zero ? "0" : field ? String(v) : (c.real.realized>0?"+":"-")+v;
-          doc.setFont("helvetica","bold"); doc.setTextColor(...(zero?MUTED:field?ACCENT_TEXT:c.real.realized>0?[47,127,80]:RED)); doc.text(txt, x+wkW-3.5, y+rowH/2+4.6*f, {align:"right"}); doc.setFont("helvetica","normal"); }
+        // a finished game's impact score, signed by whether the result helped the rooting team; none for an expected result
+        if(c.result && c.real && c.real.clear && Math.round(c.real.impN)!==0){ const v=Math.round(c.real.impN);
+          const txt = field ? String(v) : (c.real.realized>0?"+":"-")+v;
+          doc.setFont("helvetica","bold"); doc.setTextColor(...(field?ACCENT_TEXT:c.real.realized>0?[47,127,80]:RED)); doc.text(txt, x+wkW-3.5, y+rowH/2+4.6*f, {align:"right"}); doc.setFont("helvetica","normal"); }
       });
       // the rooting team's row gets a little air below its outlined cells before the thick accent line
       const extra = T&&t===T ? 3 : 0;
@@ -245,8 +250,7 @@
           const pr=sx+sw-3-doc.getTextWidth("100%")-4, pl=confPill(t.conf, pr, yy);
           if(t.tag){ doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.6); doc.setTextColor(...MUTED);
             doc.text(t.tag==="at-large"?"at-large":"champ", pl-3, yy, {align:"right"}); } };
-        const confPill=(c,right,yy)=>{ const tier=(D.conferenceTiers||{})[c];
-          const hue=tier==="P4"?CONF_HUE[c]:tier==="G6"?[47,174,154]:[138,148,163];
+        const confPill=(c,right,yy)=>{ const tier=(D.conferenceTiers||{})[c], hue=confHue(c);
           const label=clean(tier==="P4"?c:(CONF_SHORT[c]||c));
           doc.setFont("helvetica","bold"); doc.setFontSize(FS-1);
           const w=doc.getTextWidth("Big Ten")+5, h=LH*0.74, x=right-w;
