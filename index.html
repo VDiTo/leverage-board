@@ -244,6 +244,14 @@
   #tab-board > h2, #tab-board > .explain, #tab-board > .controls{margin-left:14px;margin-right:14px}
   #tab-board .scroll{margin:0;padding:0;width:auto}
   #rankings td.k{padding-left:8px}
+  /* every week column the same width: fixed layout splits what's left after the team and playoff columns evenly,
+     with a floor (inline min-width, set per week count) so narrow screens scroll instead of squeezing */
+  @media screen{
+    #rankings{table-layout:fixed;width:100%;min-width:var(--minw,0)}
+    #rankings col.ck{width:136px} #rankings col.cp{width:64px}
+    #rankings .cell small.tv{overflow:hidden;text-overflow:ellipsis}
+    #rankings .cell .ct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  }
   body:not(.light) #tab-board{--field:#13161b;--panel:#1a1e24;--panel2:#242a32;--line:#2e353e;--muted:#9aa4ae}
   @media (min-width:1100px){ #tab-board{padding:6px 16px 16px} #tab-board > h2, #tab-board > .explain, #tab-board > .controls{margin-left:0;margin-right:0} }
   /* light (no-team) theme: the board goes light too, and shaded cells use dark text */
@@ -286,7 +294,7 @@
   .cell.up{background:var(--panel2);border:1px solid var(--line)}
   .cell.lv{display:flex;align-items:center;gap:6px} .cell.lv .ct{flex:1;min-width:0}
   .cell .lp{flex:none;border-radius:6px;padding:1px 0;min-width:32px;text-align:center;font-weight:700;font-size:11.5px;color:var(--ink);font-variant-numeric:tabular-nums}
-  .cell .lp.soft{opacity:.55} .cell .lp.zero{color:var(--muted);font-weight:600}
+  .cell .lp.soft{opacity:.55}
   .cell small.real{font-weight:700;font-size:11px;opacity:1} .cell small.real.good{color:var(--for)} .cell small.real.bad{color:var(--against)} .cell small.real.field{color:var(--gold)} .cell small.real.soft{opacity:.55} .cell small.real.zero{color:var(--muted);font-weight:600}
   .chip.against{border-color:var(--against)}
   .plain .big.bad{color:var(--against)}
@@ -1489,7 +1497,7 @@ function renderBoard(r){
     ? `Ordered by the <strong>CFP committee ranking</strong> (week ${cfp.week}), which is what actually seeds the bracket, with the AP poll alongside.`
     : `Ordered by the <strong>AP poll</strong> (week ${ap?ap.week:"—"}) until the CFP committee releases its first ranking in early November, then by the committee.`}
     ${T?`Unranked teams that often finish ahead of ${T} are included too.`:"Unranked teams with a real playoff chance are included too."}</p>
-    <div class="legend">${T?`<span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row's pills score each game's leverage on your own schedule</span>`:`<span><i style="background:var(--fieldhue)"></i>Shapes the playoff field</span><span><i style="background:var(--panel2)"></i>Doesn't change who gets in</span>`}<span><i style="border:1.5px solid var(--against);background:transparent"></i>In progress (red LIVE line, pregame → live chance)</span><span><i style="background:var(--panel2);border:1px solid var(--line)"></i>Final (W/L, score, and an impact pill: how much the result moved ${T?"your odds":"the field"} from kickoff${T?": green helped, red hurt":""}; 0 = an expected result, already priced in)</span><span>Pill = leverage score (darker = higher) · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
+    <div class="legend">${T?`<span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row's pills score each game's leverage on your own schedule</span>`:`<span><i style="background:var(--fieldhue)"></i>Shapes the playoff field</span><span><i style="background:var(--panel2)"></i>Doesn't change who gets in</span>`}<span><i style="border:1.5px solid var(--against);background:transparent"></i>In progress (red LIVE line, pregame → live chance)</span><span><i style="background:var(--panel2);border:1px solid var(--line)"></i>Final (W/L, score, and an impact pill: how much the result moved ${T?"your odds":"the field"} from kickoff${T?": green helped, red hurt":""}; no pill = an expected result, already priced in)</span><span>Pill = leverage score (darker = higher) · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
     <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Posted point spreads are shown for reference; the simulation uses SP+. ${T?`The pill on each card shows whether ${T} wants the row team to win (green, +) or lose (red, −) that game, and how much: it is the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.`:"With no team selected, the pill on each card shows how much each game shapes the whole playoff field: how often flipping its result changes who gets in, discounted by how unlikely that is."}</p>`;
 
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
@@ -1511,7 +1519,7 @@ function renderBoard(r){
   const lev=new Map(); r.games.forEach(g=>lev.set(g.i, g.clear ? Math.sign(g.swing)*g.levN*(g.sure?1:0.5) : 0));
   // finished games: the impact score, signed by whether the result helped the selected team
   const real=new Map(); (r.played||[]).forEach(g=>real.set(g.i,g));
-  // every final carries a number: a muted 0 when the result was already priced in
+  // a final carries an impact pill only when the result moved something; an expected result shows none
   const realCell=g=>{ if(!g) return null; const v=Math.round(g.impN);
     if(v===0 || !g.clear) return {txt:"0", mix:0};
     const mix=Math.round(8+Math.pow(Math.min(1,v/100),0.7)*82), soft=!g.sure;
@@ -1524,7 +1532,7 @@ function renderBoard(r){
   // leverage before kickoff, impact (how much the result moved the odds) once final
   const levCell=(cls,c,sub,mix,hue,txt)=>{
     const R=c.real;
-    const pill = R ? pillHtml(R.mix, R.hue, R.txt, `Impact: how much this result moved ${T?short(T)+"'s":"the field's"} odds from kickoff${T?". Green helped, red hurt":""}`, R.mix?(R.soft?" soft":""):" zero")
+    const pill = R ? (R.mix ? pillHtml(R.mix, R.hue, R.txt, `Impact: how much this result moved ${T?short(T)+"'s":"the field's"} odds from kickoff${T?". Green helped, red hurt":""}`, R.soft?" soft":"") : "")
       : mix ? pillHtml(mix, hue, txt, "Leverage score") : "";
     return `<span class="cell${c.result?"":" up"}${pill?" lv":""}${cls?" "+cls:""}"${c.gi!=null?` data-game="${c.gi}" role="button"`:""}><span class="ct">${c.isHome?"":"@"}${short(c.opp)}<small class="num">${sub}</small>${cellFoot(c)}</span>${pill}</span>`; };
   const byTeam=new Map();
@@ -1560,7 +1568,8 @@ function renderBoard(r){
         return `<td class="c">${pair(Math.max(...L), L.reduce((a,b)=>a+b,0)/L.length)}</td>`; };
       return `<tr class="sum"><td class="k"><span class="sumlab" role="button" title="${sumTip().replace(/"/g,"&quot;")}">Impact/Leverage <i>i</i></span></td><td class="sub" style="font-size:11px;white-space:normal;line-height:1.1">all games</td>${weeks.map(cell).join("")}</tr>`;
     })();
-  $("#rankings").innerHTML = `<tr><th>Team</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+ summary +
+  $("#rankings").style.setProperty("--minw", `${136+64+weeks.length*150}px`);
+  $("#rankings").innerHTML = `<colgroup><col class="ck"><col class="cp"><col span="${weeks.length}"></colgroup><tr><th>Team</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+ summary +
     rows.map(t=>{
       const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
