@@ -21,6 +21,8 @@
   const BASE_NAVY=[12,35,64], BASE_ACCENT=[0xc9,0xa4,0x4c], BASE_ACCENT_TEXT=[0x8a,0x6f,0x2e];
   let NAVY=BASE_NAVY, ACCENT=BASE_ACCENT, ACCENT_TEXT=BASE_ACCENT_TEXT, PILL=[63,169,107];
   const MUTED=[79,96,121], LINE=[201,211,223], PANEL=[242,245,249], GREEN=[63,169,107], RED=[198,84,66], WHITE=[255,255,255];
+  // conference pill hues, the same as the site's .cpill
+  const CONF_HUE={"SEC":[224,180,32], "Big Ten":[61,127,224], "Big 12":[210,69,58], "ACC":[224,122,47]};
   function setPalette(){
     NAVY=BASE_NAVY; ACCENT=BASE_ACCENT; ACCENT_TEXT=BASE_ACCENT_TEXT; PILL=GREEN;
     const box=document.querySelector("#teamColors");
@@ -239,7 +241,19 @@
           doc.setTextColor(...(mine?ACCENT_TEXT:NAVY)); doc.text(clean(short(t.team)), sx+14, yy);
           doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.6); doc.setTextColor(...MUTED);
           const pc=`${Math.round(t.pIn*100)}%`; doc.text(pc, sx+sw-3, yy, {align:"right"});
-          doc.text(clean(t.tag||""), sx+sw-3-doc.getTextWidth(pc)-5, yy, {align:"right"}); };
+          // the bid type, then the conference pill the Overview shows: one hue per Power Four league, one for the Group of Six
+          const pr=sx+sw-3-doc.getTextWidth("100%")-4, pl=confPill(t.conf, pr, yy);
+          if(t.tag){ doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.6); doc.setTextColor(...MUTED);
+            doc.text(t.tag==="at-large"?"at-large":"champ", pl-3, yy, {align:"right"}); } };
+        const confPill=(c,right,yy)=>{ const tier=(D.conferenceTiers||{})[c];
+          const hue=tier==="P4"?CONF_HUE[c]:tier==="G6"?[47,174,154]:[138,148,163];
+          const label=clean(tier==="P4"?c:(CONF_SHORT[c]||c));
+          doc.setFont("helvetica","bold"); doc.setFontSize(FS-1);
+          const w=doc.getTextWidth("Big Ten")+5, h=LH*0.74, x=right-w;
+          doc.setFillColor(...mixW(hue,30)); doc.setDrawColor(...mixW(hue,65)); doc.setLineWidth(0.4);
+          doc.roundedRect(x, yy-h*0.76, w, h, 1.4, 1.4, "FD");
+          doc.setTextColor(...NAVY); doc.text(label, x+w/2, yy-0.2, {align:"center"});
+          return x; };
         const card=h=>{ doc.setFillColor(...PANEL); doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.roundedRect(sx, sy, sw, h, 3, 3, "FD"); };
         const head=t=>{ sy+=2.5*k; doc.setFont("helvetica","bold"); doc.setFontSize(FS); doc.setTextColor(...MUTED); doc.text(t, sx, sy+4.5); sy+=8*k; };
         const game=(lo,hi,next)=>{ const h=PAD+LH+LH*0.7+LH+PAD; card(h);
@@ -251,7 +265,7 @@
         sy+=4; para("PROJECTED BRACKET", 6.6, MUTED, true); sy-=3;
         head("FIRST ROUND"); game(12,5,4); game(9,8,1); game(11,6,3); game(10,7,2);
         head("BYES TO THE QUARTERFINALS"); list([S(1),S(2),S(3),S(4)]);
-        const out=(PF.nextOut||[]).slice(0,4).map(t=>({...t, seed:"", tag:t.conf}));
+        const out=(PF.nextOut||[]).slice(0,4).map(t=>({...t, seed:"", tag:""}));
         if(out.length){ head("FIRST TEAMS OUT"); list(out); }
         // played through to the title
         const w5=play(S(12),S(5),true).w, w8=play(S(9),S(8),true).w, w6=play(S(11),S(6),true).w, w7=play(S(10),S(7),true).w;

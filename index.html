@@ -252,7 +252,7 @@
      with a floor (inline min-width, set per week count) so narrow screens scroll instead of squeezing */
   @media screen{
     #rankings{table-layout:fixed;width:100%;min-width:var(--minw,0)}
-    #rankings col.ck{width:136px} #rankings col.cp{width:64px}
+    #rankings col.ck{width:136px} #rankings col.cc{width:76px} #rankings col.cp{width:64px}
     #rankings .cell small.tv{overflow:hidden;text-overflow:ellipsis}
     #rankings .cell .ct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   }
@@ -605,6 +605,9 @@ const isFcs = team => !!(D.teams[idx.get(team)]||{}).fcs;
 const tn = (team, label) => `<span class="tn" data-team="${team.replace(/"/g,"&quot;")}">${label??team}</span>`;
 // full name, with the short form swapped in on phones by CSS (tables that are tight for width)
 const CONF_SHORT = {"Big Ten":"B10","Big 12":"B12","Mountain West":"MW","Mid-American":"MAC","Sun Belt":"SBC","American Athletic":"AAC","Pac-12":"P12","Conference USA":"CUSA","FBS Independents":"Ind","SEC":"SEC","ACC":"ACC","FCS":"FCS"};
+// a colored conference pill: one hue per Power Four league, one shared hue for the Group of Six, gray for independents
+const confPill = c => { const tier=(D.conferenceTiers||{})[c], k=tier==="P4"?c.replace(/\W/g,"").toLowerCase():tier==="G6"?"g6":"ind";
+  return `<span class="cpill c-${k}" title="${c}">${tier==="P4"?c:CONF_SHORT[c]||c}</span>`; };
 const confPhone = c => { const s=CONF_SHORT[c]; return !s||s===c ? (c??"") : `<span class="nm-full">${c}</span><span class="nm-short">${s}</span>`; };
 const tnPhone = team => { const s=short(team); return s===team ? tn(team) : tn(team, `<span class="nm-full">${team}</span><span class="nm-short">${s}</span>`); };
 const badge = (team, label) => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${tn(team,label)}` : (isFcs(team) ? `${tn(team,label)} <span class="rk" style="color:var(--muted)">FCS</span>` : tn(team,label)); };
@@ -1438,9 +1441,7 @@ function renderBracket(r){
 
   $("#bracketExplain").innerHTML = `<p>${T?"":"No team selected, so this is the whole picture. "}The most likely field: each Power Four conference's most probable champion takes its auto-bid, the strongest Group of Six champion takes the fifth, and seven at-larges fill in by playoff probability. Seeds are each team's average seed across the seasons it made the field. Straight seeding: the four highest-ranked teams get byes whether or not they won a conference. The % is each team's overall chance of making the field.</p>`;
 
-  // the bid type, then a pill for the team's conference: one hue per Power Four league, one shared hue for the Group of Six
-  const confPill=c=>{ const tier=(D.conferenceTiers||{})[c], k=tier==="P4"?c.replace(/\W/g,"").toLowerCase():tier==="G6"?"g6":"ind";
-    return `<span class="cpill c-${k}" title="${c}">${tier==="P4"?c:CONF_SHORT[c]||c}</span>`; };
+  // the bid type, then a pill for the team's conference
   const bid=t=>`<span class="tag">${t.tag==="at-large"?"at-large":"champ"} ·</span>${confPill(t.conf)}`;
   const row=t=>`<div class="t"><span class="sd num">${t.seed}</span><span class="nm ${t.team===T?"me":""}">${tn(t.team)}</span>${bid(t)}<span class="p">${Math.round(t.pIn*100)}%</span></div>`;
   const S=n=>field[n-1];
@@ -1574,17 +1575,17 @@ function renderBoard(r){
           return `<td class="c">${scorePill(Math.max(0,...Pw.map(g=>g.clear?g.impN:0)),true)}</td>`; }
         const L=byWeek.get(w); if(!L||!L.length) return `<td class="r sub">—</td>`;
         return `<td class="c">${pair(Math.max(...L), L.reduce((a,b)=>a+b,0)/L.length)}</td>`; };
-      return `<tr class="sum"><td class="k"><span class="sumlab" role="button" title="${sumTip().replace(/"/g,"&quot;")}">Impact/Leverage <i>i</i></span></td><td class="sub" style="font-size:11px;white-space:normal;line-height:1.1">all games</td>${weeks.map(cell).join("")}</tr>`;
+      return `<tr class="sum"><td class="k"><span class="sumlab" role="button" title="${sumTip().replace(/"/g,"&quot;")}">Impact/Leverage <i>i</i></span></td><td></td><td class="sub" style="font-size:11px;white-space:normal;line-height:1.1">all games</td>${weeks.map(cell).join("")}</tr>`;
     })();
-  $("#rankings").style.setProperty("--minw", `${136+64+weeks.length*150}px`);
-  $("#rankings").innerHTML = `<colgroup><col class="ck"><col class="cp"><col span="${weeks.length}"></colgroup><tr><th>Team</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+ summary +
+  $("#rankings").style.setProperty("--minw", `${136+76+64+weeks.length*150}px`);
+  $("#rankings").innerHTML = `<colgroup><col class="ck"><col class="cc"><col class="cp"><col span="${weeks.length}"></colgroup><tr><th>Team</th><th class="c">Conf</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+ summary +
     rows.map(t=>{
       const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
       const rk=(v,hot)=>v?(hot?`<b>${v}</b>`:v):"NR";
       const rkNo = useCfp() ? tm.cfpRank : tm.apRank;
-      return (T && t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+2}"></td></tr>` : "")
-        + (sepBefore===t ? `<tr class="sep lab"><td colspan="${weeks.length+2}">Unranked · playoff chance ${UI.boardMin<=1?"≥ "+Math.round(UI.boardMin*100)+"%":""}</td></tr>` : "")
-        + `<tr class="${t===T?"me":""}"><td class="k">${rkNo?`<span class="rk">#${rkNo}</span> `:""}${tn(t,short(t))}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
+      return (T && t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+3}"></td></tr>` : "")
+        + (sepBefore===t ? `<tr class="sep lab"><td colspan="${weeks.length+3}">Unranked · playoff chance ${UI.boardMin<=1?"≥ "+Math.round(UI.boardMin*100)+"%":""}</td></tr>` : "")
+        + `<tr class="${t===T?"me":""}"><td class="k">${rkNo?`<span class="rk">#${rkNo}</span> `:""}${tn(t,short(t))}</td><td class="c">${confPill(tm.conference)}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
         const cs=m.get(w); if(!cs) return `<td><span class="cell"><small>bye</small></span></td>`;
         // a team can play twice in one data week (week 1 covers two weekends): stack the cells
         return `<td${cs.length>1?' class="multi"':""}>`+cs.map(c=>{
