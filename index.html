@@ -256,6 +256,23 @@
     #rankings .cell small.tv{overflow:hidden;text-overflow:ellipsis}
     #rankings .cell .ct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   }
+  /* phones: team, conference and playoff stay frozen on the left, and each week column takes the rest of the
+     screen (150px at least), so one full week is always in view beside them */
+  @media screen and (max-width:640px){
+    #rankings{--fz:190px;--wk:max(150px, calc(100vw - var(--fz)));min-width:calc(var(--fz) + var(--nw,1) * var(--wk))}
+    #rankings col.ck{width:100px} #rankings col.cc{width:44px} #rankings col.cp{width:46px}
+    #rankings tr > :nth-child(-n+3){position:sticky;background:var(--field);z-index:1}
+    #rankings tr > :nth-child(2){left:100px} #rankings tr > :nth-child(3){left:144px;box-shadow:2px 0 0 var(--line)}
+    #rankings th:nth-child(-n+3){z-index:3}
+    #rankings td.k{min-width:0;box-shadow:none;padding-left:6px;padding-right:2px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #rankings td:nth-child(2), #rankings td:nth-child(3), #rankings th:nth-child(2), #rankings th:nth-child(3){padding-left:2px;padding-right:2px}
+    #rankings .cpill{min-width:0;width:100%;padding:1px 0;font-size:10.5px}
+    #rankings td.r .ramp{padding:2px 3px!important;font-size:11.5px}
+    #rankings tr.sum td:nth-child(3){font-size:10px!important}
+    /* a swipe settles on a whole week, never half of two */
+    #tab-board .scroll{scroll-snap-type:x mandatory;scroll-padding-left:190px}
+    #rankings tr:first-child th:nth-child(n+4){scroll-snap-align:start}
+  }
   body:not(.light) #tab-board{--field:#13161b;--panel:#1a1e24;--panel2:#242a32;--line:#2e353e;--muted:#9aa4ae}
   @media (min-width:1100px){ #tab-board{padding:6px 16px 16px} #tab-board > h2, #tab-board > .explain, #tab-board > .controls{margin-left:0;margin-right:0} }
   /* light (no-team) theme: the board goes light too, and shaded cells use dark text */
@@ -354,6 +371,9 @@
   .hist-tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;line-height:1.35;color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap;z-index:2}
   .hist-expand{position:absolute;top:8px;right:10px;font-size:12px;padding:4px 9px}
   .hist-seg{margin:0 0 6px 4px} .hist-seg button{font-size:12px;padding:4px 9px}
+  .hist-conf{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 6px 4px}
+  .hist-conf .cpill{font-size:11.5px;padding:3px 9px;min-width:0} .hist-conf .cpill.off{opacity:.45} .hist-conf .cpill.off:hover{opacity:.8}
+  .cpill.c-all{--ch:var(--gold)}
   .sheet.wide{max-width:min(96vw,1400px);width:96vw;max-height:94vh} .sheet.wide svg.hist{max-height:70vh}
   svg.hist{width:100%;height:auto;display:block;font-family:inherit}
   svg.hist .gl{stroke:var(--line);stroke-width:1} svg.hist .ax{fill:var(--muted);font-size:12px} svg.hist .ax.now{fill:var(--gold);font-weight:700}
@@ -606,8 +626,9 @@ const tn = (team, label) => `<span class="tn" data-team="${team.replace(/"/g,"&q
 // full name, with the short form swapped in on phones by CSS (tables that are tight for width)
 const CONF_SHORT = {"Big Ten":"B10","Big 12":"B12","Mountain West":"MW","Mid-American":"MAC","Sun Belt":"SBC","American Athletic":"AAC","Pac-12":"P12","Conference USA":"CUSA","FBS Independents":"Ind","SEC":"SEC","ACC":"ACC","FCS":"FCS"};
 // a colored conference pill: one hue per Power Four league, one shared hue for the Group of Six, gray for independents
-const confPill = c => { const tier=(D.conferenceTiers||{})[c], k=tier==="P4"?c.replace(/\W/g,"").toLowerCase():tier==="G6"?"g6":"ind";
-  return `<span class="cpill c-${k}" title="${c}">${tier==="P4"?c:CONF_SHORT[c]||c}</span>`; };
+const confPill = (c, phoneShort) => { const tier=(D.conferenceTiers||{})[c], k=tier==="P4"?c.replace(/\W/g,"").toLowerCase():tier==="G6"?"g6":"ind";
+  const lbl = tier==="P4" ? (phoneShort && CONF_SHORT[c]!==c ? `<span class="nm-full">${c}</span><span class="nm-short">${CONF_SHORT[c]}</span>` : c) : CONF_SHORT[c]||c;
+  return `<span class="cpill c-${k}" title="${c}">${lbl}</span>`; };
 const confPhone = c => { const s=CONF_SHORT[c]; return !s||s===c ? (c??"") : `<span class="nm-full">${c}</span><span class="nm-short">${s}</span>`; };
 const tnPhone = team => { const s=short(team); return s===team ? tn(team) : tn(team, `<span class="nm-full">${team}</span><span class="nm-short">${s}</span>`); };
 const badge = (team, label) => { const r=rankOf(team); return r ? `<span class="rk">#${r}</span> ${tn(team,label)}` : (isFcs(team) ? `${tn(team,label)} <span class="rk" style="color:var(--muted)">FCS</span>` : tn(team,label)); };
@@ -1260,8 +1281,11 @@ let CHART_METRIC="odds";   // "odds" = playoff chance by week, "sp" = SP+ rating
 // the recorded playoff-chance points for this season; the week-0 point (a handful of games) is folded into week 1's
 const histPoints=()=>{ const pts=(HIST&&HIST.season===D.season&&HIST.points)||[]; return pts.some(p=>p.week===1) ? pts.filter(p=>p.week!==0) : pts; };
 const curRatingsHash=()=>{ let h=5381; const str=D.teams.filter(t=>!t.fcs).map(t=>t.team+":"+t.rating).join("|"); for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0; return h.toString(36); };
+// conference filter: "all", a Power Four league by name, "G6" for every Group of Six league, or "IND"
+let CHART_CONF="all";
+const confGroup = c => { const tier=(D.conferenceTiers||{})[c]; return tier==="P4" ? c : tier==="G6" ? "G6" : "IND"; };
 function chartData(r, metric){
-  const st=r.teamStats.filter(t=>!t.fcs).slice().sort((a,b)=>b.pIn-a.pIn);
+  const st=r.teamStats.filter(t=>!t.fcs && (CHART_CONF==="all" || confGroup(t.conf)===CHART_CONF)).slice().sort((a,b)=>b.pIn-a.pIn);
   const top=st.slice(0,20);
   const hist = HIST&&HIST.season===D.season ? HIST : null;
   if(metric==="sp"){
@@ -1303,8 +1327,13 @@ function drawChart(el, r, big){
   const legend=top.map((t,k)=>{ const last=pts[pts.length-1].val[t.team]; const lbl=metric==="sp"?(last==null?"":last.toFixed(1)):Math.round(t.pIn*100)+"%";
     return `<button type="button" class="hl-btn${t.team===T?" me":""}" data-team="${t.team.replace(/"/g,"&quot;")}" style="--c:${chartColor(t.team)}"><i></i>${k+1}. ${short(t.team)} <b class="num">${lbl}</b></button>`; }).join("");
   const seg=`<div class="seg hist-seg"><button type="button" data-m="odds" aria-pressed="${metric==="odds"}">Playoff odds</button><button type="button" data-m="sp" aria-pressed="${metric==="sp"}">SP+ rating</button></div>`;
-  el.innerHTML=`<div class="hist-wrap${big?" big":""}">${seg}<svg viewBox="0 0 ${W} ${H}" class="hist" role="img" aria-label="${metric==="sp"?"SP+ rating by week":"Playoff chance by week"} for the top 20 teams">${grid}${xa}${lines}</svg><div class="hist-tip" hidden></div>${big?"":`<button type="button" class="ghost hist-expand" title="Full screen">⤢ Expand</button>`}</div><div class="hist-legend">${legend}</div>`;
-  el.querySelectorAll(".hist-seg button").forEach(b=>b.onclick=()=>{ CHART_METRIC=b.dataset.m; drawChart(el, r, big); });
+  // the conference pills double as the filter: the chosen one stays bright, the rest fade
+  const confs=[["all","All"],...P4.map(c=>[c,c]),["G6","Group of Six"],["IND","Ind"]];
+  const confKey=v=>v==="all"?"all":v==="G6"?"g6":v==="IND"?"ind":v.replace(/\W/g,"").toLowerCase();
+  const filt=`<div class="hist-conf" role="group" aria-label="Filter by conference">${confs.map(([v,l])=>`<button type="button" class="cpill c-${confKey(v)}${CHART_CONF===v?"":" off"}" data-c="${v}" aria-pressed="${CHART_CONF===v}">${l}</button>`).join("")}</div>`;
+  el.innerHTML=`<div class="hist-wrap${big?" big":""}">${seg}${filt}<svg viewBox="0 0 ${W} ${H}" class="hist" role="img" aria-label="${metric==="sp"?"SP+ rating by week":"Playoff chance by week"} for the top 20 teams">${grid}${xa}${lines}</svg><div class="hist-tip" hidden></div>${big?"":`<button type="button" class="ghost hist-expand" title="Full screen">⤢ Expand</button>`}</div><div class="hist-legend">${legend}</div>`;
+  el.querySelectorAll(".hist-seg button").forEach(b=>b.onclick=()=>{ CHART_METRIC=b.dataset.m; drawChart(el, r, big); if(big) renderHistory(r); });
+  el.querySelectorAll(".hist-conf button").forEach(b=>b.onclick=()=>{ CHART_CONF=b.dataset.c; drawChart(el, r, big); if(big) renderHistory(r); });   // full screen: keep the Overview chart in step
   const svg=el.querySelector("svg.hist"), tip=el.querySelector(".hist-tip"), wrap=el.querySelector(".hist-wrap");
   const setHl=team=>{ el.querySelectorAll(".tl").forEach(g=>{ g.classList.remove("hl","dim"); if(team) g.classList.add(g.dataset.team===team?"hl":"dim"); }); };
   let pinned=null;
@@ -1330,7 +1359,7 @@ function drawChart(el, r, big){
 }
 function renderHistory(r){
   const el=$("#hist"); if(!el) return;
-  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. Week 0's handful of games counts with week 1. <strong>SP+ rating</strong> shows each team's rating in every SP+ update of the season, which is what drives the model.${T?` <strong>${T}</strong> is drawn heavier.`:""} Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
+  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. Week 0's handful of games counts with week 1. <strong>SP+ rating</strong> shows each team's rating in every SP+ update of the season, which is what drives the model.${T?` <strong>${T}</strong> is drawn heavier.`:""} The conference pills narrow the chart to one league, or the whole Group of Six, showing its top twenty. Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
   drawChart(el, r, false);
   if(chartData(r, CHART_METRIC).pts.length<2) el.insertAdjacentHTML("afterbegin", `<div class="sub" style="padding:6px 0">The chart fills in as weeks are completed: the daily refresh records every team's chance after each week.</div>`);
 }
@@ -1577,7 +1606,7 @@ function renderBoard(r){
         return `<td class="c">${pair(Math.max(...L), L.reduce((a,b)=>a+b,0)/L.length)}</td>`; };
       return `<tr class="sum"><td class="k"><span class="sumlab" role="button" title="${sumTip().replace(/"/g,"&quot;")}">Impact/Leverage <i>i</i></span></td><td></td><td class="sub" style="font-size:11px;white-space:normal;line-height:1.1">all games</td>${weeks.map(cell).join("")}</tr>`;
     })();
-  $("#rankings").style.setProperty("--minw", `${136+76+64+weeks.length*150}px`);
+  $("#rankings").style.setProperty("--minw", `${136+76+64+weeks.length*150}px`); $("#rankings").style.setProperty("--nw", weeks.length);
   $("#rankings").innerHTML = `<colgroup><col class="ck"><col class="cc"><col class="cp"><col span="${weeks.length}"></colgroup><tr><th>Team</th><th class="c">Conf</th><th class="c">Playoff</th>${weeks.map(w=>`<th>Wk ${w}</th>`).join("")}</tr>`+ summary +
     rows.map(t=>{
       const tm=D.teams[idx.get(t)], m=byTeam.get(t)||new Map(), st=stat.get(t);
@@ -1585,7 +1614,7 @@ function renderBoard(r){
       const rkNo = useCfp() ? tm.cfpRank : tm.apRank;
       return (T && t!==T && rows[0]===T && rows[1]===t ? `<tr class="sep"><td colspan="${weeks.length+3}"></td></tr>` : "")
         + (sepBefore===t ? `<tr class="sep lab"><td colspan="${weeks.length+3}">Unranked · playoff chance ${UI.boardMin<=1?"≥ "+Math.round(UI.boardMin*100)+"%":""}</td></tr>` : "")
-        + `<tr class="${t===T?"me":""}"><td class="k">${rkNo?`<span class="rk">#${rkNo}</span> `:""}${tn(t,short(t))}</td><td class="c">${confPill(tm.conference)}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
+        + `<tr class="${t===T?"me":""}"><td class="k">${rkNo?`<span class="rk">#${rkNo}</span> `:""}${tn(t,short(t))}</td><td class="c">${confPill(tm.conference, true)}</td><td class="r"><span class="ramp num" style="${ramp(st?st.pIn:0,"var(--for)",maxPIn)};padding:2px 6px">${st?Math.round(st.pIn*100):0}%</span></td>`+weeks.map(w=>{
         const cs=m.get(w); if(!cs) return `<td><span class="cell"><small>bye</small></span></td>`;
         // a team can play twice in one data week (week 1 covers two weekends): stack the cells
         return `<td${cs.length>1?' class="multi"':""}>`+cs.map(c=>{
@@ -1623,7 +1652,9 @@ function scrollBoardToWeek(){
   const key=`${T}|${wk}`; if(key===boardScrollKey) return;
   const th=[...head.children].find(x=>x.textContent==="Wk "+wk); if(!th) return;
   boardScrollKey=key;
-  box.scrollLeft = th.offsetLeft - head.children[0].offsetWidth;   // land just right of the sticky team column
+  // land just right of the frozen columns: the team name, plus conference and playoff on phones
+  const frozen=[...head.children].slice(0,3).filter(x=>getComputedStyle(x).position==="sticky" && getComputedStyle(x).left!=="auto").reduce((a,x)=>a+x.offsetWidth,0) || head.children[0].offsetWidth;
+  box.scrollLeft = th.offsetLeft - frozen;
 }
 
 // One card renderer for both the weekly slate and the season list
