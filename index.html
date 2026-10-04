@@ -148,6 +148,8 @@
   .cpill.c-g6{--ch:#2fae9a} .cpill.c-ind{--ch:#8a94a3}
   .br .t .p{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;width:40px;text-align:right}
   .br .next{font-size:11.5px;color:var(--muted);margin:-2px 0 6px 32px}
+  .br .qf{margin:6px 0 2px 22px;padding:0 0 0 8px;border-left:2px solid color-mix(in srgb, var(--gold) 55%, transparent)}
+  .br .qf-lab{font-size:11px;color:var(--muted);padding:2px 0 0 30px}
   .bubble{margin-top:10px;font-size:13px;color:var(--muted)}
   .bubble b{color:var(--ink);font-weight:600}
 
@@ -289,6 +291,7 @@
     .ov2{display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;align-items:start;
       width:min(100vw,1500px);margin-left:calc(50% - min(50vw,750px));padding:0 16px}
     .ov2 .col{min-width:0}
+    .ov2 .br{grid-template-columns:1fr;gap:10px}   /* beside the blockers the bracket runs as one column: top half, bottom half, first out */
   }
   th,td{padding:6px 7px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
   th{color:var(--muted);font-weight:500;font-size:11.5px;position:sticky;top:0;background:var(--field)}
@@ -1474,11 +1477,12 @@ function renderBracket(r){
   const bid=t=>`<span class="tag">${t.tag==="at-large"?"at-large":"champ"} ·</span>${confPill(t.conf)}`;
   const row=t=>`<div class="t"><span class="sd num">${t.seed}</span><span class="nm ${t.team===T?"me":""}">${tn(t.team)}</span>${bid(t)}<span class="p">${Math.round(t.pIn*100)}%</span></div>`;
   const S=n=>field[n-1];
-  const game=(hi,lo,next)=>`<div class="m">${row(S(lo))}<div class="vs">at</div>${row(S(hi))}</div><div class="next">winner meets #${next} ${short(S(next).team)}</div>`;
+  // each first-round game with the bye team its winner meets in the quarterfinal, inset beneath it
+  const game=(hi,lo,next)=>`<div class="m">${row(S(lo))}<div class="vs">at</div>${row(S(hi))}<div class="qf"><div class="qf-lab">winner meets in the quarterfinal</div>${row(S(next))}</div></div>`;
   $("#bracket").innerHTML = `<div class="br">
-    <div><h3>First round</h3>${game(5,12,4)}${game(8,9,1)}${game(6,11,3)}${game(7,10,2)}</div>
-    <div><h3>Byes to the quarterfinals</h3><div class="m">${[1,2,3,4].map(n=>row(S(n))).join("")}</div>
-      <h3 style="margin-top:14px">First teams out</h3><div class="m">${nextOut.map(t=>`<div class="t"><span class="sd"></span><span class="nm ${t.team===T?"me":""}">${tn(t.team)}</span>${confPill(t.conf)}<span class="p">${Math.round(t.pIn*100)}%</span></div>`).join("")}</div>
+    <div><h3>Top half</h3>${game(8,9,1)}${game(5,12,4)}</div>
+    <div><h3>Bottom half</h3>${game(7,10,2)}${game(6,11,3)}</div>
+    <div><h3>First teams out</h3><div class="m">${nextOut.map(t=>`<div class="t"><span class="sd"></span><span class="nm ${t.team===T?"me":""}">${tn(t.team)}</span>${confPill(t.conf)}<span class="p">${Math.round(t.pIn*100)}%</span></div>`).join("")}</div>
     </div></div>
     <div class="bubble">${!T ? "" : me
       ? `<b>${T}</b> projects as the #${me.seed} seed${me.seed<=4?" with a bye":me.seed<=8?", hosting a first-round game":", on the road in the first round"}. Average seed when in: ${mine.avgSeed.toFixed(1)}.`
