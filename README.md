@@ -42,7 +42,10 @@ spreads replace SP+ where they exist. Either way, the weekly slate flags games
 where the two disagree by 10 or more points of win probability.
 
 Ratings are SP+ (this season's once published, otherwise last season's
-regressed 25%) and are treated as uncertain: each simulated season draws a
+regressed 25%). They come from CollegeFootballData, which mirrors ESPN a day or
+more after Bill Connelly's Sunday update; when ESPN's own table is newer, the
+fetch reads it directly and the header stamp says so ("SP+ 2026 (ESPN, Oct 4)").
+Ratings are treated as uncertain: each simulated season draws a
 "true strength" for every team around its rating (`ratingSd`, 8 points).
 Without that, the top-rated team is a near-lock before kickoff.
 
@@ -114,6 +117,9 @@ pages as HTML for printing with Chrome (`PRODUCT=week`, `FIELD=1`, `TEAM`,
 have a key. Its schedules are synthetic — do not read anything into them.
 
 The workflow in `.github/workflows/` refreshes `data.json` every morning at
-10:00 UTC (6 AM Eastern): results and records to date, AP and CFP rankings,
-SP+, betting lines, kickoff times and TV. Trigger it by hand from the Actions
-tab whenever you want fresher numbers.
+10:17 UTC (6:17 AM Eastern) and again around game nights, Sunday afternoons and
+Monday/Tuesday: results and records to date, AP and CFP rankings, SP+, betting
+lines, kickoff times and TV. Trigger it by hand from the Actions tab whenever
+you want fresher numbers. `node scripts/espn-sp.mjs` shows what the ESPN SP+
+parser sees against the team names in `data.json`; set `ESPN_SP_ARTICLE` to pin
+an article id if ESPN's search stops finding the season's rankings page.

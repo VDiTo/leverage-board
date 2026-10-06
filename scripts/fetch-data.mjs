@@ -3,6 +3,7 @@
 // Run weekly (Wednesday) so the snapshot reflects the newest poll, lines and results.
 
 import { writeFileSync } from "node:fs";
+import { fetchEspnSp } from "./espn-sp.mjs";
 
 const YEAR = +(process.env.SEASON || new Date().getFullYear());
 const KEY = process.env.CFBD_KEY;
@@ -27,7 +28,7 @@ const TIER = {
 };
 const FCS_RATING = -36; // SP+ has no FCS teams; the worst FBS teams sit near -30, a typical FCS visitor a bit below that
 
-const [fbs, gamesRaw, spNow, spPrev, rankings, linesRaw, mediaRaw] = await Promise.all([
+let [fbs, gamesRaw, spNow, spPrev, rankings, linesRaw, mediaRaw] = await Promise.all([
   api(`/teams/fbs?year=${YEAR}`),
   api(`/games?year=${YEAR}&seasonType=regular`),
   api(`/ratings/sp?year=${YEAR}`).catch(() => []),
@@ -36,6 +37,20 @@ const [fbs, gamesRaw, spNow, spPrev, rankings, linesRaw, mediaRaw] = await Promi
   api(`/lines?year=${YEAR}&seasonType=regular`).catch(() => []),
   api(`/games/media?year=${YEAR}&seasonType=regular`).catch(() => []),
 ]);
+
+// CFBD mirrors Bill Connelly's Sunday SP+ update a day or more late. When ESPN's own table is fresh (published inside
+// the last ten days, so it is this week's or last week's edition) and disagrees with CFBD, ESPN is the newer edition.
+let spSource = { source: "CFBD", asOf: null };
+try {
+  const espn = await fetchEspnSp(YEAR, fbs);
+  const fresh = espn && espn.asOf && Date.now() - new Date(espn.asOf) < 10 * 864e5;
+  if (espn && espn.rows.length >= 120 && fresh) {
+    const cfbd = new Map(spNow.map((r) => [r.team, r.rating]));
+    const differs = !spNow.length || espn.rows.some((r) => Math.abs((cfbd.get(r.team) ?? NaN) - r.rating) > 0.05);
+    if (differs) { spNow = espn.rows; spSource = { source: "ESPN", asOf: espn.asOf, article: espn.articleId }; }
+    console.log(`ESPN SP+ ${espn.asOf.slice(0, 10)}: ${espn.rows.length} teams${espn.unmatched.length ? ", unmatched " + espn.unmatched.join(", ") : ""} · ${differs ? "newer than CFBD, used" : "same edition as CFBD"}`);
+  } else if (espn) console.log(`ESPN SP+ ignored: ${espn.rows.length} teams matched, as of ${espn.asOf}`);
+} catch (e) { console.warn("ESPN SP+ unavailable:", e.message); }
 
 const rate = new Map();
 for (const r of spPrev) if (r.team) rate.set(r.team, r.rating * 0.75); // regress last year
@@ -188,7 +203,10 @@ writeFileSync(new URL("../data.json", import.meta.url), JSON.stringify({
     cfp: polls.cfp ? { name: polls.cfp.name, week: polls.cfp.week } : null,
   },
   meta: {
-    ratings: spNow.length ? `SP+ ${YEAR}` : `SP+ ${YEAR - 1}, regressed 25%`,
+    ratings: !spNow.length ? `SP+ ${YEAR - 1}, regressed 25%`
+      : spSource.source === "ESPN" ? `SP+ ${YEAR} (ESPN, ${new Date(spSource.asOf).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })})`
+      : `SP+ ${YEAR}`,
+    spSource,
     lines: { games: linesRaw.length, matched: lineByGame.size },
     media: { games: mediaRaw.length, matched: tvByGame.size },
     pdfTeam: process.env.PDF_TEAM || process.env.TEAM || "Notre Dame",
@@ -200,4 +218,4 @@ writeFileSync(new URL("../data.json", import.meta.url), JSON.stringify({
   games,
 }));
 
-console.log(`${teams.filter((t) => !t.fcs).length} FBS + ${teams.filter((t) => t.fcs).length} FCS teams · ${games.length} games · ${played.length} played · ${withLines} upcoming with lines · ${games.filter((g) => g.tv).length} with TV · week ${currentWeek} · ${pollName} · ${spNow.length ? "SP+ " + YEAR : "SP+ prior year"}`);
+console.log(`${teams.filter((t) => !t.fcs).length} FBS + ${teams.filter((t) => t.fcs).length} FCS teams · ${games.length} games · ${played.length} played · ${withLines} upcoming with lines · ${games.filter((g) => g.tv).length} with TV · week ${currentWeek} · ${pollName} · ${spNow.length ? "SP+ " + YEAR + " via " + spSource.source : "SP+ prior year"}`);

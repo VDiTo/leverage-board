@@ -6,6 +6,7 @@ on:
     - cron: "23 4,8 * * 5,6,0,1"   # game nights: 04:23 and 08:23 UTC Fri-Mon, catching Thu/Fri/Sat/Sun results
     - cron: "23 15,17,19 * * 1,2"  # Mon/Tue afternoons (11:23 AM, 1:23 PM, 3:23 PM Eastern): CFBD picks up Sunday's SP+ update a day or two late
     - cron: "23 20,23 * * 2"       # Tuesday evenings: the new AP poll, and a last catch for SP+
+    - cron: "23 16,20 * * 0"       # Sunday afternoons (12:23 PM, 4:23 PM Eastern): ESPN publishes the week's SP+ Sunday morning; the fetch reads it straight from ESPN when CFBD lags
   workflow_dispatch:
 permissions:
   contents: write
