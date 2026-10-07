@@ -54,10 +54,22 @@ opponents' **final records**. A win over a team that finishes with more than
 `winFloor` (7) wins earns `winCurve` × (wins − 7)² points, so beating a 7-5
 team is worth nothing, a 10-2 team about 0.9, a 12-0 team 2.5. That convexity
 matters: a linear version had the model caring about whether Boston College
-went 7-5 or 6-6, which no committee does. A loss costs a flat `lossPenalty`
-(5) plus `lossQuality` (0.35) per game the winner ends up losing, so losing to
-a bad team hurts more. Because opponents' records feed your résumé, the model
-does want your strong opponents to keep winning, just not your weak ones.
+went 7-5 or 6-6, which no committee does. The credit is then scaled by the
+opponent's true strength, from nothing at `winQualityLo` (0, a 9-3 MAC team) to
+full at `winQualityHi` (15, a top-20 team), so a padded record in a weak league
+is not a quality win. A loss costs a flat `lossPenalty` (5) plus `lossQuality`
+(0.35) per game the winner ends up losing, so losing to a bad team hurts more.
+Because opponents' records feed your résumé, the model does want your strong
+opponents to keep winning, just not your weak ones.
+
+Group of Six teams carry a flat `g6Discount` (10 points) in the ranking. It is
+the same for every Group of Six team, so it does not change which champion
+takes the fifth auto-bid, only how they rank against the Power Four for seeding
+and at-large spots. Without it an undefeated Sun Belt or Mountain West team,
+carrying no loss penalties, outranked two-loss Power Four teams often enough
+that the model put a second Group of Six team in the field in half its seasons;
+with it that happens in about one season in ten, and Group of Six games stop
+registering as leverage for a Power Four or independent contender.
 
 Leverage score on the weekly slate is impact × 4p(1-p): the raw swing in
 playoff odds, discounted by how unlikely a coin-flip-sized surprise is. A 97/3

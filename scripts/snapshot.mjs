@@ -5,7 +5,8 @@
 //  - sp: every distinct SP+ edition (rating and rank per team), keyed to the latest completed week at the time.
 //  - pInPrevSp on a point whose SP+ edition differs from the previous point's: the same week's results simulated on the
 //    previous edition's ratings, so a team's week-to-week move splits into "results" and "SP+ update" parts.
-// Env: N=25000 (seasons per point), FORCE=1 recomputes every point.
+// Env: N=25000 (seasons per point). FORCE=1 recomputes every recorded point under the current model, each on the SP+
+// edition it was recorded with (for after a change to the committee stand-in); the editions themselves are kept.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const REPO = fileURLToPath(new URL("..", import.meta.url)).replace(/[\/]$/, "");
@@ -50,9 +51,19 @@ const hashOf = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h *
 const ratingsHash = hashOf(fbs.map(t => t.team + ":" + t.rating).join("|"));
 const ratings = Object.fromEntries(fbs.map(t => [t.team, [+(+t.rating).toFixed(1), t.sp && t.sp.rank || null]]));
 
-let H = existsSync(OUT) && !FORCE ? JSON.parse(readFileSync(OUT, "utf8")) : null;
+let H = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : null;
 if (!H || H.season !== D.season) H = { season: D.season, N, points: [], sp: [] };
 H.sp = H.sp || [];
+if (FORCE) {
+  H.N = N;
+  for (const p of H.points) {
+    const ed = H.sp.find(e => e.hash === p.ratingsHash), t1 = Date.now();
+    if (!ed) p.ratingsHash = ratingsHash;                  // edition not on record: today's ratings stand in
+    p.pIn = await point(p.key === "pre" ? null : p.week, ed ? ed.ratings : null);
+    delete p.pInPrevSp; delete p.pInPrevSpHash;            // counterparts are rebuilt below
+    console.log("recomputed " + p.key + " on " + (ed ? ed.label : "current") + " SP+", ((Date.now() - t1) / 1000).toFixed(1) + "s");
+  }
+}
 
 // --- playoff-chance points ---
 const have = new Map(H.points.map(p => [p.key, p]));

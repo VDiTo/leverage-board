@@ -794,8 +794,10 @@ function build(){
 // actually changes the target's outcome.
 //
 // Committee stand-in: true strength (rating + per-season noise) plus a résumé built from opponents'
-// FINAL records. Beating a team is worth more the more games that team ends up winning; losing costs a
-// flat penalty plus more the worse the opponent turns out. So your opponents' other games matter to you.
+// FINAL records. Beating a team is worth more the more games that team ends up winning, scaled by how strong
+// it really is (a padded record in a weak league earns little); losing costs a flat penalty plus more the
+// worse the opponent turns out. So your opponents' other games matter to you. Group of Six teams carry a
+// flat committee discount, so they rarely take an at-large on top of their champion's auto-bid.
 // The season loop lives in sim.js. N seasons are split into fixed shards with fixed seeds, so the answer for a
 // given N is the same on every device; the shards run in parallel Web Workers (one per core) when the browser has
 // them, otherwise inline in timed chunks. The page keeps its worker pool between runs.
@@ -997,7 +999,7 @@ function reasonParts(g,want,other){
       if(k==="rank") parts.push(`<b>${other}</b> is competing with ${T} for an at-large spot. When they lose, they're more likely to finish behind you in the rankings${sOther.block>=0.05?` (right now they block you in ${Math.round(sOther.block*100)}% of seasons)`:""}.`);
       if(k==="autobid") parts.push(`This game affects who wins the ${st(g.home).conf===st(g.away).conf?st(g.home).conf:"conference"}. A conference champion takes an automatic bid instead of an at-large spot, which changes how many at-large spots are left for teams like ${T}.`);
       if(k==="resume"){ const s=onSched(want)?want:other, ss=st(s), gm=onSched(s);
-        parts.push(`<b>${s}</b> is on ${T}'s schedule (week ${gm.week}). The better their final record, the more your result against them counts with the committee${ss.wins>=8?`, and they project to about ${Math.round(ss.wins)} wins`:""}.`); }
+        parts.push(`<b>${s}</b> is on ${T}'s schedule (week ${gm.week}). The better their final record, and the stronger they are, the more your result against them counts with the committee${ss.wins>=8?`, and they project to about ${Math.round(ss.wins)} wins`:""}.`); }
     }
   }
   return parts;

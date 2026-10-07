@@ -48,6 +48,17 @@
   // Beating a 7-5 team is worth almost nothing; beating a 10-2 team is a real résumé line.
   const WC = config.winCurve ?? 0.1, WF = config.winFloor ?? 7;
   const winGain = wins => { const x=wins-WF; return x>0 ? WC*x*x : 0; };
+  // ... and only when the opponent is actually good. A win's credit is scaled by the opponent's true strength, from
+  // nothing at winQualityLo (a 9-3 MAC team) to full at winQualityHi (a top-25 team), so padded records in weak leagues
+  // stop reading like Big Ten ones.
+  const QLO = config.winQualityLo ?? 0, QHI = config.winQualityHi ?? 15;
+  const qw = new Float64Array(nT);
+  const gain = (opp, wins) => qw[opp]*winGain(wins);
+  // Committee discount for the Group of Six: their score drops by g6Discount points, so a one-loss Sun Belt team no
+  // longer sits above two-loss Power Four teams for an at-large. Uniform across the Group of Six, so it does not
+  // change which champion takes the fifth auto-bid, only how G6 teams rank against everyone else.
+  const G6D = config.g6Discount ?? 10;
+  const g6 = new Uint8Array(nT); for(let i=0;i<nT;i++) g6[i] = (confIdx[i]>=0 && !isP4[confIdx[i]]) ? 1 : 0;
   const RS = config.ratingSd ?? 8;
   const rs = new Float64Array(nT);
 
@@ -90,9 +101,9 @@
     const w=hw?h:a, l=hw?a:h;                       // actual winner / loser; after the flip, l wins
     const rw=resumeWeight;
     // the two teams in the game swap their result
-    touch(w, rw*( -winGain(W[l]) - (LP + LQ*(L[l]-1)) ));
-    touch(l, rw*( (LP + LQ*L[w]) + winGain(W[w]-1) ));
-    const dl = winGain(W[l]+1)-winGain(W[l]), dw = winGain(W[w]-1)-winGain(W[w]);
+    touch(w, rw*( -gain(l, W[l]) - (LP + LQ*(L[l]-1)) ));
+    touch(l, rw*( (LP + LQ*L[w]) + gain(w, W[w]-1) ));
+    const dl = gain(l, W[l]+1)-gain(l, W[l]), dw = gain(w, W[w]-1)-gain(w, W[w]);
     // everyone who played l: l finishes with one more win, so beating l is worth more and losing to l costs less
     const tl=teamGames[l];
     for(let q=0;q<tl.length;q++){ const j=tl[q]; if(j===i) continue;
@@ -158,9 +169,9 @@
     const w=hw?h:a, l=hw?a:h;                       // actual winner / loser; after the flip, l wins
     const rw=resumeWeight;
     // the two teams in the game swap their result
-    touch(w, rw*( -winGain(W[l]) - (LP + LQ*(L[l]-1)) ));
-    touch(l, rw*( (LP + LQ*L[w]) + winGain(W[w]-1) ));
-    const dl = winGain(W[l]+1)-winGain(W[l]), dw = winGain(W[w]-1)-winGain(W[w]);
+    touch(w, rw*( -gain(l, W[l]) - (LP + LQ*(L[l]-1)) ));
+    touch(l, rw*( (LP + LQ*L[w]) + gain(w, W[w]-1) ));
+    const dl = gain(l, W[l]+1)-gain(l, W[l]), dw = gain(w, W[w]-1)-gain(w, W[w]);
     // everyone who played l: l finishes with one more win, so beating l is worth more and losing to l costs less
     const tl=teamGames[l];
     for(let q=0;q<tl.length;q++){ const j=tl[q]; if(j===i) continue;
@@ -223,7 +234,8 @@
 
   function season(){
       W.fill(0);L.fill(0);CW.fill(0);CL.fill(0);resume.fill(0);aq.fill(0);
-      for(let i=0;i<nT;i++){ const u=Math.max(1e-12,rnd()), v=rnd(); rs[i]=rating[i]+RS*Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307179586*v); }
+      for(let i=0;i<nT;i++){ const u=Math.max(1e-12,rnd()), v=rnd(); rs[i]=rating[i]+RS*Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307179586*v);
+        qw[i] = QHI>QLO ? Math.min(1, Math.max(0, (rs[i]-QLO)/(QHI-QLO))) : 1; }
       for(let i=0;i<nG;i++){
         const h=gH[i],a=gA[i];
         // always consume one draw per game, even for finals, so the random stream stays aligned across reruns:
@@ -239,10 +251,10 @@
       // résumé from final records
       for(let i=0;i<nG;i++){
         const hw=res[i], w=hw?gH[i]:gA[i], l=hw?gA[i]:gH[i];
-        resume[w] += winGain(W[l]);
+        resume[w] += gain(l, W[l]);
         resume[l] -= LP + LQ*L[w];
       }
-      for(let i=0;i<nT;i++){ score[i]=rs[i]*ratingWeight + resume[i]*resumeWeight; acc.teamWins[i]+=W[i]; }
+      for(let i=0;i<nT;i++){ score[i]=rs[i]*ratingWeight + resume[i]*resumeWeight - (g6[i]?G6D:0); acc.teamWins[i]+=W[i]; }
 
       // conference champions
       bestG6=-1; let bestG6s=-1e9;
