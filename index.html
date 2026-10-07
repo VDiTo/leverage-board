@@ -1809,14 +1809,9 @@ function renderPlayed(r){
     + (below?`<div class="sub" style="padding:10px 0">${below} game${below>1?"s":""} below impact ${UI.seasonMin} hidden.</div>`:"")
     + (quiet?`<details class="quiet"><summary>${quiet} more played game${quiet>1?"s":""} that barely moved ${T?T+"'s odds":"the field"}</summary><div class="sub" style="margin-top:6px">${T?"Mostly expected results, already priced into the odds before kickoff.":"Mostly expected results that leave the twelve-team field as it was."}</div></details>`:"");
 }
-// Projected final conference table: teams ordered by their average finishing place across the simulated seasons
-// (champion first, then conference win share). Records are regular season; title games aren't in the schedule.
-function renderConf(r){
-  const confs=confList.slice().sort((a,b)=>(P4.includes(b)-P4.includes(a)) || a.localeCompare(b));
-  const mineConf = T ? D.teams[idx.get(T)].conference : null;
-  if(!UI.conf || !confs.includes(UI.conf)) UI.conf = confs.includes(mineConf) ? mineConf : confs.includes(pref.get("conf")) ? pref.get("conf") : confs[0];
-  $("#confPick").innerHTML = confs.map(c=>`<option${c===UI.conf?" selected":""}>${c}</option>`).join("");
-  // records so far and conference games on the schedule, straight from the data
+// One conference's projected table, shared with the PDF: teams by average finishing place, each with its record so far
+// and the number of conference games on its schedule.
+function confStandings(r, conf){
   const rec=new Map(); const R=t=>{ if(!rec.has(t)) rec.set(t,{w:0,l:0,cw:0,cl:0,cg:0}); return rec.get(t); };
   D.games.forEach(g=>{
     const h=R(g.home), a=R(g.away);
@@ -1826,8 +1821,19 @@ function renderConf(r){
     if(g.conferenceGame){ w.cw++; l.cl++; }
   });
   const stat=new Map(r.teamStats.map(t=>[t.team,t]));
-  const rows=D.teams.filter(t=>t.conference===UI.conf).map(t=>({...stat.get(t.team), rec:R(t.team)}))
+  return D.teams.filter(t=>t.conference===conf).map(t=>({...stat.get(t.team), rec:R(t.team)}))
     .sort((a,b)=>a.confPlace-b.confPlace || b.confWins-a.confWins);
+}
+// conferences in display order: Power Four first, then the rest alphabetically
+const confOrder = () => confList.slice().sort((a,b)=>(P4.includes(b)-P4.includes(a)) || a.localeCompare(b));
+// Projected final conference table: teams ordered by their average finishing place across the simulated seasons
+// (champion first, then conference win share). Records are regular season; title games aren't in the schedule.
+function renderConf(r){
+  const confs=confOrder();
+  const mineConf = T ? D.teams[idx.get(T)].conference : null;
+  if(!UI.conf || !confs.includes(UI.conf)) UI.conf = confs.includes(mineConf) ? mineConf : confs.includes(pref.get("conf")) ? pref.get("conf") : confs[0];
+  $("#confPick").innerHTML = confs.map(c=>`<option${c===UI.conf?" selected":""}>${c}</option>`).join("");
+  const rows=confStandings(r, UI.conf);
   $("#confExplain").innerHTML = `<p>Every season the simulation plays out the rest of the schedule and the conference title game. Teams are ordered by their <strong>average finishing place</strong>: the champion first, then everyone else by conference winning percentage. Projected records are averages across ${r.N.toLocaleString()} seasons, with the record so far underneath. <strong>Title</strong> is how often the team wins the conference; <strong>Playoff</strong> is its chance of making the 12-team field.</p>`;
   const maxC=Math.max(0.01,...rows.map(t=>t.pConf)), maxP=Math.max(0.01,...rows.map(t=>t.pIn));
   const rl=(w,n)=>`${w.toFixed(1)}–${(n-w).toFixed(1)}`;

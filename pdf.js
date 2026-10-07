@@ -1,5 +1,5 @@
 // On-demand PDFs, drawn in the browser from the current simulation result.
-// Uses jsPDF (loaded lazily from cdnjs). Three products: the Top 25 board (landscape), the Top 10 games of a week (portrait)
+// Uses jsPDF (loaded lazily from cdnjs). Three products: the Top 25 board with a conference standings page (landscape), the Top 10 games of a week (portrait)
 // and the Week in review report for a completed week (portrait).
 (function(){
   const JSPDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
@@ -287,7 +287,61 @@
     doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.line(M, H-M-14, W-M, H-M-14);
     doc.setFont("helvetica","normal"); doc.setFontSize(6); doc.setTextColor(...MUTED);
     doc.text(doc.splitTextToSize(clean("Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining; straight seeding. Win probabilities from the SP+ rating gap with home advantage; final ordering is a strength-plus-resume stand-in for the committee."), W-2*M), M, H-M-6);
+    if(typeof confStandings==="function") confPage(doc, r);
     return doc;
+  }
+
+  // ---- page 2 of the board: every conference's projected final table, packed into four columns ----
+  function confPage(doc, r){
+    const W=792, H=612, M=22;
+    doc.addPage("letter","landscape");
+    doc.setFont("helvetica","bold"); doc.setFontSize(17); doc.setTextColor(...NAVY);
+    doc.text("Projected Conference Standings", M, M+14);
+    doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...MUTED);
+    doc.text(clean(`${D.season} season | data ${fmtDate(D.updatedAt)} | ${r.N.toLocaleString()} simulated seasons`), W-M, M+14, {align:"right"});
+    doc.setDrawColor(...NAVY); doc.setLineWidth(1.2); doc.line(M, M+20, W-M, M+20);
+
+    // each conference goes whole into the shortest column so far, biggest leagues first
+    const confs=confOrder().map(c=>({c, rows:confStandings(r,c)})).filter(x=>x.rows.length);
+    const NC=4, gap=12, colW=(W-2*M-gap*(NC-1))/NC, top=M+30, bottom=H-M-22, HEAD=2.2;   // a heading takes ~2.2 rows
+    const cols=Array.from({length:NC},()=>({items:[], n:0}));
+    confs.slice().sort((a,b)=>b.rows.length-a.rows.length).forEach(x=>{ const col=cols.reduce((m,c)=>c.n<m.n?c:m); col.items.push(x); col.n+=x.rows.length+HEAD; });
+    cols.forEach(col=>col.items.sort((a,b)=>confs.indexOf(a)-confs.indexOf(b)));
+    const rowH=Math.min(11, (bottom-top)/Math.max(...cols.map(c=>c.n)));
+    const f=Math.min(1, rowH/10);
+    // columns within a conference table: place, team, projected conference record, projected overall, title, playoff
+    const X={pl:9, team:13, conf:colW-94, all:colW-62, title:colW-34, po:colW-12};
+    const pct=v=>v>=0.005?Math.round(v*100)+"%":v>0?"<1%":"0%";
+    cols.forEach((col,ci)=>{
+      const x0=M+ci*(colW+gap); let y=top;
+      col.items.forEach(({c,rows})=>{
+        doc.setFont("helvetica","bold"); doc.setFontSize(8.6*f); doc.setTextColor(...NAVY); doc.text(clean(c), x0, y+rowH*0.9);
+        doc.setFontSize(5.4*f); doc.setTextColor(...MUTED);
+        doc.text("Conf", x0+X.conf, y+rowH*0.9, {align:"center"}); doc.text("Overall", x0+X.all, y+rowH*0.9, {align:"center"});
+        doc.text("Title", x0+X.title, y+rowH*0.9, {align:"center"}); doc.text("Playoff", x0+X.po, y+rowH*0.9, {align:"center"});
+        y+=rowH*1.2; doc.setDrawColor(...NAVY); doc.setLineWidth(0.6); doc.line(x0, y, x0+colW, y);
+        const maxC=Math.max(0.01,...rows.map(t=>t.pConf));
+        rows.forEach((t,i)=>{
+          const mine=T&&t.team===T, cy=y+rowH/2+1.8*f;
+          if(mine){ doc.setFillColor(...mixW(ACCENT,18)); doc.rect(x0, y+0.3, colW, rowH-0.6, "F"); }
+          doc.setFont("helvetica","normal"); doc.setFontSize(6*f); doc.setTextColor(...MUTED); doc.text(String(i+1), x0+X.pl, cy, {align:"right"});
+          doc.setFont("helvetica","bold"); doc.setTextColor(...(mine?ACCENT_TEXT:NAVY));
+          const rk=rankNo(t.team); doc.text(fitText(doc, clean((rk?`#${rk} `:"")+short(t.team)), X.conf-X.team-16), x0+X.team, cy);
+          doc.setFont("helvetica","normal"); doc.setTextColor(...NAVY);
+          doc.text(`${t.confWins.toFixed(1)}-${(t.rec.cg-t.confWins).toFixed(1)}`, x0+X.conf, cy, {align:"center"});
+          doc.text(`${t.wins.toFixed(1)}-${(t.games-t.wins).toFixed(1)}`, x0+X.all, cy, {align:"center"});
+          // title pill in the accent, playoff pill in green, both shaded like the site
+          const pill=(cx,v,base,max)=>{ const bg=mixW(base,mixCurve(v/max)); doc.setFillColor(...bg); doc.roundedRect(cx-10, y+rowH/2-rowH*0.4, 20, rowH*0.8, 1.6, 1.6, "F");
+            doc.setFont("helvetica","bold"); doc.setFontSize(5.6*f); doc.setTextColor(...pillText(bg)); doc.text(pct(v), cx, cy-0.2, {align:"center"}); };
+          pill(x0+X.title, t.pConf, ACCENT, maxC); pill(x0+X.po, t.pIn, GREEN, 1);
+          y+=rowH; doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(x0, y, x0+colW, y);
+        });
+        y+=rowH;
+      });
+    });
+    doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.line(M, H-M-14, W-M, H-M-14);
+    doc.setFont("helvetica","normal"); doc.setFontSize(6); doc.setTextColor(...MUTED);
+    doc.text(doc.splitTextToSize(clean("Teams are ordered by average finishing place across the simulated seasons: the conference champion first, then conference winning percentage. Records are projected regular-season averages; Title = chance of winning the conference (title game included); Playoff = chance of making the 12-team field."), W-2*M), M, H-M-6);
   }
 
   // ---- product 2: top 10 games of a week ----
