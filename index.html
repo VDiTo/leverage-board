@@ -489,8 +489,20 @@
   .rv-note{font-size:12.5px;color:var(--muted);margin-top:16px;border-top:1px solid var(--line);padding-top:8px}
   /* ---- what if ---- */
   .wi-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:6px 28px;align-items:start}
-  .wi-grid>div{min-width:0}
+  .wi-grid>div,#wiResult>div{min-width:0}
   @media (max-width:860px){ .wi-grid{grid-template-columns:1fr} }
+  /* desktop: the tab breaks out of the page column like the board does, and on wide screens the results split into two
+     columns of their own: the headline, the teams it moves and the next games in the middle, the projected field on the right */
+  @media (min-width:1100px){
+    #tab-whatif{margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);width:100vw;box-sizing:border-box;padding:6px 28px 0}
+    .wi-wrap{max-width:1640px;margin:0 auto}
+  }
+  @media (min-width:1300px){
+    .wi-grid{grid-template-columns:minmax(0,9fr) minmax(0,10fr) minmax(0,11fr);gap:6px 32px}
+    .wi-b td,.wi-b th{padding:5px 4px}
+    #wiResult{display:contents}
+    .wi-games{grid-column:1;grid-row:1/3} .wi-a{grid-column:2;grid-row:1} .wi-c{grid-column:2;grid-row:2} .wi-b{grid-column:3;grid-row:1/3}
+  }
   #tab-whatif h3{margin:14px 0 6px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
   #tab-whatif .movers h3{margin-top:4px}
   #tab-whatif .controls{margin-top:0} #tab-whatif .controls input{flex:1 1 150px;min-width:0}
@@ -508,12 +520,22 @@
   .wi-t.me{border-color:color-mix(in srgb, var(--gold) 60%, transparent)}
   .wi-t.win,.wi-t.win:hover{background:var(--gold);color:#10233a;border-color:var(--gold)} .wi-t.win small,.wi-t.win .rk{color:#10233a;opacity:.75}
   .wi-t.lose{opacity:.45}
+  .wi-t.want{border-color:var(--for)}   /* the team the selected team wants to win */
   body.light .wi-t.win,body.light .wi-t.win small,body.light .wi-t.win .rk{color:#fff}   /* the light accent is dark, like the other pressed buttons */
   .wi-picks{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 4px}
   .wi-chip{display:inline-flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:3px 5px 3px 9px;font-size:13px;white-space:nowrap}
   .wi-chip b{font-weight:600}
   .wi-chip button{background:transparent;border:0;color:var(--muted);padding:0 3px;font-size:16px;line-height:1;font-weight:500} .wi-chip button:hover{color:var(--against)}
-  #wiResult{transition:opacity .2s} #wiResult.stale{opacity:.45}
+  #wiResult>div{transition:opacity .2s} #wiResult.stale>div{opacity:.45}
+  /* direction: after-values and deltas go green or red, cards take a colored edge, field rows are tinted by what happened */
+  #wiResult .rv-ba b.good,#wiResult .good{color:var(--for)} #wiResult .rv-ba b.bad,#wiResult .bad{color:var(--against)}
+  .wi-d{font-weight:700;font-size:11.5px;margin-left:5px;white-space:nowrap}
+  #wiResult .stat.up{border-left:3px solid var(--for)} #wiResult .stat.down{border-left:3px solid var(--against)}
+  #wiResult .stat b em{color:var(--muted)}
+  #wiResult tr.wi-in td{background:color-mix(in srgb, var(--for) 14%, transparent)} #wiResult tr.wi-up td{background:color-mix(in srgb, var(--for) 6%, transparent)}
+  #wiResult tr.wi-dn td{background:color-mix(in srgb, var(--against) 7%, transparent)}
+  #wiResult tr.wi-in td:first-child,#wiResult tr.wi-up td:first-child{box-shadow:inset 3px 0 0 var(--for)} #wiResult tr.wi-dn td:first-child{box-shadow:inset 3px 0 0 var(--against)}
+  #wiResult .wi-out{color:var(--against)} #wiResult .wi-out .tn,#wiResult .wi-out b{color:var(--against)}
   #wiResult table{font-size:12.5px} #wiResult th{position:static} #wiResult td,#wiResult th{padding:5px 6px} #wiResult td.k{min-width:0;position:static;box-shadow:none}
   #wiResult td.ch{text-align:center;width:90px} #wiResult .tn{text-decoration:none}
   #wiResult .rv-stats{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
@@ -632,14 +654,14 @@
     <div class="scroll"><table id="confTable"></table></div>
   </section>
 
-  <section class="tab" id="tab-whatif" hidden>
+  <section class="tab" id="tab-whatif" hidden><div class="wi-wrap">
     <h2><span>What if</span><button id="wiClear" class="ghost h2-right" title="Forget every pick" hidden>Clear picks</button></h2>
     <div class="explain" id="wiExplain"></div>
     <div id="wiPicks"></div>
     <div class="prog" id="wiProg" hidden><i id="wiBar"></i></div>
     <div class="sub" id="wiNote" hidden></div>
     <div class="wi-grid">
-      <div>
+      <div class="wi-games">
         <h3>Pick the winners</h3>
         <div class="controls">
           <select id="wiWeek" aria-label="Week"></select>
@@ -647,12 +669,9 @@
         </div>
         <div id="wiGames"></div>
       </div>
-      <div>
-        <h3>What changes</h3>
-        <div id="wiResult"></div>
-      </div>
+      <div id="wiResult"></div>
     </div>
-  </section>
+  </div></section>
 
   <div class="foot" id="foot"></div>
 </div>
@@ -1952,8 +1971,10 @@ const wiKey=()=>RES ? `${resultKey()}|${RES.N}|`+[...WHATIF.picks].sort((a,b)=>a
 // one pickable game: each team is a button carrying its win chance; the picked winner is filled in, the loser fades
 function wiRow(g, showWeek, why){
   const s=WHATIF.picks.get(g.i);
+  // with a team selected, the side it wants outlined in green (its own games: itself) until the game is decided
+  const want = !s && T && (g.involvesMe ? T : (g.clear ? (g.swing>0?g.home:g.away) : null));
   const name=team=>{ const rk=rankOf(team), sh=short(team); return (rk?`<span class="rk">#${rk}</span> `:"")+(sh===team?team:`<span class="nm-full">${team}</span><span class="nm-short">${sh}</span>`); };
-  const t=(team,side,win)=>`<button type="button" class="wi-t${s?(s===side?" win":" lose"):""}${team===T?" me":""}" data-game="${g.i}" data-side="${side}" aria-pressed="${s===side}" title="${s===side?"Undo: ":""}${team} wins">${name(team)}<small class="num">${fmtWin(win)}%</small></button>`;
+  const t=(team,side,win)=>`<button type="button" class="wi-t${s?(s===side?" win":" lose"):""}${team===T?" me":""}${team===want?" want":""}" data-game="${g.i}" data-side="${side}" aria-pressed="${s===side}" title="${s===side?"Undo: ":""}${team} wins">${name(team)}<small class="num">${fmtWin(win)}%</small></button>`;
   const when=g.live?`<span class="livetag">LIVE</span>`:fmtKick(g);
   const meta=[showWeek?`Week ${g.week}`:"", when, g.tv||"", g.spreadText||""].filter(Boolean).join(" · ");
   const pill=`<span class="lev${why?" why":""}"${why?` data-game="${g.i}" role="button" title="Why does this game matter?"`:""}>Leverage ${scorePill(g.lev>0?g.levN:null, g.sure)}</span>`;
@@ -1961,7 +1982,7 @@ function wiRow(g, showWeek, why){
 }
 function renderWhatIf(r){
   const el=$("#wiGames");
-  $("#wiExplain").innerHTML=`<p>Pick winners for the games that matter and the rest of the season is simulated again with those results locked in. Everything else stays as it is: the same ratings, the same win chances for every other game, and the same random stream as the main result, so every difference is the effect of your picks and not simulation noise. Games are listed by leverage score${T?` for <strong>${T}</strong>`:""}; the week picker and the search box reach any remaining game. Tap a team to make it win, tap again to undo. Picks are kept on this device and drop off once a game is final.</p>`;
+  $("#wiExplain").innerHTML=`<p>Pick winners for the games that matter and the rest of the season is simulated again with those results locked in. Everything else stays as it is: the same ratings, the same win chances for every other game, and the same random stream as the main result, so every difference is the effect of your picks and not simulation noise. Games are listed by leverage score${T?` for <strong>${T}</strong>`:""}; the week picker and the search box reach any remaining game. Tap a team to make it win, tap again to undo.${T?` A green outline marks the side ${T} wants to win.`:""} Picks are kept on this device and drop off once a game is final.</p>`;
   if(!r){ el.innerHTML=`<div class="sub" style="padding:10px 0">Run the simulation first.</div>`; return; }
   // picks on games that have since gone final are dropped
   let dropped=false; [...WHATIF.picks.keys()].forEach(i=>{ const g=D.games[i]; if(!g || g.completed){ WHATIF.picks.delete(i); dropped=true; } }); if(dropped) wiSavePicks();
@@ -1998,7 +2019,7 @@ function wiEnsure(){
   const key=wiKey(), res=$("#wiResult");
   clearTimeout(WHATIF.timer);
   if(!WHATIF.picks.size){ WHATIF.key=null; WHATIF.data=null; WHATIF.run++; $("#wiProg").hidden=true; $("#wiNote").hidden=true; res.classList.remove("stale");
-    res.innerHTML=`<div class="sub">Nothing locked in yet. Decide some games and this side shows ${T?`<b>${T}</b>'s playoff chance before and after, `:""}the teams whose playoff chances move most, the projected field, and which games matter most next.</div>`; return; }
+    res.innerHTML=`<div class="wi-a"><h3>What changes</h3><div class="sub">Nothing locked in yet. Decide some games and this side shows ${T?`<b>${T}</b>'s playoff chance before and after, `:""}the teams whose playoff chances move most, the projected field, and which games matter most next.</div></div>`; return; }
   if(WHATIF.key===key && WHATIF.data){ renderWhatIfResult(); return; }
   res.classList.add("stale");
   if(UI.tab!=="whatif") return;
@@ -2020,16 +2041,16 @@ function renderWhatIfResult(){
   res.classList.remove("stale");
   const mB=new Map(B.teamStats.map(t=>[t.team,t])), mA=new Map(A.teamStats.map(t=>[t.team,t]));
   const cls=v=>v>0.0005?"good":v<-0.0005?"bad":"";
-  const arrowP=(a,b)=>`<span class="rv-ba num">${pct(a)}% <em>→</em> <b class="${cls(b-a)}">${pct(b)}%</b></span>`;
+  const arrowP=(a,b,noD)=>`<span class="rv-ba num">${pct(a)}% <em>→</em> <b class="${cls(b-a)}">${pct(b)}%</b>${!noD&&Math.abs(b-a)>=0.0005?`<small class="wi-d ${cls(b-a)}">${fmtMove(b-a)}</small>`:""}</span>`;
   const picksTxt=wiPickList().map(([i,s])=>`${wiWinner(D.games[i],s)} over ${wiLoser(D.games[i],s)}`).join(", ");
 
   // every FBS team's move, then the biggest either way
   const mv=A.teamStats.filter(t=>!t.fcs&&mB.has(t.team)).map(t=>{ const b=mB.get(t.team); return {team:t.team, conf:t.conf, before:b.pIn, after:t.pIn, d:t.pIn-b.pIn, cb:b.pConf, ca:t.pConf}; });
   const up=mv.filter(x=>x.d>=0.005).sort((a,b)=>b.d-a.d).slice(0,10), down=mv.filter(x=>x.d<=-0.005).sort((a,b)=>a.d-b.d).slice(0,10);
   const row=(x,color,max)=>{ const rk=rankOf(x.team), tc=Math.abs(x.ca-x.cb)>=0.005;
-    return `<tr class="${x.team===T?"me":""}"><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tnPhone(x.team)}</td><td class="sub">${confPhone(x.conf)}</td><td class="num">${arrowP(x.before,x.after)}</td><td class="ch"><span class="rv-delta num" style="${ramp(Math.abs(x.d),color,max)}">${fmtMove(x.d)}</span></td><td class="num" style="white-space:nowrap">${tc?arrowP(x.cb,x.ca):'<span class="sub">—</span>'}</td></tr>`; };
+    return `<tr class="${x.team===T?"me":""}"><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tnPhone(x.team)}</td><td class="sub">${confPhone(x.conf)}</td><td class="num">${arrowP(x.before,x.after,true)}</td><td class="ch"><span class="rv-delta num" style="${ramp(Math.abs(x.d),color,max)}">${fmtMove(x.d)}</span></td><td class="num" style="white-space:nowrap">${tc?arrowP(x.cb,x.ca):'<span class="sub">—</span>'}</td></tr>`; };
   const tbl=(list,color)=>list.length?`<div class="scroll"><table><tr><th></th><th>Team</th><th></th><th>Playoff chance</th><th class="c">Change</th><th>Conf title</th></tr>${list.map(x=>row(x,color,Math.max(0.01,...list.map(y=>Math.abs(y.d))))).join("")}</table></div>`:`<div class="sub" style="padding:4px 0">No team moves by half a point or more.</div>`;
-  const mine = T && !up.concat(down).some(x=>x.team===T) ? (()=>{ const x=mv.find(y=>y.team===T); return x?`<div class="sub" style="margin-top:4px"><b>${T}</b>: ${arrowP(x.before,x.after)} (<b class="${cls(x.d)}">${fmtMove(x.d)}</b>)</div>`:""; })() : "";
+  const mine = T && !up.concat(down).some(x=>x.team===T) ? (()=>{ const x=mv.find(y=>y.team===T); return x?`<div class="sub" style="margin-top:4px"><b>${T}</b>: ${arrowP(x.before,x.after)}</div>`:""; })() : "";
   const movers=`<h3>Most affected teams</h3><div class="sub" style="margin:-2px 0 6px">Playoff chance now → with your picks, and the change in percentage points. Conf title shows where a pick also moves a conference race.</div><div class="movers"><div><h3 class="up">Helped</h3>${tbl(up,"var(--for)")}</div><div><h3 class="down">Hurt</h3>${tbl(down,"var(--against)")}</div></div>${mine}`;
 
   // the projected field now and with the picks: who comes in, who drops out, who moves seeds
@@ -2039,16 +2060,17 @@ function renderWhatIfResult(){
   const rows=fA.map(t=>{ const s0=seedB.get(t.team), b=mB.get(t.team);
     const chg = s0==null ? `<b class="good">In</b> <span class="sub">(was ${outB.indexOf(t.team)>=0?ord[outB.indexOf(t.team)]+" out":pct(b?b.pIn:0)+"%"})</span>`
       : s0===t.seed ? `<span class="sub">—</span>` : `<b class="${s0>t.seed?"good":"bad"}">${s0>t.seed?"▲":"▼"} ${Math.abs(s0-t.seed)}</b> <span class="sub">was #${s0}</span>`;
-    return `<tr class="${t.team===T?"me":""}"><td class="r num"><b>${t.seed}</b></td><td class="k">${tnPhone(t.team)}</td><td class="sub" style="white-space:nowrap">${t.tag==="at-large"?"at-large":"champ"} · ${confPhone(t.conf)}</td><td class="num">${b?arrowP(b.pIn,t.pIn):pct(t.pIn)+"%"}</td><td style="white-space:nowrap">${chg}</td></tr>`; });
+    const tint = s0==null ? " wi-in" : s0>t.seed ? " wi-up" : s0<t.seed ? " wi-dn" : "";
+    return `<tr class="${t.team===T?"me":""}${tint}"><td class="r num"><b>${t.seed}</b></td><td class="k">${tnPhone(t.team)}</td><td class="sub" style="white-space:nowrap">${t.tag==="at-large"?"at-large":"champ"} · <span title="${t.conf}">${CONF_SHORT[t.conf]||t.conf}</span></td><td class="num">${b?arrowP(b.pIn,t.pIn):pct(t.pIn)+"%"}</td><td style="white-space:nowrap">${chg}</td></tr>`; });
   const dropped=fB.filter(t=>!seedA.has(t.team)).map(t=>{ const a=mA.get(t.team), k=fA.nextOut.findIndex(x=>x.team===t.team); return `${tn(t.team)} <span class="sub">was seed ${t.seed}, now ${k>=0?ord[k]+" out":pct(a?a.pIn:0)+"%"}</span>`; });
   const nextOut=fA.nextOut.map(t=>`${tn(t.team)} <span class="sub num">${pct(t.pIn)}%${seedB.has(t.team)?", was seed "+seedB.get(t.team):""}</span>`);
   const swaps=fA.filter(t=>!seedB.has(t.team)).length, moved=fA.filter(t=>seedB.has(t.team)&&seedB.get(t.team)!==t.seed).length;
   const field=`<h3>Projected field: ${swaps?`${swaps} team${swaps>1?"s":""} swap${swaps>1?"":"s"} in`:moved?`same twelve, ${moved} seed${moved>1?"s":""} move`:"unchanged"}</h3>
     <div class="scroll"><table><tr><th>Seed</th><th>Team</th><th>Path</th><th class="c">Playoff</th><th>Change</th></tr>${rows.join("")}</table></div>
-    <div class="sub" style="margin-top:6px">${dropped.length?`<b>Out:</b> ${dropped.join(" · ")}<br>`:""}<b>Next out:</b> ${nextOut.join(" · ")}</div>`;
+    <div class="sub" style="margin-top:6px">${dropped.length?`<span class="wi-out"><b>Out:</b> ${dropped.join(" · ")}</span><br>`:""}<b>Next out:</b> ${nextOut.join(" · ")}</div>`;
 
   // headline cards, and a one-line verdict beside the picks
-  const card=(lab,val,sub,good)=>`<div class="stat rv-stat"><span>${lab}</span><b class="num">${val}</b>${sub?`<small class="num ${good>0?"good":good<0?"bad":""}">${sub}</small>`:""}</div>`;
+  const card=(lab,val,sub,good)=>`<div class="stat rv-stat${good>0.0005?" up":good<-0.0005?" down":""}"><span>${lab}</span><b class="num">${val}</b>${sub?`<small class="num ${good>0?"good":good<0?"bad":""}">${sub}</small>`:""}</div>`;
   const arrowC=(a,b)=>`${pct(a)}%<em>→</em><span class="${cls(b-a)}">${pct(b)}%</span>`;   // for the cards: no nested <b>, which the card rule would turn into a block
   const pts=d=>`${fmtMove(d)} pts`;
   let head, verdict;
@@ -2069,8 +2091,8 @@ function renderWhatIfResult(){
   const next=A.games.filter(g=>!g.done&&!WHATIF.picks.has(g.i)&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,8);
   const nextHtml=`<h3>What matters most next</h3><div class="sub" style="margin:-2px 0 6px">With your picks locked in, the remaining games with the most leverage${T?` for ${T}`:" on the field"}, scored against each other. Tap a team to add it to the scenario.</div>${next.map(g=>wiRow(g,true,false)).join("")||`<div class="sub">No remaining game moves ${T?T+"'s odds":"the field"}.</div>`}`;
 
-  res.innerHTML = head + movers + field + nextHtml
-    + `<div class="rv-note">Scenario: ${picksTxt}. ${A.N.toLocaleString()} seasons on the same random stream as the main result, so the differences are the effect of the picks rather than simulation noise. Ratings, polls and every other game's win chance are unchanged.</div>`;
+  res.innerHTML = `<div class="wi-a"><h3>What changes</h3>${head}${movers}</div><div class="wi-b">${field}</div><div class="wi-c">${nextHtml}`
+    + `<div class="rv-note">Scenario: ${picksTxt}. ${A.N.toLocaleString()} seasons on the same random stream as the main result, so the differences are the effect of the picks rather than simulation noise. Ratings, polls and every other game's win chance are unchanged.</div></div>`;
 }
 $("#tab-whatif").addEventListener("click",e=>{
   const t=e.target.closest("button.wi-t"); if(t){ wiPick(+t.dataset.game, t.dataset.side); return; }
