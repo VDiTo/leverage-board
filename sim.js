@@ -34,7 +34,7 @@
 
   // one season at a time; P carries the precomputed schedule arrays, ti the target team (-1 for no team)
   function createSim(P, ti, seed, acc){
-    const {nT,nG,gH,gA,gP,gLine,gDone,gRes,gConf,gHfa,rating,teamGames,members,confIdx,isP4,config}=P;
+    const {nT,nG,gH,gA,gP,gLine,gDone,gRes,gConf,gHfa,rating,poll,teamGames,members,confIdx,isP4,config}=P;
     const confList=P.confList;
     const NONE = ti < 0; // no preferred team: score games by how often they change who makes the field
   const W=new Int32Array(nT), L=new Int32Array(nT), CW=new Int32Array(nT), CL=new Int32Array(nT);
@@ -59,6 +59,12 @@
   // change which champion takes the fifth auto-bid, only how G6 teams rank against everyone else.
   const G6D = config.g6Discount ?? 10;
   const g6 = new Uint8Array(nT); for(let i=0;i<nT;i++) g6[i] = (confIdx[i]>=0 && !isP4[confIdx[i]]) ? 1 : 0;
+  // The fifth auto-bid goes to the Group of Six champion the committee ranks highest, and the committee leans on
+  // reputation there in a way SP+ does not. A poll bonus (the CFP ranking once it exists, AP until then) joins the
+  // score only for that pick: pollWeight points for No. 1, tapering to half that at No. 25, nothing unranked. Being
+  // ranked at all is most of the signal for a Group of Six team, so the taper is gentle.
+  const PW = config.pollWeight ?? 10;
+  const pb = new Float64Array(nT); if(poll) for(let i=0;i<nT;i++) pb[i] = poll[i]>0 && poll[i]<=25 ? PW*(1-(poll[i]-1)/48) : 0;
   const RS = config.ratingSd ?? 8;
   const rs = new Float64Array(nT);
 
@@ -133,7 +139,7 @@
       for(let kk=0;kk<nC;kk++){
         if(isP4[kk]) continue;
         const c = kk===k ? newC : champ[kk];
-        if(c>=0 && sc(c)>best){ best=sc(c); newG6=c; }
+        if(c>=0 && sc(c)+pb[c]>best){ best=sc(c)+pb[c]; newG6=c; }
       }
     }
     const p4Change = k>=0 && isP4[k];
@@ -201,7 +207,7 @@
       for(let kk=0;kk<nC;kk++){
         if(isP4[kk]) continue;
         const c = kk===k ? newC : champ[kk];
-        if(c>=0 && sc(c)>best){ best=sc(c); newG6=c; }
+        if(c>=0 && sc(c)+pb[c]>best){ best=sc(c)+pb[c]; newG6=c; }
       }
     }
     const p4Change = k>=0 && isP4[k];
@@ -263,7 +269,7 @@
         const c=resolveConf(k); champ[k]=c;
         if(c<0) continue;
         if(isP4[k]) aq[c]=1;
-        else if(score[c]>bestG6s){bestG6=c;bestG6s=score[c];}
+        else if(score[c]+pb[c]>bestG6s){bestG6=c;bestG6s=score[c]+pb[c];}
       }
       if(bestG6>=0){ aq[bestG6]=1; acc.g6N[bestG6]++; }
       for(let k=0;k<nC;k++) if(isP4[k] && champ[k]>=0) acc.p4ChampN[champ[k]]++;

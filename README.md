@@ -71,6 +71,16 @@ that the model put a second Group of Six team in the field in half its seasons;
 with it that happens in about one season in ten, and Group of Six games stop
 registering as leverage for a Power Four or independent contender.
 
+The fifth auto-bid goes to the Group of Six champion the committee ranks
+highest, and there the committee leans on reputation in a way SP+ does not: a
+ranked Boise State sits above an unranked Sun Belt champion with the same
+record. So that one pick adds a poll bonus to the score: `pollWeight` (10)
+points for the No. 1 team, tapering gently to half that at No. 25, nothing for
+an unranked team. It uses the CFP committee ranking once that exists and the AP
+poll until then, and it affects only which champion takes the bid, not the rest
+of the ranking. The bonus is whatever the poll says today; a team that keeps
+winning will see it grow with each week's poll.
+
 Leverage score on the weekly slate is impact × 4p(1-p): the raw swing in
 playoff odds, discounted by how unlikely a coin-flip-sized surprise is. A 97/3
 game keeps about 12% of its impact.

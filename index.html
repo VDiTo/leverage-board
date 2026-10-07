@@ -732,7 +732,7 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
 }).catch(e=>{ $("#stamp").textContent="Couldn't load data.json — run scripts/fetch-data.mjs first."; });
 
 // ---------- precompute ----------
-let idx, rating, confOf, tierOf, confList, P4=["ACC","Big Ten","Big 12","SEC"];
+let idx, rating, poll, confOf, tierOf, confList, P4=["ACC","Big Ten","Big 12","SEC"];
 let gH,gA,gP,gPsp,gPline,gConf,gDone,gRes,gWeek,gLine,gHfa,nG,nT;
 let confIdx, members, isP4, teamGames, gamesPerTeam;
 // CFBD labels the opening weekend (Aug 29-30) as week 1 along with the Labor Day weekend. Split week 1 by
@@ -751,6 +751,7 @@ function buildParams(Dx){
   const nT = Dx.teams.length;
   const idx = new Map(Dx.teams.map((t,i)=>[t.team,i]));
   const rating = Float64Array.from(Dx.teams.map(t=>t.rating));
+  const poll = Int32Array.from(Dx.teams.map(t=>t.cfpRank||t.apRank||0)); // committee ranking once it exists, AP until then; 0 = unranked
   const confOf = Dx.teams.map(t=>t.conference);
   const tierOf = Dx.conferenceTiers;
   const confList = [...new Set(confOf)].filter(c=>tierOf[c]!=="IND" && tierOf[c]!=="FCS");
@@ -779,12 +780,12 @@ function buildParams(Dx){
   });
   const teamGames = tg.map(a=>Int32Array.from(a));
   const gamesPerTeam = Int32Array.from(tg.map(a=>a.length));
-  return { nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,teamGames,gamesPerTeam,members,confIdx,isP4,confList,config:Dx.config,idx,confOf,tierOf };
+  return { nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,poll,teamGames,gamesPerTeam,members,confIdx,isP4,confList,config:Dx.config,idx,confOf,tierOf };
 }
 function build(){
   if(window.applyLive) window.applyLive();
   splitWeekZero();
-  ({ nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,teamGames,gamesPerTeam,members,confIdx,isP4,confList,idx,confOf,tierOf } = buildParams(D));
+  ({ nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,poll,teamGames,gamesPerTeam,members,confIdx,isP4,confList,idx,confOf,tierOf } = buildParams(D));
 }
 
 // ---------- simulation ----------
@@ -803,10 +804,10 @@ function build(){
 // them, otherwise inline in timed chunks. The page keeps its worker pool between runs.
 const SIM = { pool:[], token:0 };
 function simParams(){
-  return { nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,teamGames,gamesPerTeam,members,confIdx,isP4,confList,config:D.config };
+  return { nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,poll,teamGames,gamesPerTeam,members,confIdx,isP4,confList,config:D.config };
 }
 // what the workers are sent: the season loop's inputs only (the typed arrays are copied across)
-const coreParams = P => ({ nT:P.nT,nG:P.nG,gH:P.gH,gA:P.gA,gP:P.gP,gLine:P.gLine,gDone:P.gDone,gRes:P.gRes,gConf:P.gConf,gHfa:P.gHfa,rating:P.rating,teamGames:P.teamGames,members:P.members,confIdx:P.confIdx,isP4:P.isP4,confList:P.confList,config:P.config });
+const coreParams = P => ({ nT:P.nT,nG:P.nG,gH:P.gH,gA:P.gA,gP:P.gP,gLine:P.gLine,gDone:P.gDone,gRes:P.gRes,gConf:P.gConf,gHfa:P.gHfa,rating:P.rating,poll:P.poll,teamGames:P.teamGames,members:P.members,confIdx:P.confIdx,isP4:P.isP4,confList:P.confList,config:P.config });
 function simulate(target, N, onProgress, done){
   const ti = target ? idx.get(target) : -1;
   simulateP(SIM, simParams(), ti, N, onProgress, done, null);

@@ -211,7 +211,7 @@ writeFileSync(new URL("../data.json", import.meta.url), JSON.stringify({
     media: { games: mediaRaw.length, matched: tvByGame.size },
     pdfTeam: process.env.PDF_TEAM || process.env.TEAM || "Notre Dame",
   },
-  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, lossPenalty: 5, winCurve: 0.1, winFloor: 7, lossQuality: 0.35, winQualityLo: 0, winQualityHi: 15, g6Discount: 10, ratingSd: 8, atLargeSlots: 7 },
+  config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, lossPenalty: 5, winCurve: 0.1, winFloor: 7, lossQuality: 0.35, winQualityLo: 0, winQualityHi: 15, g6Discount: 10, pollWeight: 10, ratingSd: 8, atLargeSlots: 7 },
   conferenceTiers: Object.fromEntries([...new Set(teams.map((t) => t.conference))]
     .map((c) => [c, TIER[c] || "G6"])),
   teams,
