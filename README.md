@@ -116,6 +116,23 @@ a phone); the browser's own print of the page gives the same one-sheet
 layout (`index.html#print-review` opens the page that way for headless
 printing).
 
+## What if
+
+The What if tab lets you decide games yourself. It lists the remaining games
+by leverage score for the selected team (or for the field), by week or by
+searching for a team, and each team is a button: tap it to make it win, tap
+again to undo. With picks in place the season is simulated again from a copy
+of the data with those results locked in, on the same fixed random stream as
+the main result (a decided game still consumes its draw), so every difference
+is the effect of the picks and not simulation noise. The page then shows the
+selected team's playoff chance, auto-bid chance, projected record and median
+ranking before and after; the teams whose playoff chances move most, up and
+down, with any conference race a pick also moves; the projected 12-team field
+with who came in, who dropped out and who changed seeds; and, with the picks
+in, the remaining games that now carry the most leverage, each of which can be
+added to the scenario. Picks are kept on the device by the two team names, so
+they survive a reload and a data refresh, and drop off once a game is final.
+
 ## One-page PDFs
 
 The site builds two PDFs on demand, in the browser, from whatever is selected:
