@@ -45,6 +45,27 @@ Ratings are SP+ (this season's once published, otherwise last season's
 regressed 25%). They come from CollegeFootballData, which mirrors ESPN a day or
 more after Bill Connelly's Sunday update; when ESPN's own table is newer, the
 fetch reads it directly and the header stamp says so ("SP+ 2026 (ESPN, Oct 4)").
+
+Two other systems ride along: Brian Fremeau's **FEI** (opponent-adjusted scoring
+advantage per non-garbage possession) and **F+** (his standardized blend of FEI
+and SP+), both read from bcftoys.com, which publishes one plain table per
+season, refreshed on Mondays and stamped "through Week N". Neither is in points,
+and every knob below (home advantage, the margin spread, the rating noise) is
+calibrated to SP+'s points scale, so the fetch maps each one onto that scale
+with a least-squares line fitted against the current SP+ ratings across the FBS
+teams (the slope, intercept and correlation are logged and kept in
+`meta.altFit`; both correlate with SP+ above 0.95). The model selector in the
+header picks which system drives the simulation: every win chance, each team's
+strength in the ranking, the projected scores, the stamps on the page and the
+PDFs. The saved result and the What if scenarios are keyed by model, so
+numbers from different models never mix. The team popup shows all three with
+their unit breakdowns and editions. The Week in
+review tab always runs on SP+, because the editions it compares are the SP+
+ones recorded in `history.json`; it says so when another model is selected.
+Until a season's FEI or F+ is published the prior season's final table is used,
+regressed 25% like SP+; a model that could not be fetched is greyed out in the
+selector. FCS placeholders keep their fixed rating under every model.
+
 Ratings are treated as uncertain: each simulated season draws a
 "true strength" for every team around its rating (`ratingSd`, 8 points).
 Without that, the top-rated team is a near-lock before kickoff.
@@ -157,8 +178,11 @@ have a key. Its schedules are synthetic — do not read anything into them.
 
 The workflow in `.github/workflows/` refreshes `data.json` every morning at
 10:17 UTC (6:17 AM Eastern) and again around game nights, Sunday afternoons and
-Monday/Tuesday: results and records to date, AP and CFP rankings, SP+, betting
-lines, kickoff times and TV. Trigger it by hand from the Actions tab whenever
+Monday/Tuesday: results and records to date, AP and CFP rankings, SP+, FEI and
+F+ (with their points-scale fits), betting lines, kickoff times and TV. Trigger it by hand from the Actions tab whenever
 you want fresher numbers. `node scripts/espn-sp.mjs` shows what the ESPN SP+
 parser sees against the team names in `data.json`; set `ESPN_SP_ARTICLE` to pin
 an article id if ESPN's search stops finding the season's rankings page.
+`node scripts/bcftoys.mjs` does the same for the FEI and F+ tables (pass a year
+to check another season); `node scripts/bcftoys.mjs --write` refreshes only the
+FEI and F+ fields in `data.json`, for when a CFBD key is not to hand.

@@ -397,6 +397,7 @@
   .sp-ed .ph{visibility:hidden} .sp-trend .sp-arrow{align-self:center}
   .sp-ed small{color:var(--muted);font-size:10.5px} .sp-ed b{font-size:15px} .sp-ed em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)} .sp-ed em.good{color:var(--for)} .sp-ed em.bad{color:var(--against)}
   .sp-arrow{color:var(--muted)}
+  .unit-row{display:flex;flex-wrap:wrap;gap:0 18px;align-items:flex-start} .unit-row .unit-box{flex:1 1 220px;min-width:0} .unit-row .unit-box h3 .sub{font-weight:400}
   .hl-btn{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:12px;font-weight:500}
   .hl-btn i{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block} .hl-btn b{color:var(--muted);font-weight:600}
   .hl-btn.on{border-color:var(--gold);background:color-mix(in srgb, var(--gold) 18%, transparent)} .hl-btn.me{font-weight:700}
@@ -554,6 +555,11 @@
       <option value="10000" selected>10,000 seasons</option>
       <option value="25000">25,000 seasons</option>
     </select>
+    <select id="model" aria-label="Rating model that drives the simulation" title="Which rating system sets every win chance and each team's strength">
+      <option value="sp">SP+</option>
+      <option value="fei">FEI</option>
+      <option value="fplus">F+</option>
+    </select>
     <label class="chk"><input type="checkbox" id="teamColors" checked> Team colors</label>
     <label class="chk"><input type="checkbox" id="liveOn" checked> Live scores</label>
     <button id="run">Run simulation</button>
@@ -682,6 +688,16 @@ const $ = s => document.querySelector(s);
 let D=null, T=null, RES=null;
 // per-device preferences (team, season count, lines toggle, last tab)
 const pref = { get(k){ try{ return localStorage.getItem("lb."+k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem("lb."+k, v); }catch(e){} } };
+// Which rating system drives the simulation. SP+ is the file's `rating`; FEI and F+ (bcftoys.com) ride along in
+// `ratingsAlt`, already mapped onto SP+'s points scale by the fetch, so home advantage, the margin spread and the
+// rating noise keep their calibration. A team without a number for the chosen model falls back to its SP+ points.
+// The Week in review tab stays on SP+: its before/after states come from the SP+ editions recorded in history.json.
+const MODEL_NAMES = { sp:"SP+", fei:"FEI", fplus:"F+" };
+let MODEL = "sp";
+const modelAvail = k => k==="sp" || !!(D && D.meta && D.meta.models && D.meta.models[k] && D.teams.some(t=>!t.fcs && t.ratingsAlt && t.ratingsAlt[k]!=null));
+const modelLabel = (k=MODEL) => (D && D.meta && ((D.meta.models && D.meta.models[k]) || (k==="sp" && D.meta.ratings))) || MODEL_NAMES[k];   // the edition, for stamps
+const modelName = (k=MODEL) => MODEL_NAMES[k] || k;
+const ratingFor = (t, k=MODEL) => k!=="sp" && t.ratingsAlt && t.ratingsAlt[k]!=null ? +t.ratingsAlt[k] : +t.rating;
 const UI = { tab:"overview", slateWeek:null, slateSort:"lev", slateView:"up", slateMin:10, seasonSort:"lev", seasonView:"up", seasonMin:25, boardSort:"rank", boardMin:0.10 };
 
 const norm = z => { // standard normal CDF
@@ -779,8 +795,13 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   const pollBits=[];
   if(d.polls && d.polls.ap) pollBits.push(`AP wk ${d.polls.ap.week}`);
   if(d.polls && d.polls.cfp) pollBits.push(`CFP wk ${d.polls.cfp.week}`);
-  $("#stamp").textContent = `${d.season} season · updated ${new Date(d.updatedAt).toLocaleDateString()}`
-    + (pollBits.length?` · ${pollBits.join(" · ")}`:"") + (d.meta&&d.meta.ratings?` · ${d.meta.ratings}`:"") + (d.source==="placeholder" ? " · PLACEHOLDER DATA" : "");
+  const setStamp = () => { $("#stamp").textContent = `${d.season} season · updated ${new Date(d.updatedAt).toLocaleDateString()}`
+    + (pollBits.length?` · ${pollBits.join(" · ")}`:"") + (d.meta&&(d.meta.models||d.meta.ratings)?` · ${modelLabel()}`:"") + (d.source==="placeholder" ? " · PLACEHOLDER DATA" : ""); };
+  // the model selector: options without data in this file are greyed out; the saved choice is kept if it still has data
+  { const ms=$("#model"); [...ms.options].forEach(o=>{ o.disabled=!modelAvail(o.value); o.title=o.disabled?`${MODEL_NAMES[o.value]} is not in this data file`:(d.meta&&d.meta.models&&d.meta.models[o.value])||""; });
+    const mp=pref.get("model"); MODEL = mp && MODEL_NAMES[mp] && modelAvail(mp) ? mp : "sp"; ms.value=MODEL;
+    ms.onchange=()=>{ MODEL=modelAvail(ms.value)?ms.value:"sp"; ms.value=MODEL; pref.set("model",MODEL); setStamp(); run(false); }; }
+  setStamp();
   const sel = $("#team");
   { const o=document.createElement("option"); o.value=""; o.textContent="— No team (whole playoff field)"; sel.appendChild(o); }
   d.teams.filter(t=>!t.fcs).sort((a,b)=>(rankOf(a.team)||99)-(rankOf(b.team)||99) || a.team.localeCompare(b.team))
@@ -820,10 +841,10 @@ function splitWeekZero(){
 // Everything the season loop needs, from a data object, with no side effects: the page builds its own state from D,
 // and the Week in review tab builds masked copies (results after a given week hidden, an earlier SP+ edition applied)
 // to simulate how things stood at the time.
-function buildParams(Dx){
+function buildParams(Dx, model=MODEL){
   const nT = Dx.teams.length;
   const idx = new Map(Dx.teams.map((t,i)=>[t.team,i]));
-  const rating = Float64Array.from(Dx.teams.map(t=>t.rating));
+  const rating = Float64Array.from(Dx.teams.map(t=>ratingFor(t, model)));
   const poll = Int32Array.from(Dx.teams.map(t=>t.cfpRank||t.apRank||0)); // committee ranking once it exists, AP until then; 0 = unranked
   const confOf = Dx.teams.map(t=>t.conference);
   const tierOf = Dx.conferenceTiers;
@@ -1017,7 +1038,7 @@ function finish(acc,N,ti,X){
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
 const RESULT_VERSION = 11; // bump when the result shape changes so stale saved results are recomputed
-const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|F${strHash(window.LIVE?LIVE.finalsKey:"")}|${T}|${$("#sims").value}`;
+const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|M${MODEL}|F${strHash(window.LIVE?LIVE.finalsKey:"")}|${T}|${$("#sims").value}`;
 // results are cached unless a game is in progress; the set of applied finals is part of the cache key
 const liveActive = () => !!(window.LIVE && LIVE.inProgress>0);
 const strHash = s => { let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return h.toString(36); };
@@ -1202,7 +1223,7 @@ function openTeam(name){
   const tm=D.teams[idx.get(name)]; if(!tm) return;
   const st=RES ? RES.teamStats.find(x=>x.team===name) : null;
   const sp=tm.sp;
-  const unitRow=(lab,u)=> u && u.rating!=null ? `<tr><td>${lab}</td><td class="num" style="text-align:center">${(+u.rating).toFixed(1)}</td><td class="num sub" style="text-align:center">${u.rank?"#"+u.rank:""}</td></tr>` : "";
+  const unitRow=(lab,u,dec=1)=> u && u.rating!=null ? `<tr><td>${lab}</td><td class="num" style="text-align:center">${(+u.rating).toFixed(dec)}</td><td class="num sub" style="text-align:center">${u.rank?"#"+u.rank:""}</td></tr>` : "";
   // week-by-week card strips: every card has the same rows, so a missing rank or first-card change is a hidden placeholder
   const strip=(rows, main, sub, delta)=>rows.map((x,i)=>{ const d=i?delta(x, rows[i-1]):null; const cls=d==null?"":d>0.05?"good":d<-0.05?"bad":"";
       const sb=sub?sub(x):null;
@@ -1217,10 +1238,16 @@ function openTeam(name){
         rk:p.val[name]>0 ? 1+Object.values(p.val).filter(v=>v>p.val[name]).length : null})).filter(x=>x.v!=null);
       if(rows.length<2) return "";
       return `<h3>Playoff odds by week</h3><div class="sp-trend">${strip(rows, x=>Math.round(x.v*100)+"%", x=>x.rk?"#"+x.rk:null, (x,p)=>(x.v-p.v)*100)}</div>`; })() : "";
-  const spHtml = sp ? trend + `<h3>SP+ by unit${sp.prior?' <span class="sub">(last season, until this year\'s are published)</span>':""}</h3>
+  const unitTable=(title, u, dec, note)=>`<div class="unit-box"><h3>${title}${note?` <span class="sub">${note}</span>`:""}</h3>
       <table><tr><th></th><th class="c">Rating</th><th class="c">Rank</th></tr>
-      ${unitRow("Overall",{rating:sp.rating,rank:sp.rank})}${unitRow("Offense",sp.offense)}${unitRow("Defense",sp.defense)}${unitRow("Special teams",sp.specialTeams)}</table>`
-    : `<h3>SP+</h3><div class="sub">Overall rating ${tm.rating}. The unit breakdown arrives with the next data refresh.</div>`;
+      ${unitRow("Overall",{rating:u.rating,rank:u.rank},dec)}${unitRow("Offense",u.offense,dec)}${unitRow("Defense",u.defense,dec)}${unitRow("Special teams",u.specialTeams,dec)}</table></div>`;
+  const spHtml = sp ? trend + unitTable("SP+ by unit", sp, 1, sp.prior?"(last season, until this year's are published)":"")
+    : `<div class="unit-box"><h3>SP+</h3><div class="sub">Overall rating ${tm.rating}. The unit breakdown arrives with the next data refresh.</div></div>`;
+  // FEI and F+ as published (per-possession and standardized scales, not points), labelled with the edition in the data file
+  const altHtml = ["fei","fplus"].map(k=>{ const u=tm[k]; if(!u || u.rating==null) return "";
+      const ed=(D.meta&&D.meta.models&&D.meta.models[k])||modelName(k); const pts=tm.ratingsAlt&&tm.ratingsAlt[k];
+      return unitTable(ed.replace(/^(FEI|F\+)\s+\d{4}\s*/,"$1 · "), u, 2, pts!=null?`(${pts>0?"+":""}${(+pts).toFixed(1)} on the SP+ scale${MODEL===k?", driving the simulation":""})`:""); }).join("");
+  const ratingsHtml = `<div class="unit-row">${spHtml}${altHtml}</div>`;
   const games=D.games.map((g,i)=>({g,i})).filter(x=>x.g.home===name||x.g.away===name).sort((a,b)=>a.g.week-b.g.week);
   const levOf=new Map(); if(RES) RES.games.forEach(x=>levOf.set(x.i,x));
   const rows=games.map(({g,i})=>{
@@ -1248,9 +1275,9 @@ function openTeam(name){
   $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
     <h2>${name}</h2>
     <div class="kv"><span>${tm.conference}</span>${rk?`<span>${rk}</span>`:""}${st?`<span>Proj. <b class="num">${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}</b></span><span>Playoff <b class="num">${Math.round(st.pIn*100)}%</b></span><span>Title <b class="num">${st.pTitle>=0.005?Math.round(st.pTitle*100)+"%":st.pTitle>0?"<1%":"0%"}</b></span>`:""}</div>
-    ${oddsTrend}${spHtml}
+    ${oddsTrend}${ratingsHtml}
     <h3>Schedule <span class="sub" style="font-weight:400">· projected score is the model's; leverage is for ${T||"the whole field"}; tap a leverage score for the why</span></h3>
-    <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c" title="The model's expected score: its margin from the SP+ gap and home advantage, around a total from the two teams' SP+ offense and defense">Proj. score</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
+    <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c" title="The model's expected score: its margin from the ${modelName()} gap and home advantage, around a total from the two teams' SP+ offense and defense">Proj. score</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
   document.querySelectorAll("#sheet .sp-trend").forEach(s=>{ s.scrollLeft=s.scrollWidth; });   // open at the latest week
 }
@@ -1336,8 +1363,8 @@ function render(){
 
   const lined=r.games.filter(g=>g.line).length;
   $("#foot").innerHTML = `${r.N.toLocaleString()} simulated seasons. Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining. `
-    + (lined?`Win probabilities for the ${lined} upcoming games with a posted line come from the point spread; the rest use the SP+ rating gap with home advantage. `
-            :`Win probabilities come from the SP+ rating gap with home advantage. `)
+    + (lined?`Win probabilities for the ${lined} upcoming games with a posted line come from the point spread; the rest use the ${modelName()} rating gap with home advantage. `
+            :`Win probabilities come from the ${modelName()} rating gap with home advantage. `)
     + `Final ordering is a strength-plus-résumé stand-in for the committee, not the committee itself.`;
 }
 
@@ -1380,7 +1407,7 @@ function chartData(r, metric){
   // "Now" only once something has moved since the last recorded week: newer results, a game in progress, or a new SP+ edition
   const last=rec[rec.length-1];
   const lastWeek = last ? (last.key==="pre" ? -1 : last.week) : -1;
-  const moved = !last || (r.played||[]).some(g=>g.week>lastWeek) || r.games.some(g=>g.live) || (last.ratingsHash && last.ratingsHash!==curRatingsHash());
+  const moved = !last || MODEL!=="sp" || (r.played||[]).some(g=>g.week>lastWeek) || r.games.some(g=>g.live) || (last.ratingsHash && last.ratingsHash!==curRatingsHash());
   if(moved) pts.push({label:"Now", val:Object.fromEntries(st.map(t=>[t.team,t.pIn])), now:true});
   return {top, pts, metric:"odds"};
 }
@@ -1612,13 +1639,13 @@ function openSumInfo(){
 }
 function renderBoard(r){
   const ap=D.polls&&D.polls.ap, cfp=D.polls&&D.polls.cfp;
-  const src = D.meta&&D.meta.ratings ? D.meta.ratings : "SP+";
+  const src = modelLabel();
   $("#rankExplain").innerHTML = `<p>${cfp
     ? `Ordered by the <strong>CFP committee ranking</strong> (week ${cfp.week}), which is what actually seeds the bracket, with the AP poll alongside.`
     : `Ordered by the <strong>AP poll</strong> (week ${ap?ap.week:"—"}) until the CFP committee releases its first ranking in early November, then by the committee.`}
     ${T?`Unranked teams that often finish ahead of ${T} are included too.`:"Unranked teams with a real playoff chance are included too."}</p>
     <div class="legend">${T?`<span><i style="background:var(--for)"></i>You want them to win</span><span><i style="background:var(--against)"></i>You want them to lose</span><span><i style="background:var(--panel2)"></i>Doesn't affect you</span><span><i style="border:1.5px solid var(--gold);background:transparent"></i>Head-to-head with you</span><span>Your own row's pills score each game's leverage on your own schedule</span>`:`<span><i style="background:var(--fieldhue)"></i>Shapes the playoff field</span><span><i style="background:var(--panel2)"></i>Doesn't change who gets in</span>`}<span><i style="border:1.5px solid var(--against);background:transparent"></i>In progress (red LIVE line, pregame → live chance)</span><span><i style="background:var(--panel2);border:1px solid var(--line)"></i>Final (W/L, score, and an impact pill: how much the result moved ${T?"your odds":"the field"} from kickoff${T?": green helped, red hurt":""}; no pill = an expected result, already priced in)</span><span>Pill = leverage score (darker = higher) · "@" = on the road · % = their chance of winning · kickoff is a 24-hour clock in your local time</span></div>
-    <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Posted point spreads are shown for reference; the simulation uses SP+. ${T?`The pill on each card shows whether ${T} wants the row team to win (green, +) or lose (red, −) that game, and how much: it is the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.`:"With no team selected, the pill on each card shows how much each game shapes the whole playoff field: how often flipping its result changes who gets in, discounted by how unlikely that is."}</p>`;
+    <p>Each cell is that week's opponent and the row team's chance of winning, from the <strong>${src}</strong> rating gap plus home advantage. Posted point spreads are shown for reference; the simulation uses ${modelName()}. ${T?`The pill on each card shows whether ${T} wants the row team to win (green, +) or lose (red, −) that game, and how much: it is the <strong>leverage score</strong>, so a lopsided game fades even when the upset would matter.`:"With no team selected, the pill on each card shows how much each game shapes the whole playoff field: how often flipping its result changes who gets in, discounted by how unlikely that is."}</p>`;
 
   const weeks=[...new Set(D.games.map(g=>g.week))].sort((a,b)=>a-b);
   const stat=new Map(r.teamStats.map(t=>[t.team,t]));
@@ -1748,7 +1775,7 @@ function card(g, showWeek){
   if(g.pLine!=null && Math.abs(g.pSp-g.pLine)>=0.10){
     const spFav = g.pSp>=0.5 ? g.home : g.away, spP = g.pSp>=0.5 ? g.pSp : 1-g.pSp;
     const mkP = spFav===g.home ? g.pLine : 1-g.pLine;
-    dev=`<div class="g-dev">SP+ and the market disagree: SP+ has <b>${short(spFav)}</b> at ${Math.round(spP*100)}%, the line says ${Math.round(mkP*100)}%</div>`;
+    dev=`<div class="g-dev">${modelName()} and the market disagree: ${modelName()} has <b>${short(spFav)}</b> at ${Math.round(spP*100)}%, the line says ${Math.round(mkP*100)}%</div>`;
   }
   const when = g.live ? `<span class="livetag">LIVE</span> ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period+" "+g.live.clock:"starting"}` : fmtKick(g);
   const lineTop = g.live && g.spreadText ? ` · ${g.spreadText}` : "";
@@ -1834,7 +1861,7 @@ function renderSlate(r){
     return;
   }
 
-  $("#slateExplain").innerHTML = !T ? `<p>No team selected. <strong>Impact</strong> is how often flipping a game's result changes who makes the 12-team field. <strong>Leverage</strong> discounts that by how unlikely the swing is. Both are scaled 0–100 against the biggest game left. Tap a leverage score to see which teams a game tends to swap in and out.</p>` : `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>SP+ and the betting market disagree</strong> by 10 or more points of win probability; the simulation always uses SP+.</p>`;
+  $("#slateExplain").innerHTML = !T ? `<p>No team selected. <strong>Impact</strong> is how often flipping a game's result changes who makes the 12-team field. <strong>Leverage</strong> discounts that by how unlikely the swing is. Both are scaled 0–100 against the biggest game left. Tap a leverage score to see which teams a game tends to swap in and out.</p>` : `<p><strong>Impact</strong> is how much ${T}'s playoff odds move between the two outcomes of a game. <strong>Leverage</strong> is impact × how uncertain the game is: a coin flip keeps its full impact, a 97/3 game keeps about a tenth, because the result you'd want almost never happens. Both are scaled 0–100. Other teams' games are scored against the biggest such game left on the schedule; <strong>${T}'s own games are scored against each other</strong>, so your biggest game of the year is 100. Darker gold = higher score. Sort by kickoff to follow the day. Games with a gold edge are ones where <strong>${modelName()} and the betting market disagree</strong> by 10 or more points of win probability; the simulation always uses ${modelName()}.</p>`;
   let list=upWk;
   const hidden = UI.slateMin>0 ? list.filter(g=>!g.involvesMe && !(g.clear && g.levN>=UI.slateMin)).length : 0;
   if(UI.slateMin>0) list=list.filter(g=>g.involvesMe || (g.clear && g.levN>=UI.slateMin));
@@ -2174,7 +2201,7 @@ function runReview(force){
       REVIEW.key=K.key; REVIEW.data=data; saveReview(K.key,data); note.hidden=true; $("#reviewProg").hidden=true; bar.style.width="0"; renderReview(); return; }
     const s=states[k];
     note.textContent=`Simulating ${s.txt}… (${k+1} of ${states.length}, ${N.toLocaleString()} seasons each)`;
-    const Dx=reviewState(s.mask, s.E), P=buildParams(Dx);
+    const Dx=reviewState(s.mask, s.E), P=buildParams(Dx, "sp");   // the review compares SP+ editions, whatever model the page is on
     simulateP(REVIEW.pool, P, ti, N, p=>{ if(id===REVIEW.run) bar.style.width=((k+p)/states.length*100).toFixed(1)+"%"; },
       r=>{ if(id!==REVIEW.run) return; out[s.tag]=slimReview(r, reviewFrom(K), K.w); step(k+1); }, {P, D:Dx, T});
   };
@@ -2205,7 +2232,7 @@ function renderReview(){
   const h3=t=>`<h3>${t}</h3>`;
   const table=(head,rows,empty,keep)=>rows.length?`<div class="scroll${keep?" rv-keep":""}"><table><tr>${head}</tr>${rows.join("")}</table></div>`:`<div class="sub" style="padding:4px 0 8px">${empty}</div>`;   // keep: never trimmed in print
 
-  $("#slateExplain").innerHTML=`<p>What ${wkTxt}${R.partial?" (so far)":""} did to the playoff picture${T?` for <strong>${T}</strong>`:""}. Three simulations frame it, ${R.N.toLocaleString()} seasons each: how things stood <strong>before</strong> the week (results through ${prev<0?"the preseason":"week "+prev}, on the ${R.E0.label} SP+), the week's <strong>results</strong> on those same ratings, and the same results on the <strong>SP+ update</strong> that followed${spChanged?` (${R.E1.label})`:" (none this week)"}. Every change is a difference between those states, so a move splits into what the results did and what the ratings update did. Change is in percentage points of playoff chance unless labelled otherwise. Print / PDF lays the page out for a single sheet.</p>`;
+  $("#slateExplain").innerHTML=`<p>What ${wkTxt}${R.partial?" (so far)":""} did to the playoff picture${T?` for <strong>${T}</strong>`:""}. Three simulations frame it, ${R.N.toLocaleString()} seasons each: how things stood <strong>before</strong> the week (results through ${prev<0?"the preseason":"week "+prev}, on the ${R.E0.label} SP+), the week's <strong>results</strong> on those same ratings, and the same results on the <strong>SP+ update</strong> that followed${spChanged?` (${R.E1.label})`:" (none this week)"}. Every change is a difference between those states, so a move splits into what the results did and what the ratings update did. Change is in percentage points of playoff chance unless labelled otherwise.${MODEL!=="sp"?` <strong>This report always runs on SP+</strong>: the recorded editions it compares are SP+ ones, so the ${modelName()} model selected in the header does not apply here.`:""} Print / PDF lays the page out for a single sheet.</p>`;
 
   const stamp=`${D.season} season · data updated ${new Date(D.updatedAt).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}${D.polls&&D.polls.ap?` · AP week ${D.polls.ap.week}`:""}${D.meta&&D.meta.ratings?` · ${D.meta.ratings}`:""}`;
   const head=`<div class="rv-ph"><b>Leverage Board</b><span>${stamp} · printed ${new Date().toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><div class="rv-head"><div><h2 class="rv-title">Week ${W} in review${T?` · ${T}`:""}</h2><div class="sub">${span?span+" · ":""}${wkGames.length} results${R.partial?" so far":""} · SP+ ${spChanged?`updated, ${R.E0.label} → ${R.E1.label}`:"unchanged"} · ${R.N.toLocaleString()} simulated seasons per state</div></div></div>`;

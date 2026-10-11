@@ -4,6 +4,7 @@
 
 import { writeFileSync } from "node:fs";
 import { fetchEspnSp } from "./espn-sp.mjs";
+import { attachAltModels } from "./bcftoys.mjs";
 
 const YEAR = +(process.env.SEASON || new Date().getFullYear());
 const KEY = process.env.CFBD_KEY;
@@ -93,6 +94,11 @@ const teams = fbs.map((t) => ({
 const fbsSet = new Set(teams.map((t) => t.team));
 const known = new Set(fbsSet);
 
+// the SP+ edition in use, as shown in the header stamp and on the PDFs
+const spLabel = !spNow.length ? `SP+ ${YEAR - 1}, regressed 25%`
+  : spSource.source === "ESPN" ? `SP+ ${YEAR} (ESPN, ${new Date(spSource.asOf).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })})`
+  : `SP+ ${YEAR}`;
+
 // FCS opponents: keep the game (it counts on the FBS team's record) by adding the opponent as a placeholder team.
 // Only FBS-vs-FCS games qualify; an FCS team's games against other FCS teams are never pulled in.
 for (const g of gamesRaw) {
@@ -107,6 +113,12 @@ for (const g of gamesRaw) {
     known.add(name);
   }
 }
+
+// ---- FEI and F+ (bcftoys.com), the alternate model options: published numbers for the popup, plus each one mapped
+// onto SP+'s points scale for the simulation. Non-fatal: a model that cannot be fetched is left null and the app
+// greys its option out.
+let alt = { models: { fei: null, fplus: null }, fit: { fei: null, fplus: null } };
+try { alt = await attachAltModels(YEAR, teams); } catch (e) { console.warn("FEI / F+ unavailable:", e.message); }
 
 // ---- betting lines, keyed by game id. Prefer a consensus line when one exists.
 const PROVIDER_ORDER = ["consensus", "DraftKings", "ESPN Bet", "Bovada", "Caesars", "FanDuel"];
@@ -203,9 +215,9 @@ writeFileSync(new URL("../data.json", import.meta.url), JSON.stringify({
     cfp: polls.cfp ? { name: polls.cfp.name, week: polls.cfp.week } : null,
   },
   meta: {
-    ratings: !spNow.length ? `SP+ ${YEAR - 1}, regressed 25%`
-      : spSource.source === "ESPN" ? `SP+ ${YEAR} (ESPN, ${new Date(spSource.asOf).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })})`
-      : `SP+ ${YEAR}`,
+    ratings: spLabel,                       // the SP+ edition (kept for older readers of the file)
+    models: { sp: spLabel, ...alt.models }, // every model's edition; null = not available this refresh
+    altFit: alt.fit,                        // the FEI / F+ → points lines (slope, intercept, r, n)
     spSource,
     lines: { games: linesRaw.length, matched: lineByGame.size },
     media: { games: mediaRaw.length, matched: tvByGame.size },
@@ -218,4 +230,4 @@ writeFileSync(new URL("../data.json", import.meta.url), JSON.stringify({
   games,
 }));
 
-console.log(`${teams.filter((t) => !t.fcs).length} FBS + ${teams.filter((t) => t.fcs).length} FCS teams · ${games.length} games · ${played.length} played · ${withLines} upcoming with lines · ${games.filter((g) => g.tv).length} with TV · week ${currentWeek} · ${pollName} · ${spNow.length ? "SP+ " + YEAR + " via " + spSource.source : "SP+ prior year"}`);
+console.log(`${teams.filter((t) => !t.fcs).length} FBS + ${teams.filter((t) => t.fcs).length} FCS teams · ${games.length} games · ${played.length} played · ${withLines} upcoming with lines · ${games.filter((g) => g.tv).length} with TV · week ${currentWeek} · ${pollName} · ${spNow.length ? "SP+ " + YEAR + " via " + spSource.source : "SP+ prior year"} · ${["fei", "fplus"].map((k) => alt.models[k] || (k === "fei" ? "FEI" : "F+") + " unavailable").join(" · ")}`);

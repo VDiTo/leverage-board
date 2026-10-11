@@ -121,7 +121,7 @@
     const meta = me ? `${Math.round(r.pIn*100)}% to make the 12-team field | proj. ${me.wins.toFixed(1)}-${(me.games-me.wins).toFixed(1)}`
                     : `${fbs.filter(t=>t.pIn>=0.9).length} locks | ${fbs.filter(t=>t.pIn>=0.75&&t.pIn<0.9).length} likely | ${fbs.filter(t=>t.pIn>=0.25&&t.pIn<0.75).length} on the bubble`;
     doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
-    const metaTxt=clean(`${D.season} season | data ${fmtDate(D.updatedAt)} | ${D.polls&&D.polls.ap?"AP wk "+D.polls.ap.week:""}${D.polls&&D.polls.cfp?" | CFP wk "+D.polls.cfp.week:""} | ${D.meta&&D.meta.ratings||"SP+"} | ${meta} | ${r.N.toLocaleString()} simulated seasons`);
+    const metaTxt=clean(`${D.season} season | data ${fmtDate(D.updatedAt)} | ${D.polls&&D.polls.ap?"AP wk "+D.polls.ap.week:""}${D.polls&&D.polls.cfp?" | CFP wk "+D.polls.cfp.week:""} | ${typeof modelLabel==="function"?modelLabel():D.meta&&D.meta.ratings||"SP+"} | ${meta} | ${r.N.toLocaleString()} simulated seasons`);
     doc.text(metaTxt, W-M, M+14, {align:"right"});
     doc.setDrawColor(...NAVY); doc.setLineWidth(1.2); doc.line(M, M+20, W-M, M+20);
 
@@ -207,7 +207,7 @@
     doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...NAVY); doc.text("How to read this", sx, sy); sy+=12;
     if(field){ legend(GREEN,"Shapes the playoff field"); legend(PANEL,"Doesn't change who gets in"); }
     else { legend(GREEN,"You want this team to win"); legend(RED,"You want this team to lose"); legend(ACCENT,`Head-to-head with ${short(T)}`,true); }
-    para(`"@" = on the road. % = their chance of winning (SP+). The Playoff column is shaded by playoff chance.${T?` ${T}'s own row is shaded by each game's leverage on its own schedule.`:""}`, 6.6, MUTED);
+    para(`"@" = on the road. % = their chance of winning (${typeof modelName==="function"?modelName():"SP+"}). The Playoff column is shaded by playoff chance.${T?` ${T}'s own row is shaded by each game's leverage on its own schedule.`:""}`, 6.6, MUTED);
     sy+=4; para("WHAT THE SHADING MEANS", 6.6, MUTED, true);
     para(field ? "Darker means the game does more to decide who makes the 12-team field: how often flipping its result changes the twelve teams that get in, weighed against how likely that swing is."
                : `Darker means the game matters more to ${T}: how much the result would move ${short(T)}'s playoff odds, weighed against how likely that swing is. A game can matter because the loser drops behind you in the rankings, because a conference title and its automatic bid change hands, or because a team on your schedule ends up with a better or worse record.`, 6.6, NAVY);
@@ -236,7 +236,7 @@
       if(PF.length>=12){
         const nrm=z=>{ const t=1/(1+0.2316419*Math.abs(z)); const d=0.3989422804014327*Math.exp(-z*z/2);
           const q=d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429)))); return z>0?1-q:q; };
-        const rt=n=>D.teams[idx.get(n)].rating, {hfa,sdMargin}=D.config;
+        const rt=n=>typeof ratingFor==="function"?ratingFor(D.teams[idx.get(n)]):D.teams[idx.get(n)].rating, {hfa,sdMargin}=D.config;
         const play=(x,z,hostZ)=>{ const pZ=nrm((rt(z.team)-rt(x.team)+(hostZ?hfa:0))/sdMargin); return pZ>=0.5?{w:z,p:pZ}:{w:x,p:1-pZ}; };
         // squeeze the line height a little when the sidebar is short
         const avail=H-M-30-sy, k=Math.max(0.7, Math.min(1, avail/300));
@@ -280,13 +280,13 @@
           doc.setFont("helvetica","bold"); doc.setFontSize(FS); doc.setTextColor(...(mine?ACCENT_TEXT:NAVY));
           doc.text(clean(`#${f2.seed} ${short(f2.team)} vs #${f1.seed} ${short(f1.team)}`), sx+4, sy+PAD+LH-1.5);
           doc.setFont("helvetica","normal"); doc.setFontSize(FS-0.6); doc.setTextColor(...MUTED); doc.text(clean(`${short(fin.w.team)} ${Math.round(fin.p*100)}%`), sx+sw-3, sy+PAD+LH-1.5, {align:"right"}); sy+=h+9; }
-        para("Each game to the SP+ favorite; first round at the higher seed.", 5.4, MUTED);
+        para(`Each game to the ${typeof modelName==="function"?modelName():"SP+"} favorite; first round at the higher seed.`, 5.4, MUTED);
       }
     }
     // footer
     doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.line(M, H-M-14, W-M, H-M-14);
     doc.setFont("helvetica","normal"); doc.setFontSize(6); doc.setTextColor(...MUTED);
-    doc.text(doc.splitTextToSize(clean("Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining; straight seeding. Win probabilities from the SP+ rating gap with home advantage; final ordering is a strength-plus-resume stand-in for the committee."), W-2*M), M, H-M-6);
+    doc.text(doc.splitTextToSize(clean("Field = ACC, Big Ten, Big 12 and SEC champions plus the highest-ranked Group of Six champion, then the seven highest-ranked teams remaining; straight seeding. Win probabilities from the "+(typeof modelName==="function"?modelName():"SP+")+" rating gap with home advantage; final ordering is a strength-plus-resume stand-in for the committee."), W-2*M), M, H-M-6);
     if(typeof confStandings==="function") confPage(doc, r);
     return doc;
   }
@@ -374,7 +374,7 @@
     doc.setProperties({title:clean(title+sub)});
     const me=T?r.teamStats.find(t=>t.team===T):null, fbs=r.teamStats.filter(t=>!t.fcs);
     doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
-    doc.text(clean(`${D.season} season | data ${fmtDate(D.updatedAt)} | ${D.meta&&D.meta.ratings||"SP+"}`), W-M, M+8, {align:"right"});
+    doc.text(clean(`${D.season} season | data ${fmtDate(D.updatedAt)} | ${typeof modelLabel==="function"?modelLabel():D.meta&&D.meta.ratings||"SP+"}`), W-M, M+8, {align:"right"});
     doc.text(clean(me?`${Math.round(r.pIn*100)}% to make the 12-team field | proj. ${me.wins.toFixed(1)}-${(me.games-me.wins).toFixed(1)}`:`${fbs.filter(t=>t.pIn>=0.9).length} locks | ${fbs.filter(t=>t.pIn>=0.75&&t.pIn<0.9).length} likely | ${fbs.filter(t=>t.pIn>=0.25&&t.pIn<0.75).length} on the bubble`), W-M, M+18, {align:"right"});
     doc.setDrawColor(...NAVY); doc.setLineWidth(1.2); doc.line(M, M+24, W-M, M+24);
     let y=M+34;
@@ -441,7 +441,7 @@
       y+=rowH;
     });
     doc.setFont("helvetica","normal"); doc.setFontSize(6.2); doc.setTextColor(...MUTED);
-    doc.text(doc.splitTextToSize(clean(`Leverage and impact are scaled 0-100 against the biggest remaining game${T?" that doesn't involve "+T:""}. Win chances from SP+ with home advantage; every number from ${r.N.toLocaleString()} simulated seasons with each game flipped one at a time.`), W-2*M), M, H-M+2);
+    doc.text(doc.splitTextToSize(clean(`Leverage and impact are scaled 0-100 against the biggest remaining game${T?" that doesn't involve "+T:""}. Win chances from ${typeof modelName==="function"?modelName():"SP+"} with home advantage; every number from ${r.N.toLocaleString()} simulated seasons with each game flipped one at a time.`), W-2*M), M, H-M+2);
     return doc;
   }
 

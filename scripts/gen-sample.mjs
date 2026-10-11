@@ -43,7 +43,9 @@ for (const [conference, members] of Object.entries(CONF)) {
       const base = { P4: 3.5, G6: -8, IND: -4 }[TIER[conference]];
       rating = base + (rnd() - 0.5) * 12;
     }
-    teams.push({ team, conference, rating: +rating.toFixed(2), apRank: ap >= 0 ? ap + 1 : null, cfpRank: null });
+    // the same fields a real pull writes: no unit breakdown, no FEI / F+ (their model options stay disabled)
+    teams.push({ team, conference, rating: +rating.toFixed(2), apRank: ap >= 0 ? ap + 1 : null, cfpRank: null,
+      sp: null, fei: null, fplus: null, ratingsAlt: { fei: null, fplus: null } });
   }
 }
 
@@ -102,6 +104,7 @@ const data = {
   currentWeek: 1,
   source: "placeholder",
   polls: { ap: { name: "AP Top 25 (preseason)", week: 0 }, cfp: null },
+  meta: { ratings: "placeholder ratings", models: { sp: "placeholder ratings", fei: null, fplus: null }, altFit: { fei: null, fplus: null } },
   config: { hfa: 2.2, sdMargin: 16.5, spreadSd: 13.5, ratingWeight: 1.0, resumeWeight: 1.0, lossPenalty: 5, winCurve: 0.1, winFloor: 7, lossQuality: 0.35, winQualityLo: 0, winQualityHi: 15, g6Discount: 10, pollWeight: 10, ratingSd: 8, atLargeSlots: 7 },
   conferenceTiers: TIER,
   teams,

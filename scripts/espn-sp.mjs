@@ -52,7 +52,7 @@ export const normalize = (s) => String(s)
   .trim();
 
 // index of every name CFBD knows a team by, normalized → school
-const nameIndex = (fbsTeams) => {
+export const nameIndex = (fbsTeams, extra = {}) => {
   const idx = new Map();
   const add = (k, school) => { const n = normalize(k); if (n && !idx.has(n)) idx.set(n, school); };
   for (const t of fbsTeams) {
@@ -60,7 +60,7 @@ const nameIndex = (fbsTeams) => {
     for (const k of ["abbreviation", "alt_name1", "alt_name2", "alt_name3", "altName1", "altName2", "altName3"]) if (t[k]) add(t[k], t.school);
     for (const k of t.alternateNames || t.alternate_names || []) add(k, t.school);
   }
-  for (const [k, v] of Object.entries(ALIAS)) if (fbsTeams.some((t) => t.school === v)) idx.set(normalize(k), v);
+  for (const [k, v] of Object.entries({ ...ALIAS, ...extra })) if (fbsTeams.some((t) => t.school === v)) idx.set(normalize(k), v);
   return idx;
 };
 
