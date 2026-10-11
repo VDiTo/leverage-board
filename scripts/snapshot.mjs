@@ -3,8 +3,12 @@
 //    masked, so a point is "what the model said once that week was in the books"). Past points are kept as they were;
 //    the latest week's point is recomputed if SP+ has been updated since it was recorded.
 //  - sp: every distinct SP+ edition (rating and rank per team), keyed to the latest completed week at the time.
-//  - fei, fplus: likewise for FEI and F+ as published (their own scales, not points), keyed to the week the table runs
-//    through ("thru Wk N" in meta.models), so the Overview chart and the team popup can line them up with SP+ by week.
+//  - fei, fplus: likewise for FEI and F+ as published (their own scales, not points, with the points-scale value the
+//    fetch mapped them to as a third element), keyed to the week the table runs through ("thru Wk N" in meta.models),
+//    so the Overview chart and the team popup can line them up with SP+ by week.
+//  - pointsBy.fei / pointsBy.fplus: the playoff-chance points again, simulated on that model instead of SP+, for the
+//    weeks from the model's first recorded edition on (each week on the latest edition at or before it). The page
+//    shows these when FEI or F+ is driving the simulation, so the history and the "Now" point come from one model.
 //  - pInPrevSp on a point whose SP+ edition differs from the previous point's: the same week's results simulated on the
 //    previous edition's ratings, so a team's week-to-week move splits into "results" and "SP+ update" parts.
 // Env: N=25000 (seasons per point). FORCE=1 recomputes every recorded point under the current model, each on the SP+
@@ -112,12 +116,44 @@ for (const k of ["fei", "fplus"]) {
   const key = m ? "w" + m[1] : latestKey;
   const last = H[k][H[k].length - 1];
   if (last && last.hash === hash) continue;
-  const ed = { key, label: labelOf(key), asOf: D.updatedAt, hash, ratings: Object.fromEntries(rows.map(t => [t.team, [+t[k].rating, t[k].rank || null]])) };
+  const ed = { key, label: labelOf(key), asOf: D.updatedAt, hash, ratings: Object.fromEntries(rows.map(t => [t.team, [+t[k].rating, t[k].rank || null, t.ratingsAlt && t.ratingsAlt[k] != null ? +t.ratingsAlt[k] : null]])) };
   const i = H[k].findIndex(e => e.key === key);
   if (i >= 0) H[k][i] = ed; else H[k].push(ed);
   console.log(`${k === "fei" ? "FEI" : "F+"} edition recorded as ${key}`);
 }
+// an edition recorded before the points-scale value was kept: fill it from the data file while it is still current
+for (const k of ["fei", "fplus"]) for (const e of H[k] || []) {
+  if (Object.values(e.ratings).some(v => v.length > 2)) continue;
+  const cur = hashOf(fbs.filter(t => t[k] && t[k].rating != null).map(t => t.team + ":" + t[k].rating).join("|"));
+  if (cur !== e.hash) continue;
+  for (const t of fbs) if (e.ratings[t.team] && t.ratingsAlt && t.ratingsAlt[k] != null) e.ratings[t.team][2] = +t.ratingsAlt[k];
+}
+
+// --- playoff-chance points under FEI and F+ ---
+// Each completed week from the model's first edition on, simulated on the latest edition at or before that week
+// (its points-scale values), with the edition's hash so the page can tell when "Now" has moved on. Past weeks are
+// kept; the latest week is redone if a newer edition for it has arrived, as for SP+.
+H.pointsBy = H.pointsBy || {};
+const wkOf = key => key === "pre" ? -1 : +key.slice(1);
+for (const k of ["fei", "fplus"]) {
+  const eds = (H[k] || []).filter(e => Object.values(e.ratings).some(v => v[2] != null));
+  if (!eds.length) continue;
+  const list = H.pointsBy[k] = H.pointsBy[k] || [];
+  const haveK = new Map(list.map(p => [p.key, p]));
+  for (const w of complete) {
+    const ed = eds.filter(e => wkOf(e.key) <= w).sort((a, b) => wkOf(b.key) - wkOf(a.key))[0];
+    if (!ed) continue;
+    const key = "w" + w, old = haveK.get(key);
+    if (old && !(key === latestKey && old.ratingsHash !== ed.hash)) continue;
+    const t1 = Date.now();
+    const pts = Object.fromEntries(Object.entries(ed.ratings).filter(([, v]) => v[2] != null).map(([t, v]) => [t, [v[2]]]));
+    const pnt = { key, week: w, label: labelOf(key), asOf: D.updatedAt, ratingsHash: ed.hash, edition: ed.key, pIn: await point(w, pts) };
+    if (old) list[list.indexOf(old)] = pnt; else list.push(pnt);
+    console.log(`${k === "fei" ? "FEI" : "F+"} ${old ? "recomputed " : ""}${key} on its ${ed.label} edition`, ((Date.now() - t1) / 1000).toFixed(1) + "s");
+  }
+  list.sort((p, q) => p.week - q.week);
+}
 
 H.updatedAt = new Date().toISOString();
 writeFileSync(OUT, JSON.stringify(H));
-console.log(`history.json: points ${H.points.map(p => p.key).join(", ")} | SP+ editions ${H.sp.map(e => e.key).join(", ")} | FEI ${(H.fei || []).map(e => e.key).join(", ") || "none"} | F+ ${(H.fplus || []).map(e => e.key).join(", ") || "none"} (${N.toLocaleString()} seasons per point)`);
+console.log(`history.json: points ${H.points.map(p => p.key).join(", ")} | SP+ editions ${H.sp.map(e => e.key).join(", ")} | FEI ${(H.fei || []).map(e => e.key).join(", ") || "none"} | F+ ${(H.fplus || []).map(e => e.key).join(", ") || "none"} | model points ${Object.entries(H.pointsBy || {}).map(([k, l]) => k + " " + l.map(p => p.key).join(",")).join("; ") || "none"} (${N.toLocaleString()} seasons per point)`);

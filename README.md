@@ -78,7 +78,12 @@ The daily refresh records each FEI and F+ edition in `history.json` alongside
 the SP+ ones, keyed to the week the table runs through, so the Overview chart
 can plot any model's ratings by week and the team popup lines up playoff odds
 and all three models in one week-by-week grid, with the team's AP rank in
-every poll once it has been ranked. The Fremeau editions start from
+every poll once it has been ranked. The playoff-odds row and chart follow the
+model driving the simulation: the refresh also simulates each completed week
+on FEI and on F+ (`pointsBy` in `history.json`, each week on the latest
+edition at or before it, from the model's first recorded edition on), so
+switching models never mixes an SP+ history with an FEI or F+ "Now". The
+popup's By week heading carries the same SP+ / FEI / F+ switch as the header. The Fremeau editions start from
 the week they were added to the board (week 5 of 2026); there is no archive of
 earlier weeks to backfill from. Under a model the chart's legend is ordered by
 that model's latest rating. The chart's AP Poll view plots every AP poll of the

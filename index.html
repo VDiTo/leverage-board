@@ -394,6 +394,7 @@
   .tr-head .tr-col{flex:0 0 76px;width:76px;text-align:center;font-size:10.5px;color:var(--muted);align-self:flex-end} .tr-head .tr-col.now{color:var(--gold);font-weight:700}
   .tr-head .sp-arrow{visibility:hidden} .tr-row .sp-arrow{align-self:center}
   .sp-ed.empty{background:transparent;border-style:dashed;opacity:.45}
+  .model-seg{display:inline-flex;margin:0 0 0 10px;vertical-align:middle} .model-seg button{font-size:11px;padding:2px 8px}
   .unit-box table.models{table-layout:fixed;width:100%} .unit-box table.models tr.sep td{border-top:2px solid var(--line)} .unit-box table.models th:first-child{width:28%} .unit-box table.models th,.unit-box table.models td{overflow:hidden;text-overflow:ellipsis}
   @media (max-width:640px){
     .tr-row{gap:4px}
@@ -803,12 +804,12 @@ fetch("data.json?v="+Date.now(), {cache:"no-store"}).then(r=>r.json()).then(d=>{
   const pollBits=[];
   if(d.polls && d.polls.ap) pollBits.push(`AP wk ${d.polls.ap.week}`);
   if(d.polls && d.polls.cfp) pollBits.push(`CFP wk ${d.polls.cfp.week}`);
-  const setStamp = () => { $("#stamp").textContent = `${d.season} season · updated ${new Date(d.updatedAt).toLocaleDateString()}`
+  const setStamp = window.setStamp = () => { $("#stamp").textContent = `${d.season} season · updated ${new Date(d.updatedAt).toLocaleDateString()}`
     + (pollBits.length?` · ${pollBits.join(" · ")}`:"") + (d.meta&&(d.meta.models||d.meta.ratings)?` · ${modelLabel()}`:"") + (d.source==="placeholder" ? " · PLACEHOLDER DATA" : ""); };
   // the model selector: options without data in this file are greyed out; the saved choice is kept if it still has data
   { const ms=$("#model"); [...ms.options].forEach(o=>{ o.disabled=!modelAvail(o.value); o.title=o.disabled?`${MODEL_NAMES[o.value]} is not in this data file`:(d.meta&&d.meta.models&&d.meta.models[o.value])||""; });
     const mp=pref.get("model"); MODEL = mp && MODEL_NAMES[mp] && modelAvail(mp) ? mp : "sp"; ms.value=MODEL;
-    ms.onchange=()=>{ MODEL=modelAvail(ms.value)?ms.value:"sp"; ms.value=MODEL; pref.set("model",MODEL); setStamp(); run(false); }; }
+    ms.onchange=()=>switchModel(ms.value); }
   setStamp();
   const sel = $("#team");
   { const o=document.createElement("option"); o.value=""; o.textContent="— No team (whole playoff field)"; sel.appendChild(o); }
@@ -1053,6 +1054,9 @@ const strHash = s => { let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charC
 function loadResult(){ if(liveActive()) return null; try{ const c=JSON.parse(localStorage.getItem("lb.result")||"null"); return c && c.key===resultKey() ? c : null; }catch(e){ return null; } }
 function saveResult(r){ if(liveActive()) return; try{ localStorage.setItem("lb.result", JSON.stringify({key:resultKey(), at:Date.now(), res:r})); }catch(e){} }
 $("#run").onclick=()=>run(true); $("#team").onchange=()=>run(false); $("#sims").onchange=()=>run(false);
+let REOPEN_TEAM=null;   // a popup to reopen once the next result is in (after a model switch from the card)
+function switchModel(k, reopen){ MODEL=modelAvail(k)?k:"sp"; const ms=$("#model"); if(ms) ms.value=MODEL; pref.set("model",MODEL); setStamp(); REOPEN_TEAM=reopen||null; run(false); }
+const reopenTeam=()=>{ if(REOPEN_TEAM){ const n=REOPEN_TEAM; REOPEN_TEAM=null; openTeam(n); } };
 function run(force, opts){
   T=$("#team").value; const N=+$("#sims").value;
   const fromLive = !!(opts && opts.live);
@@ -1061,14 +1065,14 @@ function run(force, opts){
   build();
   if(!force){
     const c=loadResult();
-    if(c){ RES=c.res; RES.cachedAt=c.at; render(); return; }
+    if(c){ RES=c.res; RES.cachedAt=c.at; render(); reopenTeam(); return; }
   }
   $("#run").disabled=true; $("#run").textContent="Simulating…"; $("#cacheNote").hidden=true;
   const prev = RES;
   simulate(T,N,p=>{$("#bar").style.width=(p*100)+"%";},r=>{
     RES = r; // live reruns are fresh estimates; the aligned random stream keeps them comparable
     $("#run").disabled=false; $("#run").textContent="Run simulation"; $("#bar").style.width="0";
-    saveResult(RES); render();
+    saveResult(RES); render(); reopenTeam();
   });
 }
 
@@ -1245,7 +1249,7 @@ function openTeam(name){
   if(RES){ const pts=chartData(RES,"odds").pts.map(p=>({key:p.key, label:p.label, now:p.now, v:p.val[name],
         rk:p.val[name]>0 ? 1+Object.values(p.val).filter(v=>v>p.val[name]).length : null}));
     pts.forEach(p=>labels.set(p.key,p.label));
-    trRows.push(["Playoff odds", cards(pts, x=>Math.round(x.v*100)+"%", x=>x.rk?"#"+x.rk:null, (x,p)=>(x.v-p.v)*100)]); }
+    trRows.push([`Playoff odds <small class="sub">${MODEL_NAMES[MODEL]}</small>`, cards(pts, x=>Math.round(x.v*100)+"%", x=>x.rk?"#"+x.rk:null, (x,p)=>(x.v-p.v)*100)]); }
   // each model's rating in every recorded edition, as published (SP+ in points, FEI and F+ on their own scales)
   for(const k of ["sp","fei","fplus"]){ const dec=k==="sp"?1:2;
     const pts=chartData(R0,k).pts.map(p=>({key:p.key, label:p.label, now:p.now, v:p.val[name], rk:p.rank?p.rank[name]:null})).filter(x=>x.v!=null);
@@ -1258,7 +1262,8 @@ function openTeam(name){
       trRows.push(["AP rank", cards(pts, x=>x.v<AP_NR?"#"+x.v:"NR", null, (x,p)=>(x.v<AP_NR&&p.v<AP_NR)?p.v-x.v:null, 0)]); } }
   const cols=[...labels.keys()].sort((a,b)=>colOrder(a)-colOrder(b));
   const arrow=i=>i?'<span class="sp-arrow">\u2192</span>':"";
-  const trend = cols.length>1 ? `<h3>By week</h3><div class="trend-grid">
+  const modelSeg=`<span class="seg hist-seg model-seg" role="group" aria-label="Model driving the simulation">${["sp","fei","fplus"].map(k=>`<button type="button" data-pm="${k}" aria-pressed="${MODEL===k}"${modelAvail(k)?"":" disabled"} title="${modelAvail(k)?`Playoff odds simulated on ${MODEL_NAMES[k]}`:`${MODEL_NAMES[k]} is not in this data file`}">${MODEL_NAMES[k]}</button>`).join("")}</span>`;
+  const trend = cols.length>1 ? `<h3>By week ${modelSeg}</h3><div class="trend-grid">
       <div class="tr-row tr-head"><div class="tr-lab"></div>${cols.map((c,i)=>`${arrow(i)}<span class="tr-col${c==="now"?" now":""}">${labels.get(c)}</span>`).join("")}</div>
       ${trRows.map(([lab,cs])=>{ const m=new Map(cs); return `<div class="tr-row"><div class="tr-lab">${lab}</div>${cols.map((c,i)=>`${arrow(i)}${m.get(c)||'<span class="sp-ed empty"></span>'}`).join("")}</div>`; }).join("")}</div>` : "";
   // one table: a row per unit, a column per model (SP+ in points, FEI per possession, F+ standardized), rank under each
@@ -1326,7 +1331,8 @@ function openTeam(name){
     <h3>Schedule <span class="sub" style="font-weight:400">· projected score is the model's; leverage is for ${T||"the whole field"}; tap a leverage score for the why</span></h3>
     <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c" title="The model's expected score: its margin from the ${modelName()} gap and home advantage, around a total from the two teams' SP+ offense and defense">Proj. score</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
-  document.querySelectorAll("#sheet .trend-grid").forEach(s=>{ s.scrollLeft=s.scrollWidth; });   // open at the latest week
+  document.querySelectorAll("#sheet .trend-grid").forEach(s=>{ s.scrollLeft=s.scrollWidth; });
+  document.querySelectorAll("#sheet .model-seg button").forEach(b=>b.onclick=()=>{ if(b.dataset.pm!==MODEL) switchModel(b.dataset.pm, name); });   // open at the latest week
 }
 
 // every section description collapses behind an "i" button next to its heading
@@ -1435,7 +1441,9 @@ function projectField(r){
 let CHART_METRIC="odds";   // "odds" = playoff chance by week; "sp", "fei", "fplus" = that model's rating by edition; "ap" = AP poll rank
 const AP_NR=27;            // where an unranked week sits on the AP chart (just below No. 25, on the "NR" line)
 // the recorded playoff-chance points for this season; the week-0 point (a handful of games) is folded into week 1's
-const histPoints=()=>{ const pts=(HIST&&HIST.season===D.season&&HIST.points)||[]; return pts.some(p=>p.week===1) ? pts.filter(p=>p.week!==0) : pts; };
+// the recorded playoff-chance points under the model driving the simulation: SP+'s run from the preseason, FEI's and
+// F+'s from the week of that model's first recorded edition; the week-0 point (a handful of games) is folded into week 1's
+const histPoints=(k=MODEL)=>{ const h=HIST&&HIST.season===D.season?HIST:null; const pts=(h ? (k==="sp" ? h.points : h.pointsBy&&h.pointsBy[k]) : null)||[]; return pts.some(p=>p.week===1) ? pts.filter(p=>p.week!==0) : pts; };
 // a model's published rating for a team (SP+ in points, FEI and F+ on their own scales), and the hash scripts/snapshot.mjs
 // records with each edition, so the page can tell whether the data file's edition is already in history.json
 const ratingOf=(t,k="sp")=> k==="sp" ? t.rating : (t[k]&&t[k].rating!=null ? t[k].rating : null);
@@ -1470,7 +1478,7 @@ function chartData(r, metric){
   // "Now" only once something has moved since the last recorded week: newer results, a game in progress, or a new SP+ edition
   const last=rec[rec.length-1];
   const lastWeek = last ? (last.key==="pre" ? -1 : last.week) : -1;
-  const moved = !last || MODEL!=="sp" || (r.played||[]).some(g=>g.week>lastWeek) || r.games.some(g=>g.live) || (last.ratingsHash && last.ratingsHash!==curRatingsHash());
+  const moved = !last || (r.played||[]).some(g=>g.week>lastWeek) || r.games.some(g=>g.live) || (last.ratingsHash && last.ratingsHash!==curRatingsHash(MODEL));
   if(moved) pts.push({key:"now", label:"Now", val:Object.fromEntries(st.map(t=>[t.team,t.pIn])), now:true});
   return {top, pts, metric:"odds"};
 }
@@ -1536,7 +1544,7 @@ function drawChart(el, r, big){
 }
 function renderHistory(r){
   const el=$("#hist"); if(!el) return;
-  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. Week 0's handful of games counts with week 1. <strong>SP+</strong> shows each team's rating in every SP+ update of the season; <strong>FEI</strong> and <strong>F+</strong> do the same for Brian Fremeau's ratings as he publishes them, on their own scales, recorded from the week they were added to the board. Whichever model is selected in the header drives the simulation; under a model the legend is ordered by that model's latest rating. <strong>AP Poll</strong> shows where each team in the current AP Top 25 stood in every AP poll this season, a week outside the poll sitting on the NR line.${T?` <strong>${T}</strong> is drawn heavier.`:""} The conference pills narrow the chart to one league, or the whole Group of Six, showing its top twenty. Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
+  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week under the model driving the simulation (${MODEL_NAMES[MODEL]} now; FEI and F+ histories start from that model's first recorded edition): each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. Week 0's handful of games counts with week 1. <strong>SP+</strong> shows each team's rating in every SP+ update of the season; <strong>FEI</strong> and <strong>F+</strong> do the same for Brian Fremeau's ratings as he publishes them, on their own scales, recorded from the week they were added to the board. Whichever model is selected in the header drives the simulation; under a model the legend is ordered by that model's latest rating. <strong>AP Poll</strong> shows where each team in the current AP Top 25 stood in every AP poll this season, a week outside the poll sitting on the NR line.${T?` <strong>${T}</strong> is drawn heavier.`:""} The conference pills narrow the chart to one league, or the whole Group of Six, showing its top twenty. Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
   drawChart(el, r, false);
   if(chartData(r, CHART_METRIC).pts.length<2) el.insertAdjacentHTML("afterbegin", `<div class="sub" style="padding:6px 0">The chart fills in as weeks are completed: the daily refresh records every team's chance after each week.</div>`);
 }
