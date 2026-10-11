@@ -1223,7 +1223,6 @@ function openTeam(name){
   const tm=D.teams[idx.get(name)]; if(!tm) return;
   const st=RES ? RES.teamStats.find(x=>x.team===name) : null;
   const sp=tm.sp;
-  const unitRow=(lab,u,dec=1)=> u && u.rating!=null ? `<tr><td>${lab}</td><td class="num" style="text-align:center">${(+u.rating).toFixed(dec)}</td><td class="num sub" style="text-align:center">${u.rank?"#"+u.rank:""}</td></tr>` : "";
   // week-by-week card strips: every card has the same rows, so a missing rank or first-card change is a hidden placeholder
   const strip=(rows, main, sub, delta)=>rows.map((x,i)=>{ const d=i?delta(x, rows[i-1]):null; const cls=d==null?"":d>0.05?"good":d<-0.05?"bad":"";
       const sb=sub?sub(x):null;
@@ -1238,16 +1237,19 @@ function openTeam(name){
         rk:p.val[name]>0 ? 1+Object.values(p.val).filter(v=>v>p.val[name]).length : null})).filter(x=>x.v!=null);
       if(rows.length<2) return "";
       return `<h3>Playoff odds by week</h3><div class="sp-trend">${strip(rows, x=>Math.round(x.v*100)+"%", x=>x.rk?"#"+x.rk:null, (x,p)=>(x.v-p.v)*100)}</div>`; })() : "";
-  const unitTable=(title, u, dec, note)=>`<div class="unit-box"><h3>${title}${note?` <span class="sub">${note}</span>`:""}</h3>
-      <table><tr><th></th><th class="c">Rating</th><th class="c">Rank</th></tr>
-      ${unitRow("Overall",{rating:u.rating,rank:u.rank},dec)}${unitRow("Offense",u.offense,dec)}${unitRow("Defense",u.defense,dec)}${unitRow("Special teams",u.specialTeams,dec)}</table></div>`;
-  const spHtml = sp ? trend + unitTable("SP+ by unit", sp, 1, sp.prior?"(last season, until this year's are published)":"")
+  // one table: a row per unit, a column per model (SP+ in points, FEI per possession, F+ standardized), rank under each
+  // rating, and a last row putting every model on the SP+ points scale. The model driving the simulation is marked.
+  const models=[["sp","SP+",1,sp,tm.rating],...["fei","fplus"].map(k=>[k,(D.meta&&D.meta.models&&D.meta.models[k])||modelName(k),2,tm[k],tm.ratingsAlt&&tm.ratingsAlt[k]])]
+    .filter(([k,,,u])=>u && u.rating!=null);
+  const cell=(u,dec)=> u && u.rating!=null ? `<td class="num" style="text-align:center">${(+u.rating).toFixed(dec)}<small class="sub"> ${u.rank?"#"+u.rank:""}</small></td>` : `<td class="num sub" style="text-align:center">—</td>`;
+  const unitRow=(lab,pick)=>`<tr><td>${lab}</td>${models.map(([k,,dec,u])=>cell(pick(u),dec)).join("")}</tr>`;
+  const head=models.map(([k,ed])=>`<th class="c">${ed.replace(/^(FEI|F\+)\s+\d{4}\s*/,"$1 ")}${MODEL===k?` <span class="sub" title="Driving the simulation">▸ sim</span>`:""}</th>`).join("");
+  const ratingsHtml = models.length ? `<div class="unit-box"><h3>Ratings by unit${sp&&sp.prior?` <span class="sub">(SP+ is last season's, until this year's are published)</span>`:""}</h3>
+      <table><tr><th></th>${head}</tr>
+      ${unitRow("Overall",u=>({rating:u.rating,rank:u.rank}))}${unitRow("Offense",u=>u.offense)}${unitRow("Defense",u=>u.defense)}${unitRow("Special teams",u=>u.specialTeams)}
+      ${models.length>1?`<tr><td class="sub">On the SP+ scale</td>${models.map(([,,,,pts])=>`<td class="num sub" style="text-align:center">${pts!=null?(+pts).toFixed(1):""}</td>`).join("")}</tr>`:""}</table></div>`
     : `<div class="unit-box"><h3>SP+</h3><div class="sub">Overall rating ${tm.rating}. The unit breakdown arrives with the next data refresh.</div></div>`;
-  // FEI and F+ as published (per-possession and standardized scales, not points), labelled with the edition in the data file
-  const altHtml = ["fei","fplus"].map(k=>{ const u=tm[k]; if(!u || u.rating==null) return "";
-      const ed=(D.meta&&D.meta.models&&D.meta.models[k])||modelName(k); const pts=tm.ratingsAlt&&tm.ratingsAlt[k];
-      return unitTable(ed.replace(/^(FEI|F\+)\s+\d{4}\s*/,"$1 · "), u, 2, pts!=null?`(${pts>0?"+":""}${(+pts).toFixed(1)} on the SP+ scale${MODEL===k?", driving the simulation":""})`:""); }).join("");
-  const ratingsHtml = `<div class="unit-row">${spHtml}${altHtml}</div>`;
+  const ratingsBlock = trend + ratingsHtml;
   const games=D.games.map((g,i)=>({g,i})).filter(x=>x.g.home===name||x.g.away===name).sort((a,b)=>a.g.week-b.g.week);
   const levOf=new Map(); if(RES) RES.games.forEach(x=>levOf.set(x.i,x));
   const rows=games.map(({g,i})=>{
@@ -1275,7 +1277,7 @@ function openTeam(name){
   $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
     <h2>${name}</h2>
     <div class="kv"><span>${tm.conference}</span>${rk?`<span>${rk}</span>`:""}${st?`<span>Proj. <b class="num">${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}</b></span><span>Playoff <b class="num">${Math.round(st.pIn*100)}%</b></span><span>Title <b class="num">${st.pTitle>=0.005?Math.round(st.pTitle*100)+"%":st.pTitle>0?"<1%":"0%"}</b></span>`:""}</div>
-    ${oddsTrend}${ratingsHtml}
+    ${oddsTrend}${ratingsBlock}
     <h3>Schedule <span class="sub" style="font-weight:400">· projected score is the model's; leverage is for ${T||"the whole field"}; tap a leverage score for the why</span></h3>
     <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c" title="The model's expected score: its margin from the ${modelName()} gap and home advantage, around a total from the two teams' SP+ offense and defense">Proj. score</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
