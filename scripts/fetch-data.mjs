@@ -80,16 +80,19 @@ for (const wk of rankings) {
   }
 }
 const pollName = polls.cfp ? polls.cfp.name : polls.ap ? polls.ap.name : "none";
-// every AP poll of the season, for the Overview chart. CFBD files the preseason poll as week 1 and the poll that
-// follows week N's games as week N+1, so each is keyed like the playoff-chance points in history.json: "pre", then
-// "wN" for the poll after week N.
-const apHistory = [];
-for (const wk of rankings) {
-  const p = (wk.polls || []).find((x) => /AP Top 25/i.test(x.poll)); if (!p) continue;
-  const week = pick(wk, "week") ?? 0, key = week <= 1 ? "pre" : "w" + (week - 1);
-  apHistory.push({ week, key, label: key === "pre" ? "Preseason" : "Wk " + key.slice(1), ranks: Object.fromEntries((p.ranks || []).map((x) => [x.school, x.rank])) });
-}
-apHistory.sort((a, b) => a.week - b.week);
+// every AP poll and every CFP committee ranking of the season, for the Overview chart. CFBD files the preseason AP
+// poll as week 1 and a ranking that follows week N's games as week N+1, so each is keyed like the playoff-chance
+// points in history.json: "pre", then "wN" for the ranking after week N.
+const pollHistory = (re) => {
+  const out = [];
+  for (const wk of rankings) {
+    const p = (wk.polls || []).find((x) => re.test(x.poll)); if (!p) continue;
+    const week = pick(wk, "week") ?? 0, key = week <= 1 ? "pre" : "w" + (week - 1);
+    out.push({ week, key, label: key === "pre" ? "Preseason" : "Wk " + key.slice(1), ranks: Object.fromEntries((p.ranks || []).map((x) => [x.school, x.rank])) });
+  }
+  return out.sort((a, b) => a.week - b.week);
+};
+const apHistory = pollHistory(/AP Top 25/i), cfpHistory = pollHistory(/Playoff Committee/i);
 
 const teams = fbs.map((t) => ({
   team: t.school,
@@ -222,7 +225,7 @@ writeFileSync(new URL("../data.json", import.meta.url), JSON.stringify({
   source: `CollegeFootballData · ${pollName}`,
   polls: {
     ap: polls.ap ? { name: polls.ap.name, week: polls.ap.week } : null,
-    apHistory,
+    apHistory, cfpHistory,
     cfp: polls.cfp ? { name: polls.cfp.name, week: polls.cfp.week } : null,
   },
   meta: {

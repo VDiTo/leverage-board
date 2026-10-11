@@ -83,13 +83,16 @@ model driving the simulation: the refresh also simulates each completed week
 on FEI and on F+ (`pointsBy` in `history.json`, each week on the latest
 edition at or before it, from the model's first recorded edition on), so
 switching models never mixes an SP+ history with an FEI or F+ "Now". The
-popup's By week heading carries the same SP+ / FEI / F+ switch as the header. The Fremeau editions start from
+popup's By week heading and the chart's Playoff odds view carry the same
+SP+ / FEI / F+ switch as the header. The Fremeau editions start from
 the week they were added to the board (week 5 of 2026); there is no archive of
 earlier weeks to backfill from. Under a model the chart's legend is ordered by
 that model's latest rating. The chart's AP Poll view plots every AP poll of the
 season for the teams in the current Top 25 (`polls.apHistory` in `data.json`,
 keyed like the playoff-chance points: the preseason poll, then the poll that
-followed each week's games); a week outside the poll sits on the NR line.
+followed each week's games); a week outside the poll sits on the NR line. The
+CFP committee's rankings are kept the same way (`polls.cfpHistory`) and get
+their own chart view and card row once the committee starts ranking.
 
 Ratings are treated as uncertain: each simulated season draws a
 "true strength" for every team around its rating (`ratingSd`, 8 points).
