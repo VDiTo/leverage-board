@@ -386,15 +386,23 @@
   .hist-legend{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:8px}
   .nm-short{display:none}
   @media (max-width:640px){ .nm-full{display:none} .nm-short{display:inline} }
-  /* one row per progression; once the season outgrows the width it scrolls sideways, opened at the latest week */
-  .sp-trend{display:flex;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;align-items:stretch;gap:6px 4px;margin:4px 0 10px;padding-bottom:2px}
+  /* week-by-week grid: a header row of weeks, then one row per progression (playoff odds, each model's rating), every
+     row sharing the columns so the cards line up by week. Scrolls sideways once the season outgrows the width. */
+  .trend-grid{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;margin:4px 0 10px;padding-bottom:2px}
+  .tr-row{display:flex;flex-wrap:nowrap;align-items:stretch;gap:6px 4px;margin:0 0 4px;width:max-content;min-width:100%}
+  .tr-lab{flex:0 0 80px;position:sticky;left:0;z-index:1;background:var(--panel);display:flex;align-items:center;font-size:12px;font-weight:600;color:var(--muted);padding-right:4px}
+  .tr-head .tr-col{flex:0 0 76px;width:76px;text-align:center;font-size:10.5px;color:var(--muted);align-self:flex-end} .tr-head .tr-col.now{color:var(--gold);font-weight:700}
+  .tr-head .sp-arrow{visibility:hidden} .tr-row .sp-arrow{align-self:center}
+  .sp-ed.empty{background:transparent;border-style:dashed;opacity:.45}
+  .unit-box table.models{table-layout:fixed;width:100%} .unit-box table.models th:first-child{width:28%} .unit-box table.models th,.unit-box table.models td{overflow:hidden;text-overflow:ellipsis}
   @media (max-width:640px){
-    .sp-trend{gap:4px}
-    .sp-trend .sp-arrow{display:none}   /* the change line on each card already carries the progression */
-    .sp-trend .sp-ed{flex:1 0 54px;width:auto;padding:3px 2px} .sp-trend .sp-ed b{font-size:14px} .sp-trend .sp-ed small{font-size:10px}
+    .tr-row{gap:4px}
+    .tr-row .sp-arrow{display:none}   /* the change line on each card already carries the progression */
+    .tr-row .sp-ed,.tr-head .tr-col{flex:1 0 50px;width:auto;padding:3px 2px} .tr-row .sp-ed b{font-size:14px} .tr-row .sp-ed small{font-size:10px}
+    .tr-lab{flex:0 0 60px;font-size:11px}
   }
   .sp-ed{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:4px 6px;line-height:1.2;flex:0 0 76px;width:76px;box-sizing:border-box}
-  .sp-ed .ph{visibility:hidden} .sp-trend .sp-arrow{align-self:center}
+  .sp-ed .ph{visibility:hidden}
   .sp-ed small{color:var(--muted);font-size:10.5px} .sp-ed b{font-size:15px} .sp-ed em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)} .sp-ed em.good{color:var(--for)} .sp-ed em.bad{color:var(--against)}
   .sp-arrow{color:var(--muted)}
   .unit-row{display:flex;flex-wrap:wrap;gap:0 18px;align-items:flex-start} .unit-row .unit-box{flex:1 1 220px;min-width:0} .unit-row .unit-box h3 .sub{font-weight:400}
@@ -1223,20 +1231,31 @@ function openTeam(name){
   const tm=D.teams[idx.get(name)]; if(!tm) return;
   const st=RES ? RES.teamStats.find(x=>x.team===name) : null;
   const sp=tm.sp;
-  // week-by-week card strips: every card has the same rows, so a missing rank or first-card change is a hidden placeholder
-  const strip=(rows, main, sub, delta)=>rows.map((x,i)=>{ const d=i?delta(x, rows[i-1]):null; const cls=d==null?"":d>0.05?"good":d<-0.05?"bad":"";
+  // week-by-week grid: playoff odds and every model's rating, one column per recorded week so the rows line up.
+  // Every card has the same lines, so a missing rank or a first-card change is a hidden placeholder; a model with no
+  // edition for a week gets an empty slot.
+  const colOrder=k=>k==="pre"?-1:k==="now"?999:+k.slice(1);
+  const cards=(pts, main, sub, delta, dd=1)=>{ const have=pts.filter(x=>x.v!=null); return have.map((x,i)=>{ const d=i?delta(x,have[i-1]):null; const eps=dd===1?0.05:0.005; const cls=d==null?"":d>eps?"good":d<-eps?"bad":"";
       const sb=sub?sub(x):null;
-      return `<span class="sp-ed${x.now?" now":""}"><small>${x.label}</small><b class="num">${main(x)}</b><small class="num${sb?"":" ph"}">${sb||"#"}</small><em class="num ${cls}${d==null?" ph":""}">${d==null?"+0":(d>0?"+":d<0?"−":"")+Math.abs(d).toFixed(1)}</em></span>`; }).join('<span class="sp-arrow">→</span>');
-  const eds=(HIST&&HIST.season===D.season&&HIST.sp)||[];
-  const trend = eds.length>1 ? (()=>{ const rows=eds.map(e=>({label:e.label, v:e.ratings[name]})).filter(x=>x.v);
-      if(rows.length<2) return "";
-      return `<h3>SP+ by week</h3><div class="sp-trend">${strip(rows, x=>x.v[0].toFixed(1), x=>x.v[1]?"#"+x.v[1]:null, (x,p)=>x.v[0]-p.v[0])}</div>`; })() : "";
-  // playoff chance after each recorded week, plus "Now" once things have moved on, as on the Overview chart
+      return [x.key, `<span class="sp-ed${x.now?" now":""}"><b class="num">${main(x)}</b><small class="num${sb?"":" ph"}">${sb||"#"}</small><em class="num ${cls}${d==null?" ph":""}">${d==null?"+0":(d>0?"+":d<0?"\u2212":"")+Math.abs(d).toFixed(dd)}</em></span>`]; }); };
+  const trRows=[], labels=new Map();
+  const R0=RES||{teamStats:[],games:[],played:[]};
+  // playoff chance after each recorded week, plus "Now" once things have moved on, as on the Overview chart;
   // rank among FBS teams by playoff chance at that point (ties share a rank; none for a team at 0%)
-  const oddsTrend = RES ? (()=>{ const rows=chartData(RES,"odds").pts.map(p=>({label:p.label, now:p.now, v:p.val[name],
-        rk:p.val[name]>0 ? 1+Object.values(p.val).filter(v=>v>p.val[name]).length : null})).filter(x=>x.v!=null);
-      if(rows.length<2) return "";
-      return `<h3>Playoff odds by week</h3><div class="sp-trend">${strip(rows, x=>Math.round(x.v*100)+"%", x=>x.rk?"#"+x.rk:null, (x,p)=>(x.v-p.v)*100)}</div>`; })() : "";
+  if(RES){ const pts=chartData(RES,"odds").pts.map(p=>({key:p.key, label:p.label, now:p.now, v:p.val[name],
+        rk:p.val[name]>0 ? 1+Object.values(p.val).filter(v=>v>p.val[name]).length : null}));
+    pts.forEach(p=>labels.set(p.key,p.label));
+    trRows.push(["Playoff odds", cards(pts, x=>Math.round(x.v*100)+"%", x=>x.rk?"#"+x.rk:null, (x,p)=>(x.v-p.v)*100)]); }
+  // each model's rating in every recorded edition, as published (SP+ in points, FEI and F+ on their own scales)
+  for(const k of ["sp","fei","fplus"]){ const dec=k==="sp"?1:2;
+    const pts=chartData(R0,k).pts.map(p=>({key:p.key, label:p.label, now:p.now, v:p.val[name], rk:p.rank?p.rank[name]:null})).filter(x=>x.v!=null);
+    if(!pts.length) continue; pts.forEach(p=>labels.set(p.key,p.label));
+    trRows.push([MODEL_NAMES[k], cards(pts, x=>x.v.toFixed(dec), x=>x.rk?"#"+x.rk:null, (x,p)=>x.v-p.v, dec)]); }
+  const cols=[...labels.keys()].sort((a,b)=>colOrder(a)-colOrder(b));
+  const arrow=i=>i?'<span class="sp-arrow">\u2192</span>':"";
+  const trend = cols.length>1 ? `<h3>By week</h3><div class="trend-grid">
+      <div class="tr-row tr-head"><div class="tr-lab"></div>${cols.map((c,i)=>`${arrow(i)}<span class="tr-col${c==="now"?" now":""}">${labels.get(c)}</span>`).join("")}</div>
+      ${trRows.map(([lab,cs])=>{ const m=new Map(cs); return `<div class="tr-row"><div class="tr-lab">${lab}</div>${cols.map((c,i)=>`${arrow(i)}${m.get(c)||'<span class="sp-ed empty"></span>'}`).join("")}</div>`; }).join("")}</div>` : "";
   // one table: a row per unit, a column per model (SP+ in points, FEI per possession, F+ standardized), rank under each
   // rating, and a last row putting every model on the SP+ points scale. The model driving the simulation is marked.
   const models=[["sp","SP+",1,sp,tm.rating],...["fei","fplus"].map(k=>[k,(D.meta&&D.meta.models&&D.meta.models[k])||modelName(k),2,tm[k],tm.ratingsAlt&&tm.ratingsAlt[k]])]
@@ -1245,7 +1264,7 @@ function openTeam(name){
   const unitRow=(lab,pick)=>`<tr><td>${lab}</td>${models.map(([k,,dec,u])=>cell(pick(u),dec)).join("")}</tr>`;
   const head=models.map(([k,ed])=>`<th class="c">${ed.replace(/^(FEI|F\+)\s+\d{4}\s*/,"$1 ")}${MODEL===k?` <span class="sub" title="Driving the simulation">▸ sim</span>`:""}</th>`).join("");
   const ratingsHtml = models.length ? `<div class="unit-box"><h3>Ratings by unit${sp&&sp.prior?` <span class="sub">(SP+ is last season's, until this year's are published)</span>`:""}</h3>
-      <table><tr><th></th>${head}</tr>
+      <table class="models"><tr><th></th>${head}</tr>
       ${unitRow("Overall",u=>({rating:u.rating,rank:u.rank}))}${unitRow("Offense",u=>u.offense)}${unitRow("Defense",u=>u.defense)}${unitRow("Special teams",u=>u.specialTeams)}
       ${models.length>1?`<tr><td class="sub">On the SP+ scale</td>${models.map(([,,,,pts])=>`<td class="num sub" style="text-align:center">${pts!=null?(+pts).toFixed(1):""}</td>`).join("")}</tr>`:""}</table></div>`
     : `<div class="unit-box"><h3>SP+</h3><div class="sub">Overall rating ${tm.rating}. The unit breakdown arrives with the next data refresh.</div></div>`;
@@ -1277,11 +1296,11 @@ function openTeam(name){
   $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
     <h2>${name}</h2>
     <div class="kv"><span>${tm.conference}</span>${rk?`<span>${rk}</span>`:""}${st?`<span>Proj. <b class="num">${st.wins.toFixed(1)}–${(st.games-st.wins).toFixed(1)}</b></span><span>Playoff <b class="num">${Math.round(st.pIn*100)}%</b></span><span>Title <b class="num">${st.pTitle>=0.005?Math.round(st.pTitle*100)+"%":st.pTitle>0?"<1%":"0%"}</b></span>`:""}</div>
-    ${oddsTrend}${ratingsBlock}
+    ${ratingsBlock}
     <h3>Schedule <span class="sub" style="font-weight:400">· projected score is the model's; leverage is for ${T||"the whole field"}; tap a leverage score for the why</span></h3>
     <div class="scroll"><table><tr><th>Wk</th><th>Opponent</th><th class="c">Win chance</th><th class="c" title="The model's expected score: its margin from the ${modelName()} gap and home advantage, around a total from the two teams' SP+ offense and defense">Proj. score</th><th class="c">Leverage</th><th>Kickoff</th></tr>${rows}</table></div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
-  document.querySelectorAll("#sheet .sp-trend").forEach(s=>{ s.scrollLeft=s.scrollWidth; });   // open at the latest week
+  document.querySelectorAll("#sheet .trend-grid").forEach(s=>{ s.scrollLeft=s.scrollWidth; });   // open at the latest week
 }
 
 // every section description collapses behind an "i" button next to its heading
@@ -1387,10 +1406,15 @@ function projectField(r){
 }
 // Line chart: the current top 20 by playoff chance, and where each stood after every completed week.
 // drawChart renders into any container (the Overview card or the full-screen sheet) with hover/tap tooltips.
-let CHART_METRIC="odds";   // "odds" = playoff chance by week, "sp" = SP+ rating by edition
+let CHART_METRIC="odds";   // "odds" = playoff chance by week; "sp", "fei", "fplus" = that model's rating by edition
 // the recorded playoff-chance points for this season; the week-0 point (a handful of games) is folded into week 1's
 const histPoints=()=>{ const pts=(HIST&&HIST.season===D.season&&HIST.points)||[]; return pts.some(p=>p.week===1) ? pts.filter(p=>p.week!==0) : pts; };
-const curRatingsHash=()=>{ let h=5381; const str=D.teams.filter(t=>!t.fcs).map(t=>t.team+":"+t.rating).join("|"); for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0; return h.toString(36); };
+// a model's published rating for a team (SP+ in points, FEI and F+ on their own scales), and the hash scripts/snapshot.mjs
+// records with each edition, so the page can tell whether the data file's edition is already in history.json
+const ratingOf=(t,k="sp")=> k==="sp" ? t.rating : (t[k]&&t[k].rating!=null ? t[k].rating : null);
+const modelRankOf=(t,k="sp")=> k==="sp" ? (t.sp&&t.sp.rank||null) : (t[k]&&t[k].rank||null);
+const curRatingsHash=(k="sp")=>{ let h=5381; const str=D.teams.filter(t=>!t.fcs && ratingOf(t,k)!=null).map(t=>t.team+":"+ratingOf(t,k)).join("|"); for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0; return h.toString(36); };
+const hasEditions=k=> !!((HIST&&HIST.season===D.season&&HIST[k]&&HIST[k].length) || D.teams.some(t=>!t.fcs && ratingOf(t,k)!=null));
 // conference filter: "all", a Power Four league by name, "G6" for every Group of Six league, or "IND"
 let CHART_CONF="all";
 const confGroup = c => { const tier=(D.conferenceTiers||{})[c]; return tier==="P4" ? c : tier==="G6" ? "G6" : "IND"; };
@@ -1398,19 +1422,20 @@ function chartData(r, metric){
   const st=r.teamStats.filter(t=>!t.fcs && (CHART_CONF==="all" || confGroup(t.conf)===CHART_CONF)).slice().sort((a,b)=>b.pIn-a.pIn);
   const top=st.slice(0,20);
   const hist = HIST&&HIST.season===D.season ? HIST : null;
-  if(metric==="sp"){
-    const eds=(hist&&hist.sp)||[];
-    const pts=eds.map(e=>({label:e.label, val:Object.fromEntries(Object.entries(e.ratings).map(([t,v])=>[t,v[0]])), rank:Object.fromEntries(Object.entries(e.ratings).map(([t,v])=>[t,v[1]]))}));
+  if(metric!=="odds"){
+    const eds=(hist&&hist[metric])||[], dec=metric==="sp"?1:2;
+    const pts=eds.map(e=>({key:e.key, label:e.label, val:Object.fromEntries(Object.entries(e.ratings).map(([t,v])=>[t,v[0]])), rank:Object.fromEntries(Object.entries(e.ratings).map(([t,v])=>[t,v[1]]))}));
     // the live data file may carry an edition not yet recorded
-    if(!eds.length || eds[eds.length-1].hash!==curRatingsHash()) pts.push({label:"Now", now:true, val:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,+(+t.rating).toFixed(1)])), rank:Object.fromEntries(D.teams.filter(t=>!t.fcs).map(t=>[t.team,t.sp&&t.sp.rank||null]))});
+    const cur=D.teams.filter(t=>!t.fcs && ratingOf(t,metric)!=null);
+    if(cur.length && (!eds.length || eds[eds.length-1].hash!==curRatingsHash(metric))) pts.push({key:"now", label:"Now", now:true, val:Object.fromEntries(cur.map(t=>[t.team,+(+ratingOf(t,metric)).toFixed(dec)])), rank:Object.fromEntries(cur.map(t=>[t.team,modelRankOf(t,metric)]))});
     return {top, pts, metric};
   }
-  const rec=histPoints(); const pts=rec.map(p=>({label:p.label, val:p.pIn}));
+  const rec=histPoints(); const pts=rec.map(p=>({key:p.key, label:p.label, val:p.pIn}));
   // "Now" only once something has moved since the last recorded week: newer results, a game in progress, or a new SP+ edition
   const last=rec[rec.length-1];
   const lastWeek = last ? (last.key==="pre" ? -1 : last.week) : -1;
   const moved = !last || MODEL!=="sp" || (r.played||[]).some(g=>g.week>lastWeek) || r.games.some(g=>g.live) || (last.ratingsHash && last.ratingsHash!==curRatingsHash());
-  if(moved) pts.push({label:"Now", val:Object.fromEntries(st.map(t=>[t.team,t.pIn])), now:true});
+  if(moved) pts.push({key:"now", label:"Now", val:Object.fromEntries(st.map(t=>[t.team,t.pIn])), now:true});
   return {top, pts, metric:"odds"};
 }
 function chartColor(team){
@@ -1421,12 +1446,16 @@ function chartColor(team){
   let x2=c; for(let i=0;i<5 && contrast(x2,ground)<2.2;i++) x2=mixRgb(x2, light?[0,0,0]:[255,255,255], 0.25); return css(x2);
 }
 function drawChart(el, r, big){
-  const metric=CHART_METRIC, {top, pts}=chartData(r, metric);
+  if(CHART_METRIC!=="odds" && !hasEditions(CHART_METRIC)) CHART_METRIC="odds";
+  const metric=CHART_METRIC, {top, pts}=chartData(r, metric), dec=metric==="sp"?1:2;
   const W=big?1100:760, H=big?540:340, L=big?54:44, R=big?24:16, TOP=big?18:14, B=big?40:34, iw=W-L-R, ih=H-TOP-B, fs=big?15:12;
-  // y scale: 0-100% for odds; for SP+ a padded range around the top 20's ratings, on round numbers
+  // y scale: 0-100% for odds; for a rating a padded range around the top 20's values, on round numbers (SP+ by fives,
+  // FEI and F+ on a step that gives about five gridlines of their much smaller scales)
   let lo=0, hi=1, ticks=[0,0.25,0.5,0.75,1], fmtY=v=>Math.round(v*100)+"%";
-  if(metric==="sp"){ const vals=top.flatMap(t=>pts.map(p=>p.val[t.team]).filter(v=>v!=null)); const mn=Math.min(...vals), mx=Math.max(...vals);
-    lo=Math.floor((mn-2)/5)*5; hi=Math.ceil((mx+2)/5)*5; if(hi-lo<10){ hi=lo+10; } ticks=[]; for(let v=lo; v<=hi+1e-9; v+=5) ticks.push(v); fmtY=v=>String(v); }
+  if(metric!=="odds"){ const vals=top.flatMap(t=>pts.map(p=>p.val[t.team]).filter(v=>v!=null)); const mn=Math.min(...vals), mx=Math.max(...vals);
+    let step=5, pad=2, min=10;
+    if(metric!=="sp"){ const raw=Math.max(mx-mn,0.4)/5; step=[0.05,0.1,0.2,0.25,0.5,1,2].find(x=>x>=raw)||5; pad=step*0.6; min=step*4; }
+    lo=Math.floor((mn-pad)/step)*step; hi=Math.ceil((mx+pad)/step)*step; if(hi-lo<min){ hi=lo+min; } ticks=[]; for(let v=lo; v<=hi+1e-9; v+=step) ticks.push(+v.toFixed(2)); fmtY=v=>String(+v.toFixed(2)); }
   const x=i=>L+(pts.length>1? i*iw/(pts.length-1) : iw/2), y=p=>TOP+ih*(1-(p-lo)/(hi-lo));
   const grid=ticks.map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="gl"/><text x="${L-6}" y="${y(v)+4}" class="ax" font-size="${fs}" text-anchor="end">${fmtY(v)}</text>`).join("");
   const xa=pts.map((p,i)=>`<text x="${x(i)}" y="${H-B+fs+6}" class="ax${p.now?" now":""}" font-size="${fs}" text-anchor="${i===0?"start":i===pts.length-1?"end":"middle"}">${p.label}</text>`).join("");
@@ -1434,14 +1463,14 @@ function drawChart(el, r, big){
   const lines=series.map(sr=>{ let path="", open=false; sr.d.forEach(pt=>{ if(!pt){ open=false; return; } path+=(open?"L":"M")+pt.x.toFixed(1)+" "+pt.y.toFixed(1); open=true; });
     const dots=sr.d.map(pt=>pt?`<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="${big?3.4:2.6}"/>`:"").join("");
     return `<g class="tl${sr.team===T?" me":""}" data-team="${sr.team.replace(/"/g,"&quot;")}" style="color:${sr.col}"><path d="${path}" style="stroke-width:${big?2.2:1.6}"/>${dots}</g>`; }).join("");
-  const legend=top.map((t,k)=>{ const last=pts[pts.length-1].val[t.team]; const lbl=metric==="sp"?(last==null?"":last.toFixed(1)):Math.round(t.pIn*100)+"%";
+  const legend=top.map((t,k)=>{ const last=pts[pts.length-1].val[t.team]; const lbl=metric!=="odds"?(last==null?"":last.toFixed(dec)):Math.round(t.pIn*100)+"%";
     return `<button type="button" class="hl-btn${t.team===T?" me":""}" data-team="${t.team.replace(/"/g,"&quot;")}" style="--c:${chartColor(t.team)}"><i></i>${k+1}. ${short(t.team)} <b class="num">${lbl}</b></button>`; }).join("");
-  const seg=`<div class="seg hist-seg"><button type="button" data-m="odds" aria-pressed="${metric==="odds"}">Playoff odds</button><button type="button" data-m="sp" aria-pressed="${metric==="sp"}">SP+ rating</button></div>`;
+  const seg=`<div class="seg hist-seg">${[["odds","Playoff odds"],["sp","SP+"],["fei","FEI"],["fplus","F+"]].filter(([k])=>k==="odds"||hasEditions(k)).map(([k,l])=>`<button type="button" data-m="${k}" aria-pressed="${metric===k}">${l}</button>`).join("")}</div>`;
   // the conference pills double as the filter: the chosen one stays bright, the rest fade
   const confs=[["all","All"],...P4.map(c=>[c,c]),["G6","Group of Six"],["IND","Ind"]];
   const confKey=v=>v==="all"?"all":v==="G6"?"g6":v==="IND"?"ind":v.replace(/\W/g,"").toLowerCase();
   const filt=`<div class="hist-conf" role="group" aria-label="Filter by conference">${confs.map(([v,l])=>`<button type="button" class="cpill c-${confKey(v)}${CHART_CONF===v?"":" off"}" data-c="${v}" aria-pressed="${CHART_CONF===v}">${l}</button>`).join("")}</div>`;
-  el.innerHTML=`<div class="hist-wrap${big?" big":""}">${seg}${filt}<svg viewBox="0 0 ${W} ${H}" class="hist" role="img" aria-label="${metric==="sp"?"SP+ rating by week":"Playoff chance by week"} for the top 20 teams">${grid}${xa}${lines}</svg><div class="hist-tip" hidden></div>${big?"":`<button type="button" class="ghost hist-expand" title="Full screen">⤢ Expand</button>`}</div><div class="hist-legend">${legend}</div>`;
+  el.innerHTML=`<div class="hist-wrap${big?" big":""}">${seg}${filt}<svg viewBox="0 0 ${W} ${H}" class="hist" role="img" aria-label="${metric!=="odds"?MODEL_NAMES[metric]+" rating by week":"Playoff chance by week"} for the top 20 teams">${grid}${xa}${lines}</svg><div class="hist-tip" hidden></div>${big?"":`<button type="button" class="ghost hist-expand" title="Full screen">⤢ Expand</button>`}</div><div class="hist-legend">${legend}</div>`;
   el.querySelectorAll(".hist-seg button").forEach(b=>b.onclick=()=>{ CHART_METRIC=b.dataset.m; drawChart(el, r, big); if(big) renderHistory(r); });
   el.querySelectorAll(".hist-conf button").forEach(b=>b.onclick=()=>{ CHART_CONF=b.dataset.c; drawChart(el, r, big); if(big) renderHistory(r); });   // full screen: keep the Overview chart in step
   const svg=el.querySelector("svg.hist"), tip=el.querySelector(".hist-tip"), wrap=el.querySelector(".hist-wrap");
@@ -1459,7 +1488,7 @@ function drawChart(el, r, big){
   const show=e=>{ const n=nearest(e.clientX,e.clientY); if(!n){ tip.hidden=true; setHl(pinned); return; }
     const {rc,k,ox,oy}=geo(), wr=wrap.getBoundingClientRect();
     const px=rc.left-wr.left+ox+n.pt.x*k, py=rc.top-wr.top+oy+n.pt.y*k;
-    tip.innerHTML=`<b style="color:${n.sr.col}">${n.sr.team}</b><br>${pts[n.pt.i].label}: <b class="num">${metric==="sp"?n.pt.v.toFixed(1)+(n.pt.rank?" (#"+n.pt.rank+")":""):(n.pt.v*100).toFixed(1)+"%"}</b>`;
+    tip.innerHTML=`<b style="color:${n.sr.col}">${n.sr.team}</b><br>${pts[n.pt.i].label}: <b class="num">${metric!=="odds"?n.pt.v.toFixed(dec)+(n.pt.rank?" (#"+n.pt.rank+")":""):(n.pt.v*100).toFixed(1)+"%"}</b>`;
     tip.hidden=false; const tw=tip.offsetWidth, th=tip.offsetHeight;
     tip.style.left=Math.max(4, Math.min(wr.width-tw-4, px-tw/2))+"px"; tip.style.top=Math.max(4, py-th-12)+"px";
     setHl(n.sr.team); };
@@ -1469,7 +1498,7 @@ function drawChart(el, r, big){
 }
 function renderHistory(r){
   const el=$("#hist"); if(!el) return;
-  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. Week 0's handful of games counts with week 1. <strong>SP+ rating</strong> shows each team's rating in every SP+ update of the season, which is what drives the model.${T?` <strong>${T}</strong> is drawn heavier.`:""} The conference pills narrow the chart to one league, or the whole Group of Six, showing its top twenty. Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
+  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. Week 0's handful of games counts with week 1. <strong>SP+</strong> shows each team's rating in every SP+ update of the season; <strong>FEI</strong> and <strong>F+</strong> do the same for Brian Fremeau's ratings as he publishes them, on their own scales, recorded from the week they were added to the board. Whichever model is selected in the header drives the simulation.${T?` <strong>${T}</strong> is drawn heavier.`:""} The conference pills narrow the chart to one league, or the whole Group of Six, showing its top twenty. Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
   drawChart(el, r, false);
   if(chartData(r, CHART_METRIC).pts.length<2) el.insertAdjacentHTML("afterbegin", `<div class="sub" style="padding:6px 0">The chart fills in as weeks are completed: the daily refresh records every team's chance after each week.</div>`);
 }

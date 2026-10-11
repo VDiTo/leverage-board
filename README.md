@@ -66,6 +66,13 @@ Until a season's FEI or F+ is published the prior season's final table is used,
 regressed 25% like SP+; a model that could not be fetched is greyed out in the
 selector. FCS placeholders keep their fixed rating under every model.
 
+The daily refresh records each FEI and F+ edition in `history.json` alongside
+the SP+ ones, keyed to the week the table runs through, so the Overview chart
+can plot any model's ratings by week and the team popup lines up playoff odds
+and all three models in one week-by-week grid. The Fremeau editions start from
+the week they were added to the board (week 5 of 2026); there is no archive of
+earlier weeks to backfill from.
+
 Ratings are treated as uncertain: each simulated season draws a
 "true strength" for every team around its rating (`ratingSd`, 8 points).
 Without that, the top-rated team is a near-lock before kickoff.

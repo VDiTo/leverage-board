@@ -3,6 +3,8 @@
 //    masked, so a point is "what the model said once that week was in the books"). Past points are kept as they were;
 //    the latest week's point is recomputed if SP+ has been updated since it was recorded.
 //  - sp: every distinct SP+ edition (rating and rank per team), keyed to the latest completed week at the time.
+//  - fei, fplus: likewise for FEI and F+ as published (their own scales, not points), keyed to the week the table runs
+//    through ("thru Wk N" in meta.models), so the Overview chart and the team popup can line them up with SP+ by week.
 //  - pInPrevSp on a point whose SP+ edition differs from the previous point's: the same week's results simulated on the
 //    previous edition's ratings, so a team's week-to-week move splits into "results" and "SP+ update" parts.
 // Env: N=25000 (seasons per point). FORCE=1 recomputes every recorded point under the current model, each on the SP+
@@ -101,6 +103,21 @@ if (!lastEd || lastEd.hash !== ratingsHash) {
   console.log("SP+ edition recorded as " + latestKey);
 }
 
+// --- FEI and F+ editions ---
+for (const k of ["fei", "fplus"]) {
+  const rows = fbs.filter(t => t[k] && t[k].rating != null); if (!rows.length) continue;
+  H[k] = H[k] || [];
+  const hash = hashOf(rows.map(t => t.team + ":" + t[k].rating).join("|"));   // index.html's curRatingsHash(k)
+  const m = String((D.meta && D.meta.models && D.meta.models[k]) || "").match(/Wk\s*(\d+)/i);
+  const key = m ? "w" + m[1] : latestKey;
+  const last = H[k][H[k].length - 1];
+  if (last && last.hash === hash) continue;
+  const ed = { key, label: labelOf(key), asOf: D.updatedAt, hash, ratings: Object.fromEntries(rows.map(t => [t.team, [+t[k].rating, t[k].rank || null]])) };
+  const i = H[k].findIndex(e => e.key === key);
+  if (i >= 0) H[k][i] = ed; else H[k].push(ed);
+  console.log(`${k === "fei" ? "FEI" : "F+"} edition recorded as ${key}`);
+}
+
 H.updatedAt = new Date().toISOString();
 writeFileSync(OUT, JSON.stringify(H));
-console.log(`history.json: points ${H.points.map(p => p.key).join(", ")} | SP+ editions ${H.sp.map(e => e.key).join(", ")} (${N.toLocaleString()} seasons per point)`);
+console.log(`history.json: points ${H.points.map(p => p.key).join(", ")} | SP+ editions ${H.sp.map(e => e.key).join(", ")} | FEI ${(H.fei || []).map(e => e.key).join(", ") || "none"} | F+ ${(H.fplus || []).map(e => e.key).join(", ") || "none"} (${N.toLocaleString()} seasons per point)`);
