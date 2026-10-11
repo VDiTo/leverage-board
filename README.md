@@ -59,7 +59,15 @@ header picks which system drives the simulation: every win chance, each team's
 strength in the ranking, the projected scores, the stamps on the page and the
 PDFs. The saved result and the What if scenarios are keyed by model, so
 numbers from different models never mix. The team popup shows all three with
-their unit breakdowns and editions. The Week in
+their unit breakdowns and editions, plus three rows the board computes for
+each model from its own points-scale ratings, so every column fills on one
+definition: strength of schedule to date (mean rating of the opponents played),
+full-season strength of schedule (mean rating of every opponent), and strength
+of record (wins above what an average FBS team would expect from the same
+games, by that model's win chances with home advantage). Ranks are among FBS
+teams. These are the board's numbers, not published ones: FEI publishes its
+own to-date SOS and SOR on a losses basis, F+ none, and SP+'s SOS is only in
+CollegeFootballData's copy. The Week in
 review tab always runs on SP+, because the editions it compares are the SP+
 ones recorded in `history.json`; it says so when another model is selected.
 Until a season's FEI or F+ is published the prior season's final table is used,

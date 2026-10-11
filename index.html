@@ -394,7 +394,7 @@
   .tr-head .tr-col{flex:0 0 76px;width:76px;text-align:center;font-size:10.5px;color:var(--muted);align-self:flex-end} .tr-head .tr-col.now{color:var(--gold);font-weight:700}
   .tr-head .sp-arrow{visibility:hidden} .tr-row .sp-arrow{align-self:center}
   .sp-ed.empty{background:transparent;border-style:dashed;opacity:.45}
-  .unit-box table.models{table-layout:fixed;width:100%} .unit-box table.models th:first-child{width:28%} .unit-box table.models th,.unit-box table.models td{overflow:hidden;text-overflow:ellipsis}
+  .unit-box table.models{table-layout:fixed;width:100%} .unit-box table.models tr.sep td{border-top:2px solid var(--line)} .unit-box table.models th:first-child{width:28%} .unit-box table.models th,.unit-box table.models td{overflow:hidden;text-overflow:ellipsis}
   @media (max-width:640px){
     .tr-row{gap:4px}
     .tr-row .sp-arrow{display:none}   /* the change line on each card already carries the progression */
@@ -1260,13 +1260,34 @@ function openTeam(name){
   // rating, and a last row putting every model on the SP+ points scale. The model driving the simulation is marked.
   const models=[["sp","SP+",1,sp,tm.rating],...["fei","fplus"].map(k=>[k,(D.meta&&D.meta.models&&D.meta.models[k])||modelName(k),2,tm[k],tm.ratingsAlt&&tm.ratingsAlt[k]])]
     .filter(([k,,,u])=>u && u.rating!=null);
-  const cell=(u,dec)=> u && u.rating!=null ? `<td class="num" style="text-align:center">${(+u.rating).toFixed(dec)}<small class="sub"> ${u.rank?"#"+u.rank:""}</small></td>` : `<td class="num sub" style="text-align:center">—</td>`;
-  const unitRow=(lab,pick)=>`<tr><td>${lab}</td>${models.map(([k,,dec,u])=>cell(pick(u),dec)).join("")}</tr>`;
+  // schedule and record under each model, computed here from that model's points-scale ratings so every column fills
+  // on one definition: SOS is the mean opponent rating (to date = completed games, full season = the whole schedule,
+  // FCS visitors at their fixed rating) and SOR is wins over what an average FBS team would expect from the same
+  // completed games, each game's chance from the site's own margin formula with home advantage. Ranks are among FBS
+  // teams: #1 is the hardest schedule, or the best record for the schedule played.
+  const schedStats=(()=>{ const {hfa,sdMargin}=D.config, out={}, byTeam=new Map();
+    D.games.forEach(g=>{ for(const n of [g.home,g.away]){ if(!byTeam.has(n)) byTeam.set(n,[]); byTeam.get(n).push(g); } });
+    const fbs=D.teams.filter(t=>!t.fcs);
+    for(const [k] of models){ const avg=fbs.reduce((s,t)=>s+ratingFor(t,k),0)/fbs.length;
+      const rows=fbs.map(t=>{ let sn=0,cn=0,sa=0,ca=0,w=0,xw=0;
+        for(const g of byTeam.get(t.team)||[]){ const home=g.home===t.team, o=D.teams[idx.get(home?g.away:g.home)]; if(!o) continue; const r=ratingFor(o,k);
+          sa+=r; ca++; if(!g.completed) continue; sn+=r; cn++; if(!!g.homeWin===home) w++; xw+=norm((avg-r+(g.neutral?0:home?hfa:-hfa))/sdMargin); }
+        return {team:t.team, sosNow:cn?sn/cn:null, sosAll:ca?sa/ca:null, sor:cn?w-xw:null}; });
+      const rank=key=>{ const sorted=rows.filter(r=>r[key]!=null).sort((a,b)=>b[key]-a[key]); const m=new Map(); sorted.forEach((r,i)=>m.set(r.team, i&&sorted[i-1][key]===r[key] ? m.get(sorted[i-1].team) : i+1)); return m; };
+      const rk={sosNow:rank("sosNow"), sosAll:rank("sosAll"), sor:rank("sor")};
+      out[k]=Object.fromEntries(rows.map(r=>[r.team, {sosNow:{rating:r.sosNow,rank:rk.sosNow.get(r.team)}, sosAll:{rating:r.sosAll,rank:rk.sosAll.get(r.team)}, sor:{rating:r.sor,rank:rk.sor.get(r.team)}}])); }
+    return out; })();
+  const sched=(k,key)=>{ const x=schedStats[k]&&schedStats[k][name]; return x?x[key]:null; };
+  const cell=(u,dec,signed)=> u && u.rating!=null ? `<td class="num" style="text-align:center">${signed&&u.rating>0.05?"+":""}${(+u.rating).toFixed(dec)}<small class="sub"> ${u.rank?"#"+u.rank:""}</small></td>` : `<td class="num sub" style="text-align:center">—</td>`;
+  const unitRow=(lab,pick,o={})=>`<tr${o.cls?` class="${o.cls}"`:""}${o.title?` title="${o.title}"`:""}><td>${lab}</td>${models.map(([k,,dec,u])=>cell(pick(u,k),o.dec??dec,o.signed)).join("")}</tr>`;
   const head=models.map(([k,ed])=>`<th class="c">${ed.replace(/^(FEI|F\+)\s+\d{4}\s*/,"$1 ")}${MODEL===k?` <span class="sub" title="Driving the simulation">▸ sim</span>`:""}</th>`).join("");
   const ratingsHtml = models.length ? `<div class="unit-box"><h3>Ratings by unit${sp&&sp.prior?` <span class="sub">(SP+ is last season's, until this year's are published)</span>`:""}</h3>
       <table class="models"><tr><th></th>${head}</tr>
       ${unitRow("Overall",u=>({rating:u.rating,rank:u.rank}))}${unitRow("Offense",u=>u.offense)}${unitRow("Defense",u=>u.defense)}${unitRow("Special teams",u=>u.specialTeams)}
-      ${models.length>1?`<tr><td class="sub">On the SP+ scale</td>${models.map(([,,,,pts])=>`<td class="num sub" style="text-align:center">${pts!=null?(+pts).toFixed(1):""}</td>`).join("")}</tr>`:""}</table></div>`
+      ${unitRow("SOS to date",(u,k)=>sched(k,"sosNow"),{dec:1,cls:"sep",title:"Average rating of the opponents played so far, on this model's points scale. #1 is the hardest schedule played."})}
+      ${unitRow("SOS, full season",(u,k)=>sched(k,"sosAll"),{dec:1,title:"Average rating of every opponent on the schedule, played or not, on this model's points scale. #1 is the hardest."})}
+      ${unitRow("SOR",(u,k)=>sched(k,"sor"),{dec:1,signed:true,title:"Wins above what an average FBS team would expect from the same games, by this model's win chances with home advantage. #1 is the best record for the schedule played."})}
+      ${models.length>1?`<tr class="sep"><td class="sub">On the SP+ scale</td>${models.map(([,,,,pts])=>`<td class="num sub" style="text-align:center">${pts!=null?(+pts).toFixed(1):""}</td>`).join("")}</tr>`:""}</table></div>`
     : `<div class="unit-box"><h3>SP+</h3><div class="sub">Overall rating ${tm.rating}. The unit breakdown arrives with the next data refresh.</div></div>`;
   const ratingsBlock = trend + ratingsHtml;
   const games=D.games.map((g,i)=>({g,i})).filter(x=>x.g.home===name||x.g.away===name).sort((a,b)=>a.g.week-b.g.week);
