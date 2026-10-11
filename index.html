@@ -1427,7 +1427,8 @@ function projectField(r){
 }
 // Line chart: the current top 20 by playoff chance, and where each stood after every completed week.
 // drawChart renders into any container (the Overview card or the full-screen sheet) with hover/tap tooltips.
-let CHART_METRIC="odds";   // "odds" = playoff chance by week; "sp", "fei", "fplus" = that model's rating by edition
+let CHART_METRIC="odds";   // "odds" = playoff chance by week; "sp", "fei", "fplus" = that model's rating by edition; "ap" = AP poll rank
+const AP_NR=27;            // where an unranked week sits on the AP chart (just below No. 25, on the "NR" line)
 // the recorded playoff-chance points for this season; the week-0 point (a handful of games) is folded into week 1's
 const histPoints=()=>{ const pts=(HIST&&HIST.season===D.season&&HIST.points)||[]; return pts.some(p=>p.week===1) ? pts.filter(p=>p.week!==0) : pts; };
 // a model's published rating for a team (SP+ in points, FEI and F+ on their own scales), and the hash scripts/snapshot.mjs
@@ -1435,20 +1436,29 @@ const histPoints=()=>{ const pts=(HIST&&HIST.season===D.season&&HIST.points)||[]
 const ratingOf=(t,k="sp")=> k==="sp" ? t.rating : (t[k]&&t[k].rating!=null ? t[k].rating : null);
 const modelRankOf=(t,k="sp")=> k==="sp" ? (t.sp&&t.sp.rank||null) : (t[k]&&t[k].rank||null);
 const curRatingsHash=(k="sp")=>{ let h=5381; const str=D.teams.filter(t=>!t.fcs && ratingOf(t,k)!=null).map(t=>t.team+":"+ratingOf(t,k)).join("|"); for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0; return h.toString(36); };
-const hasEditions=k=> !!((HIST&&HIST.season===D.season&&HIST[k]&&HIST[k].length) || D.teams.some(t=>!t.fcs && ratingOf(t,k)!=null));
+const hasEditions=k=> k==="ap" ? !!(D.polls&&D.polls.apHistory&&D.polls.apHistory.length) : !!((HIST&&HIST.season===D.season&&HIST[k]&&HIST[k].length) || D.teams.some(t=>!t.fcs && ratingOf(t,k)!=null));
 // conference filter: "all", a Power Four league by name, "G6" for every Group of Six league, or "IND"
 let CHART_CONF="all";
 const confGroup = c => { const tier=(D.conferenceTiers||{})[c]; return tier==="P4" ? c : tier==="G6" ? "G6" : "IND"; };
 function chartData(r, metric){
   const st=r.teamStats.filter(t=>!t.fcs && (CHART_CONF==="all" || confGroup(t.conf)===CHART_CONF)).slice().sort((a,b)=>b.pIn-a.pIn);
-  const top=st.slice(0,20);
   const hist = HIST&&HIST.season===D.season ? HIST : null;
+  if(metric==="ap"){
+    // the current AP Top 25 (narrowed by the conference filter), and where each stood in every AP poll this season;
+    // a week outside the poll plots on the NR line so a team's line never breaks
+    const top=D.teams.filter(t=>t.apRank && (CHART_CONF==="all" || confGroup(t.conference)===CHART_CONF)).sort((a,b)=>a.apRank-b.apRank).map(t=>({team:t.team, apRank:t.apRank}));
+    const pts=(D.polls.apHistory||[]).map(e=>({key:e.key, label:e.label, val:Object.fromEntries(top.map(t=>[t.team, e.ranks[t.team]||AP_NR]))}));
+    return {top, pts, metric};
+  }
+  let top=st.slice(0,20);
   if(metric!=="odds"){
     const eds=(hist&&hist[metric])||[], dec=metric==="sp"?1:2;
     const pts=eds.map(e=>({key:e.key, label:e.label, val:Object.fromEntries(Object.entries(e.ratings).map(([t,v])=>[t,v[0]])), rank:Object.fromEntries(Object.entries(e.ratings).map(([t,v])=>[t,v[1]]))}));
     // the live data file may carry an edition not yet recorded
     const cur=D.teams.filter(t=>!t.fcs && ratingOf(t,metric)!=null);
     if(cur.length && (!eds.length || eds[eds.length-1].hash!==curRatingsHash(metric))) pts.push({key:"now", label:"Now", now:true, val:Object.fromEntries(cur.map(t=>[t.team,+(+ratingOf(t,metric)).toFixed(dec)])), rank:Object.fromEntries(cur.map(t=>[t.team,modelRankOf(t,metric)]))});
+    // the legend follows the view: the same twenty teams, ordered by their latest rating under this model
+    if(pts.length){ const last=pts[pts.length-1].val; top=top.slice().sort((a,b)=>(last[b.team]??-1e9)-(last[a.team]??-1e9)); }
     return {top, pts, metric};
   }
   const rec=histPoints(); const pts=rec.map(p=>({key:p.key, label:p.label, val:p.pIn}));
@@ -1469,29 +1479,31 @@ function chartColor(team){
 function drawChart(el, r, big){
   if(CHART_METRIC!=="odds" && !hasEditions(CHART_METRIC)) CHART_METRIC="odds";
   const metric=CHART_METRIC, {top, pts}=chartData(r, metric), dec=metric==="sp"?1:2;
+  const fmtV=v=> metric==="ap" ? (v>=AP_NR?"NR":"#"+v) : metric!=="odds" ? v.toFixed(dec) : (v*100).toFixed(1)+"%";
   const W=big?1100:760, H=big?540:340, L=big?54:44, R=big?24:16, TOP=big?18:14, B=big?40:34, iw=W-L-R, ih=H-TOP-B, fs=big?15:12;
   // y scale: 0-100% for odds; for a rating a padded range around the top 20's values, on round numbers (SP+ by fives,
   // FEI and F+ on a step that gives about five gridlines of their much smaller scales)
-  let lo=0, hi=1, ticks=[0,0.25,0.5,0.75,1], fmtY=v=>Math.round(v*100)+"%";
-  if(metric!=="odds"){ const vals=top.flatMap(t=>pts.map(p=>p.val[t.team]).filter(v=>v!=null)); const mn=Math.min(...vals), mx=Math.max(...vals);
+  let lo=0, hi=1, ticks=[0,0.25,0.5,0.75,1], fmtY=v=>Math.round(v*100)+"%", flip=false;
+  if(metric==="ap"){ lo=1; hi=AP_NR; flip=true; ticks=[1,5,10,15,20,25,AP_NR]; fmtY=v=>v>=AP_NR?"NR":String(v); }
+  else if(metric!=="odds"){ const vals=top.flatMap(t=>pts.map(p=>p.val[t.team]).filter(v=>v!=null)); const mn=Math.min(...vals), mx=Math.max(...vals);
     let step=5, pad=2, min=10;
     if(metric!=="sp"){ const raw=Math.max(mx-mn,0.4)/5; step=[0.05,0.1,0.2,0.25,0.5,1,2].find(x=>x>=raw)||5; pad=step*0.6; min=step*4; }
     lo=Math.floor((mn-pad)/step)*step; hi=Math.ceil((mx+pad)/step)*step; if(hi-lo<min){ hi=lo+min; } ticks=[]; for(let v=lo; v<=hi+1e-9; v+=step) ticks.push(+v.toFixed(2)); fmtY=v=>String(+v.toFixed(2)); }
-  const x=i=>L+(pts.length>1? i*iw/(pts.length-1) : iw/2), y=p=>TOP+ih*(1-(p-lo)/(hi-lo));
+  const x=i=>L+(pts.length>1? i*iw/(pts.length-1) : iw/2), y=p=>TOP+ih*(flip ? (p-lo)/(hi-lo) : 1-(p-lo)/(hi-lo));
   const grid=ticks.map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="gl"/><text x="${L-6}" y="${y(v)+4}" class="ax" font-size="${fs}" text-anchor="end">${fmtY(v)}</text>`).join("");
   const xa=pts.map((p,i)=>`<text x="${x(i)}" y="${H-B+fs+6}" class="ax${p.now?" now":""}" font-size="${fs}" text-anchor="${i===0?"start":i===pts.length-1?"end":"middle"}">${p.label}</text>`).join("");
   const series=top.map(t=>({team:t.team, col:chartColor(t.team), d:pts.map((p,i)=>{ const v=p.val[t.team]; return v==null?null:{x:x(i),y:y(v),v,i,rank:p.rank?p.rank[t.team]:null}; })}));
   const lines=series.map(sr=>{ let path="", open=false; sr.d.forEach(pt=>{ if(!pt){ open=false; return; } path+=(open?"L":"M")+pt.x.toFixed(1)+" "+pt.y.toFixed(1); open=true; });
     const dots=sr.d.map(pt=>pt?`<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="${big?3.4:2.6}"/>`:"").join("");
     return `<g class="tl${sr.team===T?" me":""}" data-team="${sr.team.replace(/"/g,"&quot;")}" style="color:${sr.col}"><path d="${path}" style="stroke-width:${big?2.2:1.6}"/>${dots}</g>`; }).join("");
-  const legend=top.map((t,k)=>{ const last=pts[pts.length-1].val[t.team]; const lbl=metric!=="odds"?(last==null?"":last.toFixed(dec)):Math.round(t.pIn*100)+"%";
+  const legend=top.map((t,k)=>{ const last=pts.length?pts[pts.length-1].val[t.team]:null; const lbl=metric==="odds"?Math.round(t.pIn*100)+"%":last==null?"":fmtV(last);
     return `<button type="button" class="hl-btn${t.team===T?" me":""}" data-team="${t.team.replace(/"/g,"&quot;")}" style="--c:${chartColor(t.team)}"><i></i>${k+1}. ${short(t.team)} <b class="num">${lbl}</b></button>`; }).join("");
-  const seg=`<div class="seg hist-seg">${[["odds","Playoff odds"],["sp","SP+"],["fei","FEI"],["fplus","F+"]].filter(([k])=>k==="odds"||hasEditions(k)).map(([k,l])=>`<button type="button" data-m="${k}" aria-pressed="${metric===k}">${l}</button>`).join("")}</div>`;
+  const seg=`<div class="seg hist-seg">${[["odds","Playoff odds"],["sp","SP+"],["fei","FEI"],["fplus","F+"],["ap","AP Poll"]].filter(([k])=>k==="odds"||hasEditions(k)).map(([k,l])=>`<button type="button" data-m="${k}" aria-pressed="${metric===k}">${l}</button>`).join("")}</div>`;
   // the conference pills double as the filter: the chosen one stays bright, the rest fade
   const confs=[["all","All"],...P4.map(c=>[c,c]),["G6","Group of Six"],["IND","Ind"]];
   const confKey=v=>v==="all"?"all":v==="G6"?"g6":v==="IND"?"ind":v.replace(/\W/g,"").toLowerCase();
   const filt=`<div class="hist-conf" role="group" aria-label="Filter by conference">${confs.map(([v,l])=>`<button type="button" class="cpill c-${confKey(v)}${CHART_CONF===v?"":" off"}" data-c="${v}" aria-pressed="${CHART_CONF===v}">${l}</button>`).join("")}</div>`;
-  el.innerHTML=`<div class="hist-wrap${big?" big":""}">${seg}${filt}<svg viewBox="0 0 ${W} ${H}" class="hist" role="img" aria-label="${metric!=="odds"?MODEL_NAMES[metric]+" rating by week":"Playoff chance by week"} for the top 20 teams">${grid}${xa}${lines}</svg><div class="hist-tip" hidden></div>${big?"":`<button type="button" class="ghost hist-expand" title="Full screen">⤢ Expand</button>`}</div><div class="hist-legend">${legend}</div>`;
+  el.innerHTML=`<div class="hist-wrap${big?" big":""}">${seg}${filt}<svg viewBox="0 0 ${W} ${H}" class="hist" role="img" aria-label="${metric==="ap"?"AP poll rank by week for the current Top 25":(metric!=="odds"?MODEL_NAMES[metric]+" rating by week":"Playoff chance by week")+" for the top 20 teams"}">${grid}${xa}${lines}</svg><div class="hist-tip" hidden></div>${big?"":`<button type="button" class="ghost hist-expand" title="Full screen">⤢ Expand</button>`}</div><div class="hist-legend">${legend}</div>`;
   el.querySelectorAll(".hist-seg button").forEach(b=>b.onclick=()=>{ CHART_METRIC=b.dataset.m; drawChart(el, r, big); if(big) renderHistory(r); });
   el.querySelectorAll(".hist-conf button").forEach(b=>b.onclick=()=>{ CHART_CONF=b.dataset.c; drawChart(el, r, big); if(big) renderHistory(r); });   // full screen: keep the Overview chart in step
   const svg=el.querySelector("svg.hist"), tip=el.querySelector(".hist-tip"), wrap=el.querySelector(".hist-wrap");
@@ -1509,7 +1521,7 @@ function drawChart(el, r, big){
   const show=e=>{ const n=nearest(e.clientX,e.clientY); if(!n){ tip.hidden=true; setHl(pinned); return; }
     const {rc,k,ox,oy}=geo(), wr=wrap.getBoundingClientRect();
     const px=rc.left-wr.left+ox+n.pt.x*k, py=rc.top-wr.top+oy+n.pt.y*k;
-    tip.innerHTML=`<b style="color:${n.sr.col}">${n.sr.team}</b><br>${pts[n.pt.i].label}: <b class="num">${metric!=="odds"?n.pt.v.toFixed(dec)+(n.pt.rank?" (#"+n.pt.rank+")":""):(n.pt.v*100).toFixed(1)+"%"}</b>`;
+    tip.innerHTML=`<b style="color:${n.sr.col}">${n.sr.team}</b><br>${pts[n.pt.i].label}: <b class="num">${fmtV(n.pt.v)}${metric!=="odds"&&metric!=="ap"&&n.pt.rank?" (#"+n.pt.rank+")":""}</b>`;
     tip.hidden=false; const tw=tip.offsetWidth, th=tip.offsetHeight;
     tip.style.left=Math.max(4, Math.min(wr.width-tw-4, px-tw/2))+"px"; tip.style.top=Math.max(4, py-th-12)+"px";
     setHl(n.sr.team); };
@@ -1519,7 +1531,7 @@ function drawChart(el, r, big){
 }
 function renderHistory(r){
   const el=$("#hist"); if(!el) return;
-  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. Week 0's handful of games counts with week 1. <strong>SP+</strong> shows each team's rating in every SP+ update of the season; <strong>FEI</strong> and <strong>F+</strong> do the same for Brian Fremeau's ratings as he publishes them, on their own scales, recorded from the week they were added to the board. Whichever model is selected in the header drives the simulation.${T?` <strong>${T}</strong> is drawn heavier.`:""} The conference pills narrow the chart to one league, or the whole Group of Six, showing its top twenty. Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
+  $("#histExplain").innerHTML=`<p>The twenty teams with the best playoff chance right now. <strong>Playoff odds</strong> shows where each stood after every completed week: each point is the model's own answer once that week was in the books, on ${(HIST&&HIST.N||r.N).toLocaleString()} simulated seasons; a "Now" point appears once newer results, a live game or a fresh SP+ update have moved things on. Week 0's handful of games counts with week 1. <strong>SP+</strong> shows each team's rating in every SP+ update of the season; <strong>FEI</strong> and <strong>F+</strong> do the same for Brian Fremeau's ratings as he publishes them, on their own scales, recorded from the week they were added to the board. Whichever model is selected in the header drives the simulation; under a model the legend is ordered by that model's latest rating. <strong>AP Poll</strong> shows where each team in the current AP Top 25 stood in every AP poll this season, a week outside the poll sitting on the NR line.${T?` <strong>${T}</strong> is drawn heavier.`:""} The conference pills narrow the chart to one league, or the whole Group of Six, showing its top twenty. Hover or tap a point for the exact figure; tap a name to highlight a line; Expand opens it full screen.</p>`;
   drawChart(el, r, false);
   if(chartData(r, CHART_METRIC).pts.length<2) el.insertAdjacentHTML("afterbegin", `<div class="sub" style="padding:6px 0">The chart fills in as weeks are completed: the daily refresh records every team's chance after each week.</div>`);
 }

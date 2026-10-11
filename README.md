@@ -79,7 +79,11 @@ the SP+ ones, keyed to the week the table runs through, so the Overview chart
 can plot any model's ratings by week and the team popup lines up playoff odds
 and all three models in one week-by-week grid. The Fremeau editions start from
 the week they were added to the board (week 5 of 2026); there is no archive of
-earlier weeks to backfill from.
+earlier weeks to backfill from. Under a model the chart's legend is ordered by
+that model's latest rating. The chart's AP Poll view plots every AP poll of the
+season for the teams in the current Top 25 (`polls.apHistory` in `data.json`,
+keyed like the playoff-chance points: the preseason poll, then the poll that
+followed each week's games); a week outside the poll sits on the NR line.
 
 Ratings are treated as uncertain: each simulated season draws a
 "true strength" for every team around its rating (`ratingSd`, 8 points).
