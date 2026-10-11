@@ -1251,6 +1251,11 @@ function openTeam(name){
     const pts=chartData(R0,k).pts.map(p=>({key:p.key, label:p.label, now:p.now, v:p.val[name], rk:p.rank?p.rank[name]:null})).filter(x=>x.v!=null);
     if(!pts.length) continue; pts.forEach(p=>labels.set(p.key,p.label));
     trRows.push([MODEL_NAMES[k], cards(pts, x=>x.v.toFixed(dec), x=>x.rk?"#"+x.rk:null, (x,p)=>x.v-p.v, dec)]); }
+  // AP rank in every poll this season, for a team the poll has ranked at least once: "NR" for a week outside the
+  // Top 25, the change line in places moved (up is good), hidden when either side is NR
+  if(D.polls&&D.polls.apHistory&&D.polls.apHistory.length){ const pts=D.polls.apHistory.map(e=>({key:e.key, label:e.label, v:e.ranks[name]||AP_NR}));
+    if(pts.some(x=>x.v<AP_NR)){ pts.forEach(p=>labels.set(p.key,p.label));
+      trRows.push(["AP rank", cards(pts, x=>x.v<AP_NR?"#"+x.v:"NR", null, (x,p)=>(x.v<AP_NR&&p.v<AP_NR)?p.v-x.v:null, 0)]); } }
   const cols=[...labels.keys()].sort((a,b)=>colOrder(a)-colOrder(b));
   const arrow=i=>i?'<span class="sp-arrow">\u2192</span>':"";
   const trend = cols.length>1 ? `<h3>By week</h3><div class="trend-grid">

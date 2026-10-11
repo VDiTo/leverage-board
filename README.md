@@ -77,7 +77,8 @@ selector. FCS placeholders keep their fixed rating under every model.
 The daily refresh records each FEI and F+ edition in `history.json` alongside
 the SP+ ones, keyed to the week the table runs through, so the Overview chart
 can plot any model's ratings by week and the team popup lines up playoff odds
-and all three models in one week-by-week grid. The Fremeau editions start from
+and all three models in one week-by-week grid, with the team's AP rank in
+every poll once it has been ranked. The Fremeau editions start from
 the week they were added to the board (week 5 of 2026); there is no archive of
 earlier weeks to backfill from. Under a model the chart's legend is ordered by
 that model's latest rating. The chart's AP Poll view plots every AP poll of the
