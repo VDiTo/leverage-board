@@ -1041,6 +1041,7 @@ function finish(acc,N,ti,X){
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
   const teamStats=Dx.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
+    lastIn: N>acc.in ? acc.lastInN[i]/(N-acc.in) : 0,   // of the seasons the target misses, how often this team is the last at-large in
     pIn:acc.fieldN[i]/N, pTitle:acc.titleN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N,
     confWins:acc.confWinSum[i]/N, pConf:acc.confChampN[i]/N, confPlace:acc.confPlaceSum[i]/N}));
   return { mode: ti<0?"field":"team", forTeam, pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
@@ -1112,7 +1113,7 @@ function reasonParts(g,want,other){
     const list=[["rank",g.why.rank],["autobid",g.why.autobid],["resume",g.why.resume]].filter(([,v])=>v>=0.15).sort((a,b)=>b[1]-a[1]);
     const sOther=st(other), sWant=st(want), sched=onSched(want)||onSched(other);
     for(const [k] of list){
-      if(k==="rank") parts.push(`<b>${other}</b> is competing with ${T} for an at-large spot. When they lose, they're more likely to finish behind you in the rankings${sOther.block>=0.05?` (right now they block you in ${Math.round(sOther.block*100)}% of seasons)`:""}.`);
+      if(k==="rank") parts.push(`<b>${other}</b> is competing with ${T} for an at-large spot. When they lose, they're more likely to finish behind you in the rankings${sOther.block>=0.05?` (right now they sit above you in the at-large pile in ${Math.round(sOther.block*100)}% of seasons)`:""}.`);
       if(k==="autobid") parts.push(`This game affects who wins the ${st(g.home).conf===st(g.away).conf?st(g.home).conf:"conference"}. A conference champion takes an automatic bid instead of an at-large spot, which changes how many at-large spots are left for teams like ${T}.`);
       if(k==="resume"){ const s=onSched(want)?want:other, ss=st(s), gm=onSched(s);
         parts.push(`<b>${s}</b> is on ${T}'s schedule (week ${gm.week}). The better their final record, and the stronger they are, the more your result against them counts with the committee${ss.wins>=8?`, and they project to about ${Math.round(ss.wins)} wins`:""}.`); }
@@ -1708,15 +1709,17 @@ function renderBlockers(r){
         <td class="num" style="text-align:center">${t.pTitle>=0.005?Math.round(t.pTitle*100)+"%":t.pTitle>0?"<1%":"0%"}</td></tr>`;}).join("");
     return;
   }
-  $("#blockTitle").textContent="Who is actually blocking you";
-  $("#blockExplain").innerHTML = `<p>There are seven at-large spots. Only teams that finish ranked ahead of ${T} <strong>without</strong> winning their conference compete for them, because conference champions take auto-bids instead. Those teams are your blockers. Six or fewer blockers and you're in.</p>
-    <p><strong>Blocks you</strong> is how often a team ends up in that at-large pile above ${T}. <strong>Finishes ahead</strong> counts every season it ranks above you, auto-bid or not. A team with a big gap between the two usually finishes ahead of you but wins its conference, so it rarely costs you a spot.</p>`;
-  const blk=r.teamStats.filter(t=>t.team!==T&&!t.fcs).sort((a,b)=>b.block-a.block).slice(0,25);
-  const maxB=Math.max(0.01,...blk.map(t=>t.block));
-  $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Proj. record</th><th class="c">Blocks you</th><th class="c">Finishes ahead</th></tr>`+
+  $("#blockTitle").textContent="Who actually keeps you out";
+  const pOut=1-r.pIn;
+  $("#blockExplain").innerHTML = `<p>${T} misses the field in <strong>${pct(pOut)}%</strong> of simulated seasons. In every one of those seasons some team holds the seventh and final at-large spot: the <strong>last team in</strong>, the one standing between ${T} and the bracket.</p>
+    <p><strong>Last in</strong> is how often each team is that last team in, as a share of the seasons ${T} misses. Beating them in the rankings would put you in. <strong>Finishes ahead</strong> is context: how often the team ranks above ${T} at all, auto-bid or not, across every season.</p>`;
+  const blk=r.teamStats.filter(t=>t.team!==T&&!t.fcs&&t.lastIn>0).sort((a,b)=>b.lastIn-a.lastIn||b.ahead-a.ahead).slice(0,25);
+  const maxB=Math.max(0.01,...blk.map(t=>t.lastIn));
+  $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Proj. record</th><th class="c">Last in</th><th class="c">Finishes ahead</th></tr>`+
+    (blk.length ? "" : `<tr><td colspan="6" class="sub" style="text-align:center;padding:12px">${T} makes the field in every simulated season, so nobody is keeping you out.</td></tr>`)+
     blk.map(t=>{const rk=rankOf(t.team);return `<tr><td class="r num">${rk?"#"+rk:"NR"}</td><td class="k">${tnPhone(t.team)}</td><td class="sub">${confPhone(t.conf)}</td>
       <td class="num" style="text-align:center">${t.wins.toFixed(1)}–${(t.games-t.wins).toFixed(1)}</td>
-      <td class="pc"><span class="ramp num" style="${ramp(t.block,"var(--against)",maxB)}">${pct(t.block)}%</span></td>
+      <td class="pc"><span class="ramp num" style="${ramp(t.lastIn,"var(--against)",maxB)}">${pct(t.lastIn)}%</span></td>
       <td class="pc"><span class="ramp num" style="${ramp(t.ahead,"var(--flat)")}">${pct(t.ahead)}%</span></td></tr>`;}).join("");
 }
 
@@ -2266,7 +2269,7 @@ function slimReview(r, fromWk, W){
     fieldTop:g.fieldTop||null, swapsAvg:g.swapsAvg||0, why:g.why||null, spreadText:g.spreadText||"", homeWin:g.homeWin, homeScore:g.homeScore, awayScore:g.awayScore, realized:g.realized, pBefore:g.pBefore });
   const own=r.games.filter(g=>g.involvesMe), top=r.games.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,80);
   return { mode:r.mode, N:r.N, pIn:r.pIn, pChamp:r.pChamp, medRank:r.medRank, avgBlock:r.avgBlock, avgWins:r.avgWins, myGames:r.myGames,
-    teamStats:r.teamStats.filter(t=>!t.fcs).map(t=>({team:t.team, conf:t.conf, pIn:t.pIn, pTitle:t.pTitle, avgSeed:t.avgSeed, pP4Champ:t.pP4Champ, pG6:t.pG6, wins:t.wins, games:t.games, block:t.block, ahead:t.ahead})),
+    teamStats:r.teamStats.filter(t=>!t.fcs).map(t=>({team:t.team, conf:t.conf, pIn:t.pIn, pTitle:t.pTitle, avgSeed:t.avgSeed, pP4Champ:t.pP4Champ, pG6:t.pG6, wins:t.wins, games:t.games, block:t.block, ahead:t.ahead, lastIn:t.lastIn})),
     games:own.concat(top).map(G), played:(r.played||[]).filter(g=>g.week>=fromWk&&g.week<=W).map(G),
     brief:r.games.map(g=>[g.i, +g.pHomeWin.toFixed(4), +g.swing.toFixed(5), +g.lev.toFixed(4)]) };
 }

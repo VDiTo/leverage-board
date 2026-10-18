@@ -10,6 +10,8 @@
   function newAcc(nT, nG, NONE){
   return { in:0, champ:0, rankSum:0, blockSum:0, winSum:0, ranks:new Int32Array(nT+2),
     blockers:new Float64Array(nT), aheadN:new Float64Array(nT), teamWins:new Float64Array(nT),
+    // seasons the target misses the field, by which team holds the last at-large spot (the "last team in")
+    lastInN:new Float64Array(nT),
     fieldN:new Float64Array(nT), seedSum:new Float64Array(nT), p4ChampN:new Float64Array(nT), g6N:new Float64Array(nT),
     sumH:new Float64Array(nG), sumA:new Float64Array(nG), sumD:new Float64Array(nG), sumD2:new Float64Array(nG),
     // why a flip mattered: 0 = target's own résumé moved, 1 = an auto-bid changed hands, 2 = a team moved past the target
@@ -23,7 +25,7 @@
   }
   function mergeAcc(into, from){
     for(const k of ["in","champ","rankSum","blockSum","winSum"]) into[k]+=from[k];
-    for(const k of ["ranks","blockers","aheadN","teamWins","fieldN","seedSum","p4ChampN","g6N","titleN","confWinSum","confChampN","confPlaceSum","sumH","sumA","sumD","sumD2","fieldChg","fieldSwaps"]){ const a=into[k], b=from[k]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
+    for(const k of ["ranks","blockers","aheadN","lastInN","teamWins","fieldN","seedSum","p4ChampN","g6N","titleN","confWinSum","confChampN","confPlaceSum","sumH","sumA","sumD","sumD2","fieldChg","fieldSwaps"]){ const a=into[k], b=from[k]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     for(let w=0;w<3;w++){ const a=into.why[w], b=from.why[w]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     if(into.teamFlip && from.teamFlip){ const a=into.teamFlip, b=from.teamFlip; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     return into;
@@ -70,7 +72,7 @@
 
   let flipReason=2;
   // this season's field: who is in, the seven at-larges in order, and the next three out
-  const inF=new Uint8Array(nT), alList=new Int32Array(8), reserve=new Int32Array(3); let nRes=0;
+  const inF=new Uint8Array(nT), alList=new Int32Array(8), reserve=new Int32Array(3); let nRes=0, nAl=0;
   const fieldSeed=new Int32Array(12);
   const stampF=new Int32Array(nT), stampIn=new Int32Array(nT); let curF=0;
   const cand=new Int32Array(nT), pool=new Int32Array(nT); let nCand=0;
@@ -293,7 +295,8 @@
         for(let j=0;j<nT;j++){ const i=order[j];
           if(seed<12 && (aq[i] || al<atLargeSlots)){ if(!aq[i]){ alList[al]=i; al++; } seed++; inF[i]=1; fieldSeed[seed-1]=i; acc.fieldN[i]++; acc.seedSum[i]+=seed; }
           else if(!aq[i] && nRes<3){ reserve[nRes++]=i; }
-          if(seed>=12 && nRes>=3) break; } }
+          if(seed>=12 && nRes>=3) break; }
+        nAl=al; }
 
       // play the bracket: first round at the higher seed, the rest neutral; eleven draws every season keeps the stream aligned
       { const S=n=>fieldSeed[n-1];
@@ -313,6 +316,7 @@
         if(score[i]>ts){ ahead++; acc.aheadN[i]++; if(!aq[i]){ blockers++; acc.blockers[i]++; } }
       }
       inField = (aq[ti]===1 || blockers < atLargeSlots) ? 1 : 0;
+      if(!inField && nAl>0) acc.lastInN[alList[nAl-1]]++;   // the target is out: who holds the last at-large spot
       acc.in+=inField; acc.champ+=aq[ti];
       acc.rankSum+=ahead+1; acc.blockSum+=blockers; acc.winSum+=W[ti];
       acc.ranks[Math.min(nT+1,ahead+1)]++;
