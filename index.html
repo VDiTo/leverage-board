@@ -1051,7 +1051,7 @@ function finish(acc,N,ti,X){
 // ---------- render ----------
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
-const RESULT_VERSION = 11; // bump when the result shape changes so stale saved results are recomputed
+const RESULT_VERSION = 12; // bump when the result shape changes so stale saved results are recomputed
 const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|M${MODEL}|F${strHash(window.LIVE?LIVE.finalsKey:"")}|${T}|${$("#sims").value}`;
 // results are cached unless a game is in progress; the set of applied finals is part of the cache key
 const liveActive = () => !!(window.LIVE && LIVE.inProgress>0);
