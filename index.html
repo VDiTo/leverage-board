@@ -1041,7 +1041,7 @@ function finish(acc,N,ti,X){
   let med=1,cum=0; for(let r=1;r<acc.ranks.length;r++){cum+=acc.ranks[r]; if(cum>=N/2){med=r;break;}}
   const teamStats=Dx.teams.map((t,i)=>({team:t.team,conf:t.conference,fcs:!!t.fcs,
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
-    lastIn: N>acc.in ? acc.lastInN[i]/(N-acc.in) : 0,   // of the seasons the target misses, how often this team is the last at-large in
+    lastIn: acc.lastInN[i]/N,   // share of all seasons in which the target misses and this team is the last at-large in; sums to the miss rate
     pIn:acc.fieldN[i]/N, pTitle:acc.titleN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N,
     confWins:acc.confWinSum[i]/N, pConf:acc.confChampN[i]/N, confPlace:acc.confPlaceSum[i]/N}));
   return { mode: ti<0?"field":"team", forTeam, pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
@@ -1712,7 +1712,7 @@ function renderBlockers(r){
   $("#blockTitle").textContent="Who actually keeps you out";
   const pOut=1-r.pIn;
   $("#blockExplain").innerHTML = `<p>${T} misses the field in <strong>${pct(pOut)}%</strong> of simulated seasons. In every one of those seasons some team holds the seventh and final at-large spot: the <strong>last team in</strong>, the one standing between ${T} and the bracket.</p>
-    <p><strong>Last in</strong> is how often each team is that last team in, as a share of the seasons ${T} misses. Beating them in the rankings would put you in. <strong>Finishes ahead</strong> is context: how often the team ranks above ${T} at all, auto-bid or not, across every season.</p>`;
+    <p><strong>Last in</strong> is the share of all simulated seasons in which ${T} misses <em>and</em> that team is the last team in, so the whole column adds up to the ${pct(pOut)}%. Beating them in the rankings would put you in. <strong>Finishes ahead</strong> is context: how often the team ranks above ${T} at all, auto-bid or not.</p>`;
   const blk=r.teamStats.filter(t=>t.team!==T&&!t.fcs&&t.lastIn>0).sort((a,b)=>b.lastIn-a.lastIn||b.ahead-a.ahead).slice(0,25);
   const maxB=Math.max(0.01,...blk.map(t=>t.lastIn));
   $("#blockers").innerHTML = `<tr><th>Rank</th><th>Team</th><th>Conf</th><th class="c">Proj. record</th><th class="c">Last in</th><th class="c">Finishes ahead</th></tr>`+
