@@ -487,11 +487,19 @@
   #review .tn{text-decoration:none}
   .rv-po,.rv-ph,.rv-po-row,.rv-po-cell{display:none}   /* print-only text, rows, cells and masthead */
   .rv-body{display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;align-items:start} .rv-s{min-width:0} .rv-s.road,.rv-s.mv{grid-column:1/-1}
-  @media (max-width:760px){ .rv-body{grid-template-columns:1fr} }
+  @media (max-width:1000px){ .rv-body{grid-template-columns:1fr} }   /* below this the two columns are too narrow for the tables */
   .rv-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;align-items:start}
   .rv-two{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;align-items:start}
   .rv-grid>div,.rv-two>div,#review .movers>div{min-width:0}   /* tables scroll inside their column instead of widening the page */
   @media (max-width:760px){ .rv-grid,.rv-two{grid-template-columns:1fr} }
+  /* review tables fit their column with no horizontal scroll: the winners and losers tables sit side by side only when
+     each gets ~480px, the results / SP+ split columns go on phones, and the SP+ risers and fallers stack in their column */
+  @media (max-width:1000px){ #review .movers{grid-template-columns:1fr} }
+  @media (max-width:520px){ #review .movers .rv-m{display:none} #review .movers th,#review .movers td{padding:5px 5px} }
+  #review .rv-s.sp .rv-two{grid-template-columns:1fr}
+  .rv-why{white-space:normal;font-size:12px;line-height:1.3;margin-top:2px;max-width:360px}   /* why a result mattered sits under it instead of in a column of its own */
+  @media (max-width:520px){ #review .rv-s.field .rv-p{display:none} #review td,#review th{padding:5px 4px}
+    #review .rv-s.field td:last-child,#review .rv-s.week td:first-child,#review .rv-s.watch td:nth-child(2){white-space:normal} }
   #review h3{margin:18px 0 6px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
   #review .movers h3{margin-top:4px}
   .rv-ba{white-space:nowrap;color:var(--muted)} .rv-ba em{font-style:normal;margin:0 2px} .rv-ba b{color:var(--ink);font-weight:600}
@@ -2335,8 +2343,8 @@ function renderReview(){
   // ----- winners and losers, projected field and SP+ movers: the same in both modes -----
   const mv=A.teamStats.filter(t=>st(B,t.team)).map(t=>{ const b=st(B,t.team).pIn, m=st(M,t.team).pIn; return {team:t.team, conf:t.conf, before:b, after:t.pIn, d:t.pIn-b, res:m-b, sp:t.pIn-m}; });
   const up=mv.filter(x=>x.d>=0.005).sort((a,b)=>b.d-a.d).slice(0,8), down=mv.filter(x=>x.d<=-0.005).sort((a,b)=>a.d-b.d).slice(0,8);
-  const mvRow=(x,color,max)=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="r num rv-p">${rk?"#"+rk:"NR"}</td><td class="k">${tn(x.team)}</td><td class="sub rv-p">${x.conf}</td><td class="num">${arrowP(x.before,x.after)}</td><td class="ch"><span class="rv-delta num" style="${ramp(Math.abs(x.d),color,max)}">${fmtMove(x.d)}</span></td>${spChanged?`<td class="num rv-p ${cls(x.res)}" style="text-align:center;font-weight:600">${fmtMove(x.res)}</td><td class="num rv-p ${cls(x.sp)}" style="text-align:center;font-weight:600">${fmtMove(x.sp)}</td><td class="num rv-po-cell" style="text-align:center;white-space:nowrap"><span class="rv-half l ${cls(x.res)}">${fmtMove(x.res)}</span><span class="sub">|</span><span class="rv-half r ${cls(x.sp)}">${fmtMove(x.sp)}</span></td>`:""}</tr>`; };
-  const mvHead=`<tr><th class="rv-p"></th><th>Team</th><th class="rv-p"></th><th>Playoff chance</th><th class="c">Change</th>${spChanged?`<th class="c rv-p">From results</th><th class="c rv-p">From SP+ update</th><th class="c rv-po-cell">Results | SP+</th>`:""}</tr>`;
+  const mvRow=(x,color,max)=>{ const rk=rankOf(x.team); return `<tr class="${x.team===T?"me":""}"><td class="k"><span class="sub num rv-p">${rk?"#"+rk:"NR"}</span> ${tn(x.team)}</td><td class="num">${arrowP(x.before,x.after)}</td><td class="ch"><span class="rv-delta num" style="${ramp(Math.abs(x.d),color,max)}">${fmtMove(x.d)}</span></td>${spChanged?`<td class="num rv-p rv-m ${cls(x.res)}" style="text-align:center;font-weight:600">${fmtMove(x.res)}</td><td class="num rv-p rv-m ${cls(x.sp)}" style="text-align:center;font-weight:600">${fmtMove(x.sp)}</td><td class="num rv-po-cell" style="text-align:center;white-space:nowrap"><span class="rv-half l ${cls(x.res)}">${fmtMove(x.res)}</span><span class="sub">|</span><span class="rv-half r ${cls(x.sp)}">${fmtMove(x.sp)}</span></td>`:""}</tr>`; };
+  const mvHead=`<tr><th>Team</th><th>Playoff chance</th><th class="c">Change</th>${spChanged?`<th class="c rv-p rv-m">Results</th><th class="c rv-p rv-m">SP+ update</th><th class="c rv-po-cell">Results | SP+</th>`:""}</tr>`;
   const mvTable=(list,color)=>list.length?`<div class="scroll"><table>${mvHead}${list.map(x=>mvRow(x,color,Math.max(0.01,...list.map(y=>Math.abs(y.d))))).join("")}</table></div>`:`<div class="sub" style="padding:4px 0">No team moved by half a point or more.</div>`;
   const mine=T&&!up.concat(down).some(x=>x.team===T)?(()=>{ const x=mv.find(y=>y.team===T); return x?`<div class="mine"><b>${T}</b>: ${arrowP(x.before,x.after)} (<b class="${cls(x.d)}">${fmtMove(x.d)}</b>)</div>`:""; })():"";
   const movers=title=>h3(title)+`<div class="sub rv-x" style="margin:-2px 0 6px">Playoff chance before → after ${wkTxt}; change in percentage points${spChanged?", split into what the results did and what the SP+ update did":""}.</div>
@@ -2410,10 +2418,10 @@ function renderReview(){
     // the results that moved the team most, the clear ones first; the sheet shows up to eight, the screen six
     const others=M.played.filter(g=>!g.involvesMe).sort((a,b)=>(b.clear-a.clear)||(Math.abs(b.realized)-Math.abs(a.realized))).slice(0,8);
     const maxR=Math.max(0.001,...others.map(g=>Math.abs(g.realized)));
-    const otherRows=others.map((g,i)=>`<tr class="${i>=6?"rv-po-row":""}"><td>${gameCell(g)}</td><td class="sub">${favTxt(pWinPre(g))}</td><td class="ch">${delta(g.realized,g.realized>0?"var(--for)":"var(--against)",maxR)}</td><td class="sub rv-p">${reason(g)}</td></tr>`);
+    const otherRows=others.map((g,i)=>`<tr class="${i>=6?"rv-po-row":""}"><td>${gameCell(g)}<div class="sub rv-p rv-why">${reason(g)}</div></td><td class="sub">${favTxt(pWinPre(g))}</td><td class="ch">${delta(g.realized,g.realized>0?"var(--for)":"var(--against)",maxR)}</td></tr>`);
     const netOther=M.played.filter(g=>!g.involvesMe).reduce((s,g)=>s+g.realized,0), netOwn=ownPlayed.reduce((s,g)=>s+g.realized,0);
     const quiet=M.played.filter(g=>!g.involvesMe&&!g.clear).length;
-    const results=h3(`Other results that moved ${short(T)}`)+table(`<th>Result</th><th>Winner was</th><th class="c">Effect</th><th class="rv-p">Why it mattered</th>`, otherRows, `No other result in ${wkTxt} moved ${short(T)}'s odds by a tenth of a point.`)
+    const results=h3(`Other results that moved ${short(T)}`)+table(`<th>Result</th><th>Winner was</th><th class="c">Effect</th>`, otherRows, `No other result in ${wkTxt} moved ${short(T)}'s odds by a tenth of a point.`)
       +`<div class="sub rv-x" style="margin-top:6px">Each effect is one result on its own, with every other result as it happened${quiet?` (${quiet} more results barely moved the needle)`:""}. Together the results moved the odds <b class="num ${cls(dRes)}">${fmtMove(dRes)}</b>; effects compound, so they need not add up.</div>`;
 
     // the road ahead: every remaining game, before and after
