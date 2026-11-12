@@ -309,6 +309,18 @@
   .plain .big{font-size:18px;font-weight:600;color:var(--ink);margin:6px 0 10px}
   .plain .big.for{color:var(--for)} .plain .big.mine{color:var(--gold)}
   .plain .scores{display:flex;gap:16px;margin:0 0 12px;color:var(--muted);font-size:13px;align-items:center}
+  .plain table.gstat{width:100%;border-collapse:collapse;font-size:13.5px;margin:0 0 6px}
+  .plain .gstat th{font-weight:500;color:var(--muted);font-size:12px;padding:2px 8px;text-align:left}
+  .plain .gstat td{padding:4px 8px;border-top:1px solid var(--line);white-space:nowrap}
+  .plain .gstat td:first-child{width:100%;white-space:normal} .plain .gstat .c{text-align:center}
+  .plain .gstat tr.want td{background:color-mix(in srgb, var(--for) 14%, transparent)} .plain .gstat tr.want td:first-child{box-shadow:inset 3px 0 var(--for)}
+  .plain .gstat tr.mine td{background:color-mix(in srgb, var(--gold) 14%, transparent)} .plain .gstat tr.mine td:first-child{box-shadow:inset 3px 0 var(--gold)}
+  .plain .gstat tr.against td{background:color-mix(in srgb, var(--against) 12%, transparent)} .plain .gstat tr.against td:first-child{box-shadow:inset 3px 0 var(--against)}
+  .plain .gnote{color:var(--muted);font-size:13px;margin:0 0 6px} .plain .gnote b{color:var(--ink)}
+  .plain ul.gwhy{list-style:none;margin:8px 0 0;padding:0} .plain .gwhy li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+  .plain .gwhy li b{color:var(--ink)} .plain .gwhy li .p{display:inline-block;min-width:34px;font-weight:700;color:var(--ink)}
+  .plain h3{margin:14px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  @media (max-width:480px){ .plain table.gstat{font-size:12.5px} .plain .gstat td{padding:4px 5px} .plain .gstat th{padding:2px 5px;font-size:11px} .plain .gstat td:first-child{width:auto} }
   .cell.hot small{color:#e9eef5;opacity:.85}
   .cell small.tv{font-size:10px;opacity:.75;white-space:nowrap}
   .cell.w small{color:var(--for)} .cell.l small{color:var(--against)}
@@ -1110,8 +1122,7 @@ function openWhy(gi){
   const g=RES && (RES.games.find(x=>x.i===gi) || (RES.played||[]).find(x=>x.i===gi)); if(!g) return;
   if(g.done) openWhyPlayed(g); else openWhySimple(g);
 }
-// The same facts, in plain language, for the board
-// Why a result matters to the selected team, in plain language. Shared by the upcoming and played popups.
+// Why a result matters to the selected team, as terse bullets. Shared by the upcoming and played popups.
 function reasonParts(g,want,other){
   const st=name=>RES.teamStats.find(x=>x.team===name);
   const myGames=D.games.filter(x=>x.home===T||x.away===T);
@@ -1119,123 +1130,114 @@ function reasonParts(g,want,other){
   const parts=[];
   if(g.why){
     const list=[["rank",g.why.rank],["autobid",g.why.autobid],["resume",g.why.resume]].filter(([,v])=>v>=0.15).sort((a,b)=>b[1]-a[1]);
-    const sOther=st(other), sWant=st(want), sched=onSched(want)||onSched(other);
-    for(const [k] of list){
-      if(k==="rank") parts.push(`<b>${other}</b> is competing with ${T} for an at-large spot. When they lose, they're more likely to finish behind you in the rankings${sOther.block>=0.05?` (right now they sit above you in the at-large pile in ${Math.round(sOther.block*100)}% of seasons)`:""}.`);
-      if(k==="autobid") parts.push(`This game affects who wins the ${st(g.home).conf===st(g.away).conf?st(g.home).conf:"conference"}. A conference champion takes an automatic bid instead of an at-large spot, which changes how many at-large spots are left for teams like ${T}.`);
+    const sOther=st(other);
+    for(const [k,v] of list){
+      const share=`<span class="p num">${Math.round(v*100)}%</span>`;
+      if(k==="rank") parts.push(`${share}<b>Rank</b> · ${short(other)} competes with ${short(T)} for an at-large spot${sOther.block>=0.05?` · above ${short(T)} in <span class="num">${Math.round(sOther.block*100)}%</span> of seasons`:""}`);
+      if(k==="autobid") parts.push(`${share}<b>Auto-bid</b> · ${st(g.home).conf===st(g.away).conf?st(g.home).conf:"conference"} title race · a champion takes an auto-bid, not an at-large spot`);
       if(k==="resume"){ const s=onSched(want)?want:other, ss=st(s), gm=onSched(s);
-        parts.push(`<b>${s}</b> is on ${T}'s schedule (week ${gm.week}). The better their final record, and the stronger they are, the more your result against them counts with the committee${ss.wins>=8?`, and they project to about ${Math.round(ss.wins)} wins`:""}.`); }
+        parts.push(`${share}<b>Résumé</b> · ${short(s)} is on ${short(T)}'s schedule (wk ${gm.week})${ss.wins>=8?` · proj. <span class="num">${Math.round(ss.wins)}</span> wins`:""} · their record feeds your résumé`); }
     }
   }
   return parts;
 }
-function openWhySimple(g){
+const whyList = parts => parts.length ? `<ul class="gwhy">${parts.map(p=>`<li>${p}</li>`).join("")}</ul>` : "";
+// Both teams, one row each: playoff odds, how often they finish ahead of the selected team, title odds, and where they sit on its schedule.
+function teamsTable(g){
   const st=name=>RES.teamStats.find(x=>x.team===name);
-  const wantHome=g.swing>0, want=wantHome?g.home:g.away, other=wantHome?g.away:g.home;
-  const pWant=wantHome?g.pHomeWin:1-g.pHomeWin;
-  const impact=Math.abs(g.swing)*100;
-  const fav = g.pHomeWin>=0.5 ? g.home : g.away, pFav = Math.max(g.pHomeWin,1-g.pHomeWin);
-  const shiftLine = !g.live ? "" : (()=>{ const arrow=(pre,now)=>`${fmtWin(pre)}% → <b class="${now>pre+0.005?"good":now<pre-0.005?"bad":""}">${fmtWin(now)}%</b>`;
-    return `<p><span class="livetag">LIVE</span> ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period+" "+g.live.clock:"starting"}, <b>${g.away} ${g.live.as}, ${g.home} ${g.live.hs}</b>. Win chance since kickoff: ${g.away} ${arrow(1-g.pSp,1-g.pHomeWin)}, ${g.home} ${arrow(g.pSp,g.pHomeWin)}. Leverage below is based on the live chance.</p>`; })();
-  const myGames=D.games.filter(x=>x.home===T||x.away===T);
+  const myGames=T?D.games.filter(x=>x.home===T||x.away===T):[];
   const onSched=name=>myGames.find(x=>x.home===name||x.away===name);
-  const size = v => v>=75?"a big":v>=40?"a solid":v>=15?"a small":"a tiny";
-  const oddsLine = wantHome
-    ? `If <b>${g.home}</b> wins, ${T}'s playoff odds are <b class="num">${pct(g.pH)}%</b>. If <b>${g.away}</b> wins, <b class="num">${pct(g.pA)}%</b>.`
-    : `If <b>${g.away}</b> wins, ${T}'s playoff odds are <b class="num">${pct(g.pA)}%</b>. If <b>${g.home}</b> wins, <b class="num">${pct(g.pH)}%</b>.`;
-  const favLine = g.involvesMe
-    ? (pFav>=0.9 ? `${fav===T?"You're":fav+" is"} a heavy favorite (${fmtWin(pFav)}%), so this game rarely decides anything, which keeps its leverage modest even though losing it would cost a lot.`
-      : pFav>=0.65 ? `${fav===T?"You're":fav+" is"} favored (${fmtWin(pFav)}%), but there's real risk here, so it carries real leverage.`
-      : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so it carries nearly all of its impact as leverage.`)
-    : !T ? (pFav>=0.9 ? `<b>${fav}</b> is a heavy favorite (${fmtWin(pFav)}%), so the result that would shake up the field almost never happens; that's why leverage is low even if impact isn't.` : pFav>=0.65 ? `<b>${fav}</b> is favored (${fmtWin(pFav)}%), which trims the leverage a little.` : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so nearly all of its impact counts as leverage.`)
-    : pFav>=0.9 ? `<b>${fav}</b> is a heavy favorite (${fmtWin(pFav)}%), so the upset you'd need almost never happens. That's why the leverage is low even if the impact isn't.`
-    : pFav>=0.65 ? `<b>${fav}</b> is favored (${fmtWin(pFav)}%), so the result is fairly predictable and that trims the leverage.`
-    : `This one is close to a coin flip (${fav} ${fmtWin(pFav)}%), so nearly all of the impact counts as leverage.`;
-
-  let headline, why="";
+  const rows=[g.away,g.home].map(n=>{ const s=st(n), sc=n===T?null:onSched(n); return {n,s,sc}; });
+  const showAhead=!!T && rows.some(r=>r.s.ahead>=0.02), showTitle=rows.some(r=>r.s.pP4Champ>=0.05||r.s.pG6>=0.05), showSched=rows.some(r=>r.sc);
+  const title=s=>s.pP4Champ>=0.05?`${s.conf} <span class="num">${Math.round(s.pP4Champ*100)}%</span>`:s.pG6>=0.05?`G6 bid <span class="num">${Math.round(s.pG6*100)}%</span>`:"—";
+  return `<table class="gstat"><thead><tr><th></th><th class="c">Playoff</th>${showAhead?`<th class="c">Ahead of<br>${short(T)}</th>`:""}${showTitle?`<th class="c">Title</th>`:""}${showSched?`<th class="c">vs ${short(T)}</th>`:""}</tr></thead><tbody>${rows.map(({n,s,sc})=>`<tr><td>${badge(n)}</td><td class="num c">${Math.round(s.pIn*100)}%</td>${showAhead?`<td class="num c">${s.ahead>=0.02?Math.round(s.ahead*100)+"%":"—"}</td>`:""}${showTitle?`<td class="c">${title(s)}</td>`:""}${showSched?`<td class="c">${sc?`wk ${sc.week}`:"—"}</td>`:""}</tr>`).join("")}</tbody></table>`;
+}
+// One line on how one-sided the game is and what that does to leverage.
+function favNote(g){
+  const fav = g.pHomeWin>=0.5 ? g.home : g.away, pFav = Math.max(g.pHomeWin,1-g.pHomeWin), p=fmtWin(pFav);
+  const who = fav===T ? "You're" : `${short(fav)} is`;
+  if(pFav>=0.9) return g.involvesMe ? `${who} ${an(p)} ${p}% favorite · rarely decisive, so leverage stays modest` : `${who} ${an(p)} ${p}% favorite · the upset is rare, so leverage is low`;
+  if(pFav>=0.65) return g.involvesMe ? `${who} ${an(p)} ${p}% favorite · real risk, real leverage` : `${who} ${an(p)} ${p}% favorite · trims the leverage`;
+  return `Near coin flip (${short(fav)} ${p}%) · nearly all impact counts as leverage`;
+}
+const sizeWord = v => v>=75?"big":v>=40?"solid":v>=15?"small":"tiny";
+const an = s => /^(8|11$|18$)/.test(String(s)) ? "an" : "a";   // "an 85% favorite", "a 79% favorite"
+const fmtPts1 = v => v<0.95?v.toFixed(2):v.toFixed(1);
+function openWhySimple(g){
+  const wantHome=g.swing>0, want=wantHome?g.home:g.away, other=wantHome?g.away:g.home;
+  const impact=Math.abs(g.swing)*100;
+  const shiftLine = !g.live ? "" : (()=>{ const arrow=(pre,now)=>`${fmtWin(pre)}% → <b class="${now>pre+0.005?"good":now<pre-0.005?"bad":""}">${fmtWin(now)}%</b>`;
+    return `<p><span class="livetag">LIVE</span> ${g.live.period>=5?"OT":g.live.period>=1?"Q"+g.live.period+" "+g.live.clock:"starting"}, <b>${g.away} ${g.live.as}, ${g.home} ${g.live.hs}</b>. Win chance since kickoff: ${g.away} ${arrow(1-g.pSp,1-g.pHomeWin)}, ${g.home} ${arrow(g.pSp,g.pHomeWin)}. Leverage below uses the live chance.</p>`; })();
+  const head=`<button class="close" aria-label="Close">×</button>
+    <h2>${badge(g.away)} at ${badge(g.home)}</h2>
+    <div class="kv"><span>wk ${g.week}</span>${g.start?`<span>${fmtKick(g)}${g.tv?" · "+g.tv:""}</span>`:""}${g.spreadText?`<span>${g.spreadText}</span>`:""}</div>`;
+  let headline, body;
   if(!T){
     headline=`<div class="big">${g.clear?"Shapes the playoff field.":"Doesn't change who gets in."}</div>`;
-    const tops=(g.fieldTop||[]).map(t=>`<b>${t.team}</b> (${Math.round(t.share*100)}%)`);
-    why=g.clear ? `<p>Flipping this result changes who makes the 12-team field in <b class="num">${pct(g.swing)}%</b> of simulated seasons${g.swapsAvg>1.5?`, usually moving more than one spot`:""}. The teams most often swapped in or out: ${tops.join(", ")}.</p>`
-                : `<p>Across ${RES.N.toLocaleString()} simulated seasons, flipping this result ${Math.abs(g.swing)<0.001?"never":"almost never"} changed the twelve teams in the field.</p>`;
-    $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
-      <h2>${badge(g.away)} at ${badge(g.home)}</h2>
-      <div class="kv"><span>wk ${g.week}</span>${g.start?`<span>${fmtKick(g)}${g.tv?" · "+g.tv:""}</span>`:""}${g.spreadText?`<span>${g.spreadText}</span>`:""}</div>
-      <div class="plain">${headline}
-        <div class="scores"><span>Leverage ${scorePill(g.lev>0?g.levN:null,g.clear)}</span><span>Impact ${scorePill(g.lev>0?g.impN:null,g.clear)}</span></div>
-        ${shiftLine}${why}<p>${favLine}</p>
-        <h3>The teams</h3>
-        ${[g.away,g.home].map(n=>{ const s=st(n); return `<p><b>${badge(n)}</b> makes the playoff ${Math.round(s.pIn*100)}% of the time${s.pP4Champ>=0.05?`, winning the ${s.conf} ${Math.round(s.pP4Champ*100)}% of the time`:""}${s.pG6>=0.05?`, taking the Group of Six bid ${Math.round(s.pG6*100)}% of the time`:""}.</p>`; }).join("")}
-      </div>`;
-    $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
-    return;
-  }
-  if(g.involvesMe){
-    headline=`<div class="big mine">Your game. Win it.</div>`;
-    why=`<p>Winning is worth <b class="num">${impact.toFixed(1)} points</b> of playoff odds to ${T}: ${size(g.impN)} swing on your own schedule.</p>`;
-  } else if(!g.clear || !g.sure){
-    headline=`<div class="big">${!g.clear?"Doesn't really move the needle for "+T+".":"Leans "+want+", but it's within the noise."}</div>`;
-    why=!g.clear ? `<p>Across ${RES.N.toLocaleString()} simulated seasons this result almost never changed whether ${T} made the field.${impact>=0.005?` What little effect there is leans <b>${want}</b>: a ${impact.toFixed(2)}-point swing, ${g.sure?"small but consistent":`inside the ±${(2*g.se*100).toFixed(2)} margin of error`}.`:""}</p>`
-      : `<p>The estimate is a ${impact.toFixed(2)}-point swing toward ${want}, but the margin of error is ±${(2*g.se*100).toFixed(2)}, so the direction isn't settled. More simulated seasons would sharpen it.</p>`;
+    const tops=(g.fieldTop||[]);
+    body=`<table class="gstat"><tbody>
+        <tr><td>Field changes if flipped</td><td class="num c">${g.clear?pct(g.swing)+"% of seasons":Math.abs(g.swing)<0.001?"never":"<0.1% of seasons"}</td></tr>
+        ${g.clear?`<tr><td>Spots moved per change</td><td class="num c">${g.swapsAvg.toFixed(1)}</td></tr>`:""}
+        ${tops.map(t=>`<tr><td class="sub">Swapped in or out · ${badge(t.team)}</td><td class="num c">${Math.round(t.share*100)}%</td></tr>`).join("")}
+      </tbody></table>
+      <div class="gnote">${favNote(g)}</div>`;
   } else {
-    headline=`<div class="big for">Pull for ${want}.</div>`;
-    const parts=reasonParts(g,want,other);
-    why = (parts.length ? `<p>${parts.length>1?"Mostly because ":"Because "}${parts[0]}</p>${parts.slice(1).map(p=>`<p>Also: ${p}</p>`).join("")}` : "")
-      + `<p>A ${want} win happens about ${fmtWin(pWant)}% of the time and is worth <b class="num">${impact<0.95?impact.toFixed(2):impact.toFixed(1)} points</b> of playoff odds: ${size(g.impN)} swing compared with other games on the schedule.</p>`;
+    const rows=[[g.away,1-g.pHomeWin,g.pA],[g.home,g.pHomeWin,g.pH]];
+    const mark=n=> g.involvesMe ? (n===T?" mine":"") : (g.clear&&g.sure&&n===want?" want":"");
+    const outcomes=`<table class="gstat"><thead><tr><th></th><th class="c">Win %</th><th class="c">${short(T)} playoff</th></tr></thead><tbody>${rows.map(([n,pw,po])=>`<tr class="${mark(n)}"><td>${badge(n)} wins</td><td class="num c">${fmtWin(pw)}%</td><td class="num c">${pct(po)}%</td></tr>`).join("")}</tbody></table>`;
+    const swing = g.clear
+      ? `Swing <b class="num">${fmtPts1(impact)} pts</b> · ${sizeWord(g.impN)} for the schedule${g.sure?"":` · ±${(2*g.se*100).toFixed(2)} margin, direction not settled`}`
+      : `Swing <b class="num">${impact.toFixed(2)} pts</b> · inside the noise${g.sure?"":` (±${(2*g.se*100).toFixed(2)})`}`;
+    if(g.involvesMe) headline=`<div class="big mine">Your game. Win it.</div>`;
+    else if(!g.clear) headline=`<div class="big">Doesn't move the needle for ${short(T)}.</div>`;
+    else if(!g.sure) headline=`<div class="big">Leans ${short(want)}, within the noise.</div>`;
+    else headline=`<div class="big for">Pull for ${short(want)}.</div>`;
+    body=outcomes+`<div class="gnote">${swing}</div>${g.clear?`<div class="gnote">${favNote(g)}</div>`:""}`
+      + (g.clear&&g.sure&&!g.involvesMe ? whyList(reasonParts(g,want,other)) : "");
   }
-  $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
-    <h2>${badge(g.away)} at ${badge(g.home)}</h2>
-    <div class="kv"><span>wk ${g.week}</span>${g.start?`<span>${fmtKick(g)}${g.tv?" · "+g.tv:""}</span>`:""}${g.spreadText?`<span>${g.spreadText}</span>`:""}</div>
-    <div class="plain">
-      ${headline}
+  $("#sheet").innerHTML=head+`<div class="plain">${headline}
       <div class="scores"><span>Leverage ${scorePill(g.lev>0?g.levN:null,g.clear)}</span><span>Impact ${scorePill(g.lev>0?g.impN:null,g.clear)}</span></div>
-      ${shiftLine}<p>${oddsLine}</p>
-      ${why}
-      <p>${favLine}</p>
-      <h3>The teams</h3>
-      ${[g.away,g.home].map(n=>{ const s=st(n), sc=onSched(n);
-        return `<p><b>${badge(n)}</b> makes the playoff ${Math.round(s.pIn*100)}% of the time${s.ahead>=0.02?` and finishes ahead of ${short(T)} ${Math.round(s.ahead*100)}% of the time`:""}${s.pP4Champ>=0.05?`, winning the ${s.conf} ${Math.round(s.pP4Champ*100)}% of the time`:""}. ${sc?`On ${short(T)}'s schedule in week ${sc.week}.`:""}</p>`; }).join("")}
+      ${shiftLine}${body}
+      <h3>The teams</h3>${teamsTable(g)}
     </div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
 }
 // A finished game: what the result actually did to the selected team's odds
 function openWhyPlayed(g){
-  const st=name=>RES.teamStats.find(x=>x.team===name);
   const winner=g.homeWin?g.home:g.away, loser=g.homeWin?g.away:g.home;
-  const wS=g.homeWin?g.homeScore:g.awayScore, lS=g.homeWin?g.awayScore:g.homeScore;
-  const score = wS!=null&&lS!=null ? ` ${wS}-${lS}` : "";
   const pWinPre = g.homeWin ? g.pSp : 1-g.pSp;                 // the winner's pregame chance
-  const size = v => v>=75?"a big":v>=40?"a solid":v>=15?"a small":"a tiny";
-  const pts=Math.abs(g.realized)*100, ptsTxt=pts<0.95?pts.toFixed(2):pts.toFixed(1);
-  const cf=Math.abs(g.swing)*100, cfTxt=cf<0.95?cf.toFixed(2):cf.toFixed(1);
-  const opener=`<p><b>${winner}</b> beat <b>${loser}</b>${score} in week ${g.week}${pWinPre>=0.75?` as a ${fmtWin(pWinPre)}% favorite`:pWinPre<0.4?` as a ${fmtWin(pWinPre)}% underdog`:""}.</p>`;
+  const pts=Math.abs(g.realized)*100, ptsTxt=fmtPts1(pts);
+  const cf=Math.abs(g.swing)*100, cfTxt=fmtPts1(cf);
+  const favTxt = pWinPre>=0.75?`${fmtWin(pWinPre)}% favorite`:pWinPre<0.4?`${fmtWin(pWinPre)}% underdog`:`${fmtWin(pWinPre)}% · near coin flip`;
+  const priced = pWinPre>=0.75?"expected, mostly priced in":pWinPre<0.4?"upset, changed the picture":"coin flip, result carried the weight";
   let headline, body;
   if(!T){
     headline=`<div class="big">${g.clear?"Reshaped the playoff field.":"Didn't change who gets in."}</div>`;
-    const tops=(g.fieldTop||[]).map(t=>`<b>${t.team}</b> (${Math.round(t.share*100)}%)`);
-    body=opener + (g.swing>=0.001 ? `<p>Had ${loser} won instead, the twelve-team field would look different in <b class="num">${pct(g.swing)}%</b> of simulated seasons${g.swapsAvg>1.5?", usually moving more than one spot":""}. The teams most often swapped in or out: ${tops.join(", ")}.</p>`
-        + `<p>${pWinPre>=0.75?`Because ${winner} was expected to win, most of that was already priced in; the result itself moved the picture only a little.`:pWinPre<0.4?`Because ${winner} was the underdog, this result genuinely changed the picture.`:`This was close to a coin flip, so the result carried most of that weight.`}</p>`
-      : `<p>Across ${RES.N.toLocaleString()} simulated seasons, flipping this result ${Math.abs(g.swing)<0.001?"never":"almost never"} changes the twelve teams in the field.</p>`);
+    const tops=(g.fieldTop||[]);
+    body=`<table class="gstat"><tbody>
+        <tr><td>${short(winner)} was ${an(fmtWin(pWinPre))}</td><td class="num c">${favTxt}</td></tr>
+        <tr><td>Field differs had ${short(loser)} won</td><td class="num c">${g.swing>=0.001?pct(g.swing)+"% of seasons":Math.abs(g.swing)<0.001?"never":"<0.1% of seasons"}</td></tr>
+        ${g.swing>=0.001?`<tr><td>Spots moved per change</td><td class="num c">${g.swapsAvg.toFixed(1)}</td></tr>`:""}
+        ${tops.map(t=>`<tr><td class="sub">Swapped in or out · ${badge(t.team)}</td><td class="num c">${Math.round(t.share*100)}%</td></tr>`).join("")}
+      </tbody></table>${g.swing>=0.001?`<div class="gnote">${priced}</div>`:""}`;
   } else {
     const pActual=g.homeWin?g.pH:g.pA, pOther=g.homeWin?g.pA:g.pH;
     const helped=g.realized>0, cls=helped?"good":"bad";
-    const oddsLine=`At kickoff ${T}'s playoff odds stood at <b class="num">${pct(g.pBefore)}%</b>, weighing both possible results. With this one they're <b class="num ${cls}">${pct(pActual)}%</b>${g.clear?`: a <b class="num ${cls}">${ptsTxt}-point</b> ${helped?"gain":"hit"}`:""}. Had ${loser} won, they'd be <b class="num">${pct(pOther)}%</b>.`;
-    if(g.involvesMe){
-      const won=winner===T;
-      headline=`<div class="big ${won?"for":"bad"}">${won?"You won.":"You lost."}</div>`;
-      body=opener+`<p>${oddsLine}</p>`+(won&&pWinPre>=0.75?`<p>You were expected to win, so most of that was already in your odds; the loss would have cost you ${cfTxt} points.</p>`:"");
-    } else if(!g.clear || !g.sure){
-      headline=`<div class="big">${!g.clear?"Didn't move the needle for "+T+".":(helped?"Leaned your way, but it's within the noise.":"Leaned against you, but it's within the noise.")}</div>`;
-      body=opener+`<p>${oddsLine}</p>`
-        + (!g.clear ? (pWinPre>=0.75 && cf>=0.1 ? `<p>${winner} was expected to win, so the result was already priced in. The upset would have been worth about ${cfTxt} points ${g.swing>0===g.homeWin?"against":"to"} you.</p>` : `<p>Across ${RES.N.toLocaleString()} simulated seasons this result barely changes whether ${T} makes the field.</p>`)
-                    : `<p>The margin of error is ±${(2*g.se*100).toFixed(2)}, so the direction isn't settled. More simulated seasons would sharpen it.</p>`);
-    } else {
-      const want=g.swing>0?g.home:g.away, other=g.swing>0?g.away:g.home;
-      headline=`<div class="big ${helped?"for":"bad"}">${helped?"Went your way.":"Went against you."}</div>`;
-      const parts=reasonParts(g,want,other);
-      body=opener+`<p>${oddsLine} That's ${size(g.impN)} move compared with the games still to be played.</p>`
-        + (parts.length ? `<p>${parts.length>1?"Mostly because ":"Because "}${parts[0]}</p>${parts.slice(1).map(p=>`<p>Also: ${p}</p>`).join("")}` : "");
-    }
+    const want=g.swing>0?g.home:g.away, other=g.swing>0?g.away:g.home;
+    const outcomes=`<table class="gstat"><thead><tr><th></th><th class="c">Win %</th><th class="c">${short(T)} playoff</th></tr></thead><tbody>
+        <tr><td class="sub">At kickoff</td><td></td><td class="num c">${pct(g.pBefore)}%</td></tr>
+        <tr class="${g.involvesMe?(winner===T?"mine":"against"):(g.clear&&g.sure?(helped?"want":"against"):"")}"><td><b>${badge(winner)} won</b></td><td class="num c">${fmtWin(pWinPre)}%</td><td class="num c ${g.clear?cls:""}">${pct(pActual)}%</td></tr>
+        <tr><td class="sub">Had ${badge(loser)} won</td><td class="num c">${fmtWin(1-pWinPre)}%</td><td class="num c">${pct(pOther)}%</td></tr>
+      </tbody></table>`;
+    const effect = g.clear
+      ? `A ${sizeWord(g.impN)} move next to the games left${g.sure?"":` · ±${(2*g.se*100).toFixed(2)} margin, direction not settled`}`
+      : `<b class="num">${helped?"+":"−"}${ptsTxt} pts</b> · inside the noise${pWinPre>=0.75&&cf>=0.1?` · the upset was worth ${cfTxt} pts ${g.swing>0===g.homeWin?"against":"to"} you`:""}`;
+    if(g.involvesMe) headline=`<div class="big ${winner===T?"for":"bad"}">${winner===T?"You won.":"You lost."}</div>`;
+    else if(!g.clear) headline=`<div class="big">Didn't move the needle for ${short(T)}.</div>`;
+    else if(!g.sure) headline=`<div class="big">${helped?"Leaned your way":"Leaned against you"}, within the noise.</div>`;
+    else headline=`<div class="big ${helped?"for":"bad"}">${helped?"Went your way.":"Went against you."}</div>`;
+    body=outcomes+`<div class="gnote">${effect}</div><div class="gnote">${short(winner)} was ${an(fmtWin(pWinPre))} ${favTxt} · ${priced}${g.involvesMe&&winner===T&&pWinPre>=0.75?` · a loss would have cost ${cfTxt} pts`:""}</div>`
+      + (g.clear&&g.sure&&!g.involvesMe ? whyList(reasonParts(g,want,other)) : "");
   }
   $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
     <h2>${badge(g.away)} <small class="num ${g.homeWin?"bad":"good"}" style="font-weight:650">${g.awayScore??""}</small> at ${badge(g.home)} <small class="num ${g.homeWin?"good":"bad"}" style="font-weight:650">${g.homeScore??""}</small></h2>
@@ -1244,8 +1246,7 @@ function openWhyPlayed(g){
       ${headline}
       <div class="scores"><span>Impact ${scorePill(g.clear?g.impN:null,g.sure)}</span>${T&&g.clear?`<span class="${g.realized>0?"good":"bad"}"><b class="num">${g.realized>0?"+":"−"}${ptsTxt}</b> pts for ${short(T)}</span>`:""}</div>
       ${body}
-      <h3>The teams</h3>
-      ${[g.away,g.home].map(n=>{ const s=st(n); return `<p><b>${badge(n)}</b> makes the playoff ${Math.round(s.pIn*100)}% of the time${T&&s.ahead>=0.02?` and finishes ahead of ${short(T)} ${Math.round(s.ahead*100)}% of the time`:""}${s.pP4Champ>=0.05?`, winning the ${s.conf} ${Math.round(s.pP4Champ*100)}% of the time`:""}.</p>`; }).join("")}
+      <h3>The teams</h3>${teamsTable(g)}
     </div>`;
   $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
 }
