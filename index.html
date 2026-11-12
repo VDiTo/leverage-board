@@ -318,7 +318,7 @@
   .plain .gstat tr.against td{background:color-mix(in srgb, var(--against) 12%, transparent)} .plain .gstat tr.against td:first-child{box-shadow:inset 3px 0 var(--against)}
   .plain .gnote{color:var(--muted);font-size:13px;margin:0 0 6px} .plain .gnote b{color:var(--ink)}
   .plain ul.gwhy{list-style:none;margin:8px 0 0;padding:0} .plain .gwhy li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
-  .plain .gwhy li b{color:var(--ink)} .plain .gwhy li .p{display:inline-block;min-width:34px;font-weight:700;color:var(--ink)}
+  .plain .gwhy li b{color:var(--ink)} .plain .gwhy li .p{display:inline-block;min-width:34px;margin-right:6px;font-weight:700;color:var(--ink)}
   .plain h3{margin:14px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
   @media (max-width:480px){ .plain table.gstat{font-size:12.5px} .plain .gstat td{padding:4px 5px} .plain .gstat th{padding:2px 5px;font-size:11px} .plain .gstat td:first-child{width:auto} }
   .cell.hot small{color:#e9eef5;opacity:.85}
@@ -1136,7 +1136,7 @@ function reasonParts(g,want,other){
       if(k==="rank") parts.push(`${share}<b>Rank</b> · ${short(other)} competes with ${short(T)} for an at-large spot${sOther.block>=0.05?` · above ${short(T)} in <span class="num">${Math.round(sOther.block*100)}%</span> of seasons`:""}`);
       if(k==="autobid") parts.push(`${share}<b>Auto-bid</b> · ${st(g.home).conf===st(g.away).conf?st(g.home).conf:"conference"} title race · a champion takes an auto-bid, not an at-large spot`);
       if(k==="resume"){ const s=onSched(want)?want:other, ss=st(s), gm=onSched(s);
-        parts.push(`${share}<b>Résumé</b> · ${short(s)} is on ${short(T)}'s schedule (wk ${gm.week})${ss.wins>=8?` · proj. <span class="num">${Math.round(ss.wins)}</span> wins`:""} · their record feeds your résumé`); }
+        parts.push(`${share}<b>Resume</b> · ${short(s)} is on ${short(T)}'s schedule (wk ${gm.week})${ss.wins>=8?` · proj. <span class="num">${Math.round(ss.wins)}</span> wins`:""} · their record feeds your resume`); }
     }
   }
   return parts;
