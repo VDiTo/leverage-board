@@ -1134,7 +1134,9 @@ function reasonParts(g,want,other){
     for(const [k,v] of list){
       const share=`<span class="p num">${Math.round(v*100)}%</span>`;
       if(k==="rank") parts.push(`${share}<b>Rank</b> · ${short(other)} competes with ${short(T)} for an at-large spot${sOther.block>=0.05?` · above ${short(T)} in <span class="num">${Math.round(sOther.block*100)}%</span> of seasons`:""}`);
-      if(k==="autobid") parts.push(`${share}<b>Auto-bid</b> · ${st(g.home).conf===st(g.away).conf?st(g.home).conf:"conference"} title race · a champion takes an auto-bid, not an at-large spot`);
+      if(k==="autobid"){ const c=st(g.home).conf===st(g.away).conf?st(g.home).conf:"conference", mine=st(T)&&c===st(T).conf;
+        parts.push(mine ? `${share}<b>Auto-bid</b> · ${c} title race · flipping this result changes who wins the ${c}, often whether ${short(T)} reaches the title game and takes the auto-bid${st(T).pP4Champ>=0.02?` (${short(T)} wins the ${c} <span class="num">${Math.round(st(T).pP4Champ*100)}%</span> of the time)`:""}`
+                        : `${share}<b>Auto-bid</b> · ${c} title race · a different ${c} champion takes an auto-bid, which changes how many at-large spots are left for ${short(T)}`); }
       if(k==="resume"){ const s=onSched(want)?want:other, ss=st(s), gm=onSched(s);
         parts.push(`${share}<b>Resume</b> · ${short(s)} is on ${short(T)}'s schedule (wk ${gm.week})${ss.wins>=8?` · proj. <span class="num">${Math.round(ss.wins)}</span> wins`:""} · their record feeds your resume`); }
     }
