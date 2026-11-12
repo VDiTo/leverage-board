@@ -1006,6 +1006,7 @@ function smoothWithPrevious(r, prev){
     const o=old.get(g.i); if(!o || !!o.live!==!!g.live) return;   // a game that just started or ended is taken fresh
     g.swing=0.5*(o.swing+g.swing); g.lev=0.5*(o.lev+g.lev);
     if(o.pH!=null&&g.pH!=null){ g.pH=0.5*(o.pH+g.pH); g.pA=0.5*(o.pA+g.pA); }
+    if(o.confH!=null&&g.confH!=null){ g.confH=0.5*(o.confH+g.confH); g.confA=0.5*(o.confA+g.confA); }
     g.pDecides=0.5*(o.pDecides+g.pDecides);
     g.se=Math.sqrt((o.se*o.se+g.se*g.se)/4);
     g.clear=Math.abs(g.swing)>=0.001; g.sure=Math.abs(g.swing)>=2*g.se;
@@ -1035,6 +1036,7 @@ function finish(acc,N,ti,X){
       continue;
     }
     const pH=acc.sumH[i]/N, pA=acc.sumA[i]/N, swing=acc.sumD[i]/N;
+    const confH=acc.confH?acc.confH[i]/N:null, confA=acc.confA?acc.confA[i]/N:null;   // the target's conference-title chance under each result
     const varD=Math.max(0, acc.sumD2[i]/N - swing*swing);
     const se=Math.sqrt(varD/N);
     const p=gP[i];
@@ -1043,7 +1045,7 @@ function finish(acc,N,ti,X){
     out.push({...fin,i,week:gWeek[i],home:src.home,away:src.away,start:src.start||null,tbd:!!src.tbd,tv:src.tv||null,
       spread:src.spread??null,spreadText:src.spreadText||"",overUnder:src.overUnder??null,
       pHomeWin:p, pSp:gPsp[i], pLine:isNaN(gPline[i])?null:gPline[i], line:!!gLine[i], involvesMe: gH[i]===ti||gA[i]===ti, live:src.live||null,
-      pH,pA,swing,se, clear: Math.abs(swing)>=0.001, sure: Math.abs(swing)>=2*se, pDecides:nDiff/N, why,
+      pH,pA,confH,confA,swing,se, clear: Math.abs(swing)>=0.001, sure: Math.abs(swing)>=2*se, pDecides:nDiff/N, why,
       // Leverage score: impact weighted by how uncertain the game is. A coin flip keeps its full impact;
       // a 97/3 game keeps about 12% of it, because the outcome you want almost never happens.
       lev: Math.abs(swing)*100 * 4*p*(1-p)});
@@ -1054,7 +1056,8 @@ function finish(acc,N,ti,X){
   played.forEach(g=>{
     const pAct = g.homeWin ? g.pSp : 1-g.pSp;               // pregame chance of the result that happened
     if(ti<0){ g.pBefore=null; g.realized=(1-pAct)*g.swing; g.se=(1-pAct)*g.se; }
-    else { g.pBefore = g.pSp*g.pH + (1-g.pSp)*g.pA; g.realized = (g.homeWin?g.pH:g.pA) - g.pBefore; g.se=(1-pAct)*g.se; }
+    else { g.pBefore = g.pSp*g.pH + (1-g.pSp)*g.pA; g.realized = (g.homeWin?g.pH:g.pA) - g.pBefore; g.se=(1-pAct)*g.se;
+      g.confBefore = g.confH!=null ? g.pSp*g.confH + (1-g.pSp)*g.confA : null; }
     g.clear = Math.abs(g.realized)>=0.001; g.sure = Math.abs(g.realized)>=2*g.se;
   });
   normalizeGames(games, played);
@@ -1071,7 +1074,7 @@ function finish(acc,N,ti,X){
 // ---------- render ----------
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
-const RESULT_VERSION = 12; // bump when the result shape changes so stale saved results are recomputed
+const RESULT_VERSION = 13; // bump when the result shape changes so stale saved results are recomputed
 const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|M${MODEL}|F${strHash(window.LIVE?LIVE.finalsKey:"")}|${T}|${$("#sims").value}`;
 // results are cached unless a game is in progress; the set of applied finals is part of the cache key
 const liveActive = () => !!(window.LIVE && LIVE.inProgress>0);
@@ -1135,7 +1138,7 @@ function reasonParts(g,want,other){
       const share=`<span class="p num">${Math.round(v*100)}%</span>`;
       if(k==="rank") parts.push(`${share}<b>Rank</b> · ${short(other)} competes with ${short(T)} for an at-large spot${sOther.block>=0.05?` · above ${short(T)} in <span class="num">${Math.round(sOther.block*100)}%</span> of seasons`:""}`);
       if(k==="autobid"){ const c=st(g.home).conf===st(g.away).conf?st(g.home).conf:"conference", mine=st(T)&&c===st(T).conf;
-        parts.push(mine ? `${share}<b>Auto-bid</b> · ${c} title race · flipping this result changes who wins the ${c}, often whether ${short(T)} reaches the title game and takes the auto-bid${st(T).pP4Champ>=0.02?` (${short(T)} wins the ${c} <span class="num">${Math.round(st(T).pP4Champ*100)}%</span> of the time)`:""}`
+        parts.push(mine ? `${share}<b>Auto-bid</b> · ${c} title race · ${g.confH!=null?`${short(T)}'s ${c} title odds move <span class="num">${fmtPts1(Math.abs(g.confH-g.confA)*100)}</span> pts on this result`:`flipping this result changes who wins the ${c}, often whether ${short(T)} reaches the title game`} · the champion takes the auto-bid`
                         : `${share}<b>Auto-bid</b> · ${c} title race · a different ${c} champion takes an auto-bid, which changes how many at-large spots are left for ${short(T)}`); }
       if(k==="resume"){ const s=onSched(want)?want:other, ss=st(s), gm=onSched(s);
         parts.push(`${share}<b>Resume</b> · ${short(s)} is on ${short(T)}'s schedule (wk ${gm.week})${ss.wins>=8?` · proj. <span class="num">${Math.round(ss.wins)}</span> wins`:""} · their record feeds your resume`); }
@@ -1163,6 +1166,9 @@ function favNote(g){
   return `Near coin flip (${short(fav)} ${p}%) · nearly all impact counts as leverage`;
 }
 const sizeWord = v => v>=75?"big":v>=40?"solid":v>=15?"small":"tiny";
+// the selected team's conference-title odds under each result, shown when this game can move them
+function confCol(g){ if(!T||g.confH==null) return null; const s=RES.teamStats.find(x=>x.team===T); if(!s||!s.conf) return null;
+  return Math.abs(g.confH-g.confA)>=0.001 ? {conf:s.conf, label:`${short(T)} wins ${s.conf}`} : null; }
 const an = s => /^(8|11$|18$)/.test(String(s)) ? "an" : "a";   // "an 85% favorite", "a 79% favorite"
 const fmtPts1 = v => v<0.95?v.toFixed(2):v.toFixed(1);
 function openWhySimple(g){
@@ -1186,7 +1192,8 @@ function openWhySimple(g){
   } else {
     const rows=[[g.away,1-g.pHomeWin,g.pA],[g.home,g.pHomeWin,g.pH]];
     const mark=n=> g.involvesMe ? (n===T?" mine":"") : (g.clear&&g.sure&&n===want?" want":"");
-    const outcomes=`<table class="gstat"><thead><tr><th></th><th class="c">Win %</th><th class="c">${short(T)} playoff</th></tr></thead><tbody>${rows.map(([n,pw,po])=>`<tr class="${mark(n)}"><td>${badge(n)} wins</td><td class="num c">${fmtWin(pw)}%</td><td class="num c">${pct(po)}%</td></tr>`).join("")}</tbody></table>`;
+    const cc=confCol(g);
+    const outcomes=`<table class="gstat"><thead><tr><th></th><th class="c">Win %</th><th class="c">${short(T)} playoff</th>${cc?`<th class="c">${cc.label}</th>`:""}</tr></thead><tbody>${rows.map(([n,pw,po],j)=>`<tr class="${mark(n)}"><td>${badge(n)} wins</td><td class="num c">${fmtWin(pw)}%</td><td class="num c">${pct(po)}%</td>${cc?`<td class="num c">${pct(j?g.confH:g.confA)}%</td>`:""}</tr>`).join("")}</tbody></table>`;
     const swing = g.clear
       ? `Swing <b class="num">${fmtPts1(impact)} pts</b> · ${sizeWord(g.impN)} for the schedule${g.sure?"":` · ±${(2*g.se*100).toFixed(2)} margin, direction not settled`}`
       : `Swing <b class="num">${impact.toFixed(2)} pts</b> · inside the noise${g.sure?"":` (±${(2*g.se*100).toFixed(2)})`}`;
@@ -1210,8 +1217,8 @@ function openWhyPlayed(g){
   const pWinPre = g.homeWin ? g.pSp : 1-g.pSp;                 // the winner's pregame chance
   const pts=Math.abs(g.realized)*100, ptsTxt=fmtPts1(pts);
   const cf=Math.abs(g.swing)*100, cfTxt=fmtPts1(cf);
-  const favTxt = pWinPre>=0.75?`${fmtWin(pWinPre)}% favorite`:pWinPre<0.4?`${fmtWin(pWinPre)}% underdog`:`${fmtWin(pWinPre)}% · near coin flip`;
-  const priced = pWinPre>=0.75?"expected, mostly priced in":pWinPre<0.4?"upset, changed the picture":"coin flip, result carried the weight";
+  const favTxt = `${fmtWin(pWinPre)}% ${pWinPre>=0.5?"favorite":"underdog"}`;
+  const priced = pWinPre>=0.75?"expected, mostly priced in":pWinPre<0.4?"upset, changed the picture":"near coin flip, the result carried the weight";
   let headline, body;
   if(!T){
     headline=`<div class="big">${g.clear?"Reshaped the playoff field.":"Didn't change who gets in."}</div>`;
@@ -1226,10 +1233,11 @@ function openWhyPlayed(g){
     const pActual=g.homeWin?g.pH:g.pA, pOther=g.homeWin?g.pA:g.pH;
     const helped=g.realized>0, cls=helped?"good":"bad";
     const want=g.swing>0?g.home:g.away, other=g.swing>0?g.away:g.home;
-    const outcomes=`<table class="gstat"><thead><tr><th></th><th class="c">Win %</th><th class="c">${short(T)} playoff</th></tr></thead><tbody>
-        <tr><td class="sub">At kickoff</td><td></td><td class="num c">${pct(g.pBefore)}%</td></tr>
-        <tr class="${g.involvesMe?(winner===T?"mine":"against"):(g.clear&&g.sure?(helped?"want":"against"):"")}"><td><b>${badge(winner)} won</b></td><td class="num c">${fmtWin(pWinPre)}%</td><td class="num c ${g.clear?cls:""}">${pct(pActual)}%</td></tr>
-        <tr><td class="sub">Had ${badge(loser)} won</td><td class="num c">${fmtWin(1-pWinPre)}%</td><td class="num c">${pct(pOther)}%</td></tr>
+    const cc=confCol(g), cAct=g.homeWin?g.confH:g.confA, cOth=g.homeWin?g.confA:g.confH;
+    const outcomes=`<table class="gstat"><thead><tr><th></th><th class="c">Win %</th><th class="c">${short(T)} playoff</th>${cc?`<th class="c">${cc.label}</th>`:""}</tr></thead><tbody>
+        <tr><td class="sub">At kickoff</td><td></td><td class="num c">${pct(g.pBefore)}%</td>${cc?`<td class="num c">${pct(g.confBefore)}%</td>`:""}</tr>
+        <tr class="${g.involvesMe?(winner===T?"mine":"against"):(g.clear&&g.sure?(helped?"want":"against"):"")}"><td><b>${badge(winner)} won</b></td><td class="num c">${fmtWin(pWinPre)}%</td><td class="num c ${g.clear?cls:""}">${pct(pActual)}%</td>${cc?`<td class="num c">${pct(cAct)}%</td>`:""}</tr>
+        <tr><td class="sub">Had ${badge(loser)} won</td><td class="num c">${fmtWin(1-pWinPre)}%</td><td class="num c">${pct(pOther)}%</td>${cc?`<td class="num c">${pct(cOth)}%</td>`:""}</tr>
       </tbody></table>`;
     const effect = g.clear
       ? `A ${sizeWord(g.impN)} move next to the games left${g.sure?"":` · ±${(2*g.se*100).toFixed(2)} margin, direction not settled`}`
@@ -2276,7 +2284,7 @@ function reviewKey(w){
 // what the report keeps from a run: the headline figures, every FBS team's stats, the team's own games and the notable
 // others, the week's results, and a compact line per remaining game (win chance, swing, leverage) for before/after lookups
 function slimReview(r, fromWk, W){
-  const G=g=>({ i:g.i, week:g.week, home:g.home, away:g.away, involvesMe:g.involvesMe, pHomeWin:g.pHomeWin, pSp:g.pSp, pH:g.pH, pA:g.pA, swing:g.swing, lev:g.lev, se:g.se, clear:g.clear, sure:g.sure, levN:g.levN, impN:g.impN,
+  const G=g=>({ i:g.i, week:g.week, home:g.home, away:g.away, involvesMe:g.involvesMe, pHomeWin:g.pHomeWin, pSp:g.pSp, pH:g.pH, pA:g.pA, confH:g.confH??null, confA:g.confA??null, confBefore:g.confBefore??null, swing:g.swing, lev:g.lev, se:g.se, clear:g.clear, sure:g.sure, levN:g.levN, impN:g.impN,
     fieldTop:g.fieldTop||null, swapsAvg:g.swapsAvg||0, why:g.why||null, spreadText:g.spreadText||"", homeWin:g.homeWin, homeScore:g.homeScore, awayScore:g.awayScore, realized:g.realized, pBefore:g.pBefore });
   const own=r.games.filter(g=>g.involvesMe), top=r.games.filter(g=>!g.involvesMe&&g.clear).sort((a,b)=>b.lev-a.lev).slice(0,80);
   return { mode:r.mode, N:r.N, pIn:r.pIn, pChamp:r.pChamp, medRank:r.medRank, avgBlock:r.avgBlock, avgWins:r.avgWins, myGames:r.myGames,

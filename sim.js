@@ -14,6 +14,8 @@
     lastInN:new Float64Array(nT),
     fieldN:new Float64Array(nT), seedSum:new Float64Array(nT), p4ChampN:new Float64Array(nT), g6N:new Float64Array(nT),
     sumH:new Float64Array(nG), sumA:new Float64Array(nG), sumD:new Float64Array(nG), sumD2:new Float64Array(nG),
+    // seasons the target wins its conference, given each result of the game (home win / away win)
+    confH:new Float64Array(nG), confA:new Float64Array(nG),
     // why a flip mattered: 0 = target's own résumé moved, 1 = an auto-bid changed hands, 2 = a team moved past the target
     why:[new Float64Array(nG), new Float64Array(nG), new Float64Array(nG)],
     // no-team mode: seasons where flipping the game changed the field, slots swapped, and per-team membership flips
@@ -25,7 +27,7 @@
   }
   function mergeAcc(into, from){
     for(const k of ["in","champ","rankSum","blockSum","winSum"]) into[k]+=from[k];
-    for(const k of ["ranks","blockers","aheadN","lastInN","teamWins","fieldN","seedSum","p4ChampN","g6N","titleN","confWinSum","confChampN","confPlaceSum","sumH","sumA","sumD","sumD2","fieldChg","fieldSwaps"]){ const a=into[k], b=from[k]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
+    for(const k of ["ranks","blockers","aheadN","lastInN","teamWins","fieldN","seedSum","p4ChampN","g6N","titleN","confWinSum","confChampN","confPlaceSum","sumH","sumA","sumD","sumD2","confH","confA","fieldChg","fieldSwaps"]){ const a=into[k], b=from[k]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     for(let w=0;w<3;w++){ const a=into.why[w], b=from.why[w]; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     if(into.teamFlip && from.teamFlip){ const a=into.teamFlip, b=from.teamFlip; for(let i=0;i<a.length;i++) a[i]+=b[i]; }
     return into;
@@ -71,6 +73,7 @@
   const rs = new Float64Array(nT);
 
   let flipReason=2;
+  let flipChampT=0;   // after the flip just evaluated: does the target win its conference?
   // this season's field: who is in, the seven at-larges in order, and the next three out
   const inF=new Uint8Array(nT), alList=new Int32Array(8), reserve=new Int32Array(3); let nRes=0, nAl=0;
   const fieldSeed=new Int32Array(12);
@@ -212,6 +215,7 @@
         if(c>=0 && sc(c)+pb[c]>best){ best=sc(c)+pb[c]; newG6=c; }
       }
     }
+    { const kT=confIdx[ti]; flipChampT = kT<0 ? 0 : (k===kT ? (newC===ti?1:0) : (champ[kT]===ti?1:0)); }
     const p4Change = k>=0 && isP4[k];
     const aqOf = j => {
       if(p4Change){ if(j===newC) return 1; if(j===oldC) return 0; }
@@ -323,12 +327,14 @@
       }
 
       // paired leverage; finished games are flipped too, which gives each result's realised effect on the target
+      const kT = NONE ? -1 : confIdx[ti], champT = kT>=0 && champ[kT]===ti ? 1 : 0;   // does the target win its conference as played
       for(let i=0;i<nG;i++){
         if(NONE){ const diff=fieldFlip(i); if(diff>0){ acc.fieldChg[i]++; acc.fieldSwaps[i]+=diff/2; } continue; }
-        const flipped=flipInField(i);
+        const flipped=flipInField(i), fc=flipChampT;
         const FH = res[i] ? inField : flipped;
         const FA = res[i] ? flipped : inField;
         acc.sumH[i]+=FH; acc.sumA[i]+=FA;
+        acc.confH[i] += res[i] ? champT : fc; acc.confA[i] += res[i] ? fc : champT;
         const d=FH-FA; acc.sumD[i]+=d; acc.sumD2[i]+=d*d;
         if(d!==0){
           let rsn=flipReason;
