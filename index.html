@@ -378,11 +378,12 @@
   #confTable td.c{text-align:center} #confTable td small{display:block;color:var(--muted);font-size:11px;font-weight:400}
   #confTable tr.me td{background:color-mix(in srgb, var(--gold) 12%, var(--field))}
   @media (max-width:640px){
-    #confTable{table-layout:fixed;font-size:12px}
-    #confTable th,#confTable td{padding:5px 4px} #confTable th{white-space:normal;line-height:1.15;vertical-align:bottom}
-    #confTable td.k{min-width:0;position:static;box-shadow:none;overflow:hidden;text-overflow:ellipsis}
-    #confTable .ramp{font-size:12px;padding:2px 4px}
-    #confTable th:nth-child(1){width:10%} #confTable th:nth-child(3),#confTable th:nth-child(4){width:19%} #confTable th:nth-child(5),#confTable th:nth-child(6){width:14%}
+    #confTable{table-layout:fixed;font-size:11px}
+    #confTable th,#confTable td{padding:5px 2px} #confTable th{white-space:normal;line-height:1.15;vertical-align:bottom;font-size:10px}
+    #confTable td.k{min-width:0;position:static;box-shadow:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:3px}
+    #confTable td.k .rk{font-size:9px} #confTable td small{font-size:9.5px}
+    #confTable .ramp{font-size:11px;padding:2px 1px}
+    #confTable th:nth-child(1){width:6%} #confTable th:nth-child(3),#confTable th:nth-child(4){width:16%} #confTable th:nth-child(5),#confTable th:nth-child(6),#confTable th:nth-child(7){width:12.5%}
   }
   .hist-wrap{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 6px 4px}
   .hist-wrap.big{padding:12px 8px 6px}
