@@ -320,6 +320,9 @@
   .plain ul.gwhy{list-style:none;margin:8px 0 0;padding:0} .plain .gwhy li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
   .plain .gwhy li b{color:var(--ink)} .plain .gwhy li .p{display:inline-block;min-width:34px;margin-right:6px;font-weight:700;color:var(--ink)}
   .plain h3{margin:14px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  .plain ol.tb-steps{margin:4px 0 0;padding-left:22px;font-size:13.5px} .plain .tb-steps li{margin:0 0 3px}
+  .plain .tb-trace{margin:2px 0 8px 0;padding:6px 10px;background:var(--panel2);border-radius:8px;font-size:12.5px;color:var(--muted)} .plain .tb-trace div{padding:2px 0} .plain .tb-trace b{color:var(--ink)} .plain .tb-trace .pick{color:var(--for);font-weight:600}
+  .plain table.tb td:first-child{width:auto} .plain table.tb td.w{width:100%} .plain .tb-trace{margin:4px 0}
   @media (max-width:480px){ .plain table.gstat{font-size:12.5px} .plain .gstat td{padding:4px 5px} .plain .gstat th{padding:2px 5px;font-size:11px} .plain .gstat td:first-child{width:auto} }
   .cell.hot small{color:#e9eef5;opacity:.85}
   .cell small.tv{font-size:10px;opacity:.75;white-space:nowrap}
@@ -689,7 +692,7 @@
   <section class="tab" id="tab-conf" hidden>
     <h2>Conference standings</h2>
     <div class="explain" id="confExplain"></div>
-    <div class="controls"><select id="confPick" aria-label="Conference"></select></div>
+    <div class="controls"><select id="confPick" aria-label="Conference"></select><button type="button" class="ghost" id="confTie">Tiebreakers</button></div>
     <div class="scroll"><table id="confTable"></table></div>
   </section>
 
@@ -907,7 +910,7 @@ function buildParams(Dx, model=MODEL){
   });
   const teamGames = tg.map(a=>Int32Array.from(a));
   const gamesPerTeam = Int32Array.from(tg.map(a=>a.length));
-  return { nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,poll,teamGames,gamesPerTeam,members,confIdx,isP4,confList,config:Dx.config,idx,confOf,tierOf };
+  return { nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,poll,teamGames,gamesPerTeam,members,confIdx,isP4,confList,names:Dx.teams.map(t=>t.team),config:Dx.config,idx,confOf,tierOf };
 }
 function build(){
   if(window.applyLive) window.applyLive();
@@ -931,10 +934,10 @@ function build(){
 // them, otherwise inline in timed chunks. The page keeps its worker pool between runs.
 const SIM = { pool:[], token:0 };
 function simParams(){
-  return { nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,poll,teamGames,gamesPerTeam,members,confIdx,isP4,confList,config:D.config };
+  return { nT,nG,gH,gA,gP,gPsp,gPline,gLine,gHfa,gConf,gDone,gRes,gWeek,rating,poll,teamGames,gamesPerTeam,members,confIdx,isP4,confList,names:D.teams.map(t=>t.team),config:D.config };
 }
 // what the workers are sent: the season loop's inputs only (the typed arrays are copied across)
-const coreParams = P => ({ nT:P.nT,nG:P.nG,gH:P.gH,gA:P.gA,gP:P.gP,gLine:P.gLine,gDone:P.gDone,gRes:P.gRes,gConf:P.gConf,gHfa:P.gHfa,rating:P.rating,poll:P.poll,teamGames:P.teamGames,members:P.members,confIdx:P.confIdx,isP4:P.isP4,confList:P.confList,config:P.config });
+const coreParams = P => ({ nT:P.nT,nG:P.nG,gH:P.gH,gA:P.gA,gP:P.gP,gLine:P.gLine,gDone:P.gDone,gRes:P.gRes,gConf:P.gConf,gHfa:P.gHfa,rating:P.rating,poll:P.poll,teamGames:P.teamGames,members:P.members,confIdx:P.confIdx,isP4:P.isP4,confList:P.confList,names:P.names,config:P.config });
 function simulate(target, N, onProgress, done){
   const ti = target ? idx.get(target) : -1;
   simulateP(SIM, simParams(), ti, N, onProgress, done, null);
@@ -1066,7 +1069,7 @@ function finish(acc,N,ti,X){
     block:acc.blockers[i]/N, ahead:acc.aheadN[i]/N, wins:acc.teamWins[i]/N, games:gamesPerTeam[i],
     lastIn: acc.lastInN[i]/N,   // share of all seasons in which the target misses and this team is the last at-large in; sums to the miss rate
     pIn:acc.fieldN[i]/N, pTitle:acc.titleN[i]/N, avgSeed:acc.fieldN[i]?acc.seedSum[i]/acc.fieldN[i]:99, pP4Champ:acc.p4ChampN[i]/N, pG6:acc.g6N[i]/N,
-    confWins:acc.confWinSum[i]/N, pConf:acc.confChampN[i]/N, confPlace:acc.confPlaceSum[i]/N}));
+    confWins:acc.confWinSum[i]/N, pConf:acc.confChampN[i]/N, pCCG:acc.ccgN?acc.ccgN[i]/N:0, confPlace:acc.confPlaceSum[i]/N}));
   return { mode: ti<0?"field":"team", forTeam, pIn:acc.in/N, pChamp:acc.champ/N, medRank:med, avgBlock:acc.blockSum/N,
            avgWins:acc.winSum/N, myGames:ti>=0?gamesPerTeam[ti]:0, games, played, teamStats, N };
 }
@@ -1074,7 +1077,7 @@ function finish(acc,N,ti,X){
 // ---------- render ----------
 // The last result is kept on the device and reused until the data file changes or the settings do.
 // The Run button always recomputes.
-const RESULT_VERSION = 13; // bump when the result shape changes so stale saved results are recomputed
+const RESULT_VERSION = 15; // bump when the result shape changes so stale saved results are recomputed
 const resultKey = () => `v${RESULT_VERSION}|${D.updatedAt}|M${MODEL}|F${strHash(window.LIVE?LIVE.finalsKey:"")}|${T}|${$("#sims").value}`;
 // results are cached unless a game is in progress; the set of applied finals is part of the cache key
 const liveActive = () => !!(window.LIVE && LIVE.inProgress>0);
@@ -1401,6 +1404,7 @@ $("#seasonSort").addEventListener("click",e=>{ const b=e.target.closest("button[
 $("#slateMin").onchange=()=>{ UI.slateMin=+$("#slateMin").value; pref.set("slateMin",String(UI.slateMin)); renderSlate(RES); };
 $("#seasonMin").onchange=()=>{ UI.seasonMin=+$("#seasonMin").value; pref.set("seasonMin",String(UI.seasonMin)); renderSeason(RES); };
 $("#confPick").onchange=()=>{ UI.conf=$("#confPick").value; pref.set("conf",UI.conf); renderConf(RES); };
+$("#confTie").onclick=()=>openTiebreakers(UI.conf);
 $("#slateWeek").onchange=()=>{ UI.slateWeek=+$("#slateWeek").value; renderSlate(RES); };
 
 function labelPdfButtons(){
@@ -2050,16 +2054,79 @@ function renderConf(r){
   if(!UI.conf || !confs.includes(UI.conf)) UI.conf = confs.includes(mineConf) ? mineConf : confs.includes(pref.get("conf")) ? pref.get("conf") : confs[0];
   $("#confPick").innerHTML = confs.map(c=>`<option${c===UI.conf?" selected":""}>${c}</option>`).join("");
   const rows=confStandings(r, UI.conf);
-  $("#confExplain").innerHTML = `<p>Every season the simulation plays out the rest of the schedule and the conference title game. Teams are ordered by their <strong>average finishing place</strong>: the champion first, then everyone else by conference winning percentage. Projected records are averages across ${r.N.toLocaleString()} seasons, with the record so far underneath. <strong>Title</strong> is how often the team wins the conference; <strong>Playoff</strong> is its chance of making the 12-team field.</p>`;
-  const maxC=Math.max(0.01,...rows.map(t=>t.pConf)), maxP=Math.max(0.01,...rows.map(t=>t.pIn));
+  $("#confExplain").innerHTML = `<p>Every season the simulation plays out the rest of the schedule and the conference title game. Teams are ordered by their <strong>average finishing place</strong>: the champion first, then everyone else by conference winning percentage. Projected records are averages across ${r.N.toLocaleString()} seasons, with the record so far underneath. <strong>Title game</strong> is how often the team reaches the conference championship game, with ties in the standings broken by the league's own procedure (the Tiebreakers button shows the rules and how they apply to the standings now); <strong>Title</strong> is how often it wins the conference; <strong>Playoff</strong> is its chance of making the 12-team field.</p>`;
+  const maxC=Math.max(0.01,...rows.map(t=>t.pConf)), maxP=Math.max(0.01,...rows.map(t=>t.pIn)), maxG=Math.max(0.01,...rows.map(t=>t.pCCG||0));
   const rl=(w,n)=>`${w.toFixed(1)}–${(n-w).toFixed(1)}`;
-  $("#confTable").innerHTML = `<tr><th class="c">Proj.</th><th>Team</th><th class="c">Conf record</th><th class="c">Overall</th><th class="c">Title</th><th class="c">Playoff</th></tr>`+
+  const pc=(v,hue,mx)=>`<td class="pc c"><span class="ramp num" style="${ramp(v,hue,mx)}">${v>=0.005?Math.round(v*100)+"%":v>0?"<1%":"0%"}</span></td>`;
+  $("#confTable").innerHTML = `<tr><th class="c">Proj.</th><th>Team</th><th class="c">Conf record</th><th class="c">Overall</th><th class="c">Title game</th><th class="c">Title</th><th class="c">Playoff</th></tr>`+
     rows.map((t,i)=>`<tr class="${t.team===T?"me":""}"><td class="r num">${i+1}</td><td class="k">${badge(t.team, short(t.team)===t.team?t.team:`<span class="nm-full">${t.team}</span><span class="nm-short">${short(t.team)}</span>`)}</td>
       <td class="num c">${rl(t.confWins,t.rec.cg)}<small>now ${t.rec.cw}–${t.rec.cl}</small></td>
       <td class="num c">${rl(t.wins,t.games)}<small>now ${t.rec.w}–${t.rec.l}</small></td>
-      <td class="pc c"><span class="ramp num" style="${ramp(t.pConf,"var(--gold)",maxC)}">${t.pConf>=0.005?Math.round(t.pConf*100)+"%":t.pConf>0?"<1%":"0%"}</span></td>
-      <td class="pc c"><span class="ramp num" style="${ramp(t.pIn,"var(--for)",maxP)}">${t.pIn>=0.005?Math.round(t.pIn*100)+"%":t.pIn>0?"<1%":"0%"}</span></td></tr>`).join("");
+      ${pc(t.pCCG||0,"var(--muted)",maxG)}${pc(t.pConf,"var(--gold)",maxC)}${pc(t.pIn,"var(--for)",maxP)}</tr>`).join("");
 }
+// The league's tiebreaker procedure, and how it sorts the standings as they stand today
+function openTiebreakers(conf){
+  const rules=SimCore.CONF_RULES[conf]||SimCore.DEFAULT_RULES, TX=SimCore.STEP_TEXT, SHORT=SimCore.STEP_SHORT;
+  const teams=D.teams.filter(t=>t.conference===conf).map(t=>t.team), inConf=new Set(teams);
+  const games=new Map(teams.map(t=>[t,[]])), rec=new Map(teams.map(t=>[t,{w:0,l:0}])), all=new Map(teams.map(t=>[t,{w:0,l:0,pf:0,pa:0,n:0}]));
+  const pfpa=new Map();   // every FBS team's points for and against, for the scoring-margin step
+  D.games.forEach(g=>{ if(!g.completed) return;
+    const w=g.homeWin?g.home:g.away, l=g.homeWin?g.away:g.home;
+    for(const [t,pf,pa] of [[g.home,g.homeScore,g.awayScore],[g.away,g.awayScore,g.homeScore]]){ if(pf==null) continue; const r=pfpa.get(t)||{pf:0,pa:0,n:0}; r.pf+=pf; r.pa+=pa; r.n++; pfpa.set(t,r); }
+    if(inConf.has(w)) all.get(w).w++; if(inConf.has(l)) all.get(l).l++;
+    if(!g.conferenceGame||!inConf.has(g.home)||!inConf.has(g.away)) return;
+    games.get(w).push({opp:l,won:1,pf:g.homeWin?g.homeScore:g.awayScore,pa:g.homeWin?g.awayScore:g.homeScore});
+    games.get(l).push({opp:w,won:0,pf:g.homeWin?g.awayScore:g.homeScore,pa:g.homeWin?g.homeScore:g.awayScore}); rec.get(w).w++; rec.get(l).l++; });
+  const rate=t=>ratingFor(D.teams[idx.get(t)], MODEL);
+  const divName=new Map(); if(rules.divisions) Object.entries(rules.divisions).forEach(([d,names])=>names.forEach(n=>divName.set(n,d)));
+  const cfpOf=t=>D.teams[idx.get(t)].cfpRank||0;
+  const ctx={ games:t=>games.get(t), pct:t=>{ const r=rec.get(t), n=r.w+r.l; return n?r.w/n:0; }, rec:t=>rec.get(t),
+    overall:t=>{ const r=all.get(t), n=r.w+r.l; return n?r.w/n:0; }, order:null, div:t=>divName.get(t)||-1, rating:rate,
+    // the CFP step: the committee ranking when every team in the group is ranked, else the rating
+    rank:t=>cfpOf(t)?1000-cfpOf(t):rate(t)-1000,
+    // SportSource-style capped relative margin: per conference game, points scored over the opponent's average allowed
+    // (capped at 200%) minus points allowed over the opponent's average scored, averaged
+    margin:t=>{ const gs=games.get(t).filter(x=>x.pf!=null); if(!gs.length) return 0; let s=0; for(const x of gs){ const o=pfpa.get(x.opp); if(!o||!o.n){ continue; } const aa=o.pa/o.n||1, as=o.pf/o.n||1; s+=Math.min(2,x.pf/aa)-Math.min(2,x.pa/as); } return s/gs.length; },
+    draw:t=>{ let h=7; for(const ch of t) h=(h*31+ch.charCodeAt(0))>>>0; return h; } };
+  // a league with divisions is ordered within each division; its title game is the two division champions
+  const groups = rules.divisions ? Object.entries(rules.divisions).map(([d,names])=>({label:d, teams:teams.filter(t=>names.includes(t))})) : [{label:null, teams}];
+  const ordered=groups.map(gr=>{ ctx.order=gr.teams.slice().sort((a,b)=>ctx.pct(b)-ctx.pct(a) || rate(b)-rate(a)); return {label:gr.label, order:SimCore.confOrderFull(gr.teams, ctx, rules, true)}; });
+  const same=rules.two.join()===rules.multi.join();
+  const steps=list=>`<ol class="tb-steps">${list.map(s=>`<li>${TX[s]||s}</li>`).join("")}</ol>`;
+  const f=(v,tr)=>{ const step=tr.step; if(v==null) return "—"; if(step==="draw") return "draw"; if(step==="cfp") return v>0?"#"+(1000-v):"unranked"; if(step==="rating"||step==="composite") return v.toFixed(1); if(step==="margin") return (v>=0?"+":"")+v.toFixed(2);
+    if((step==="h2h"||step==="h2hRR") && tr.teams.length===2) return v>=0.999?"won":v<=0.001?"lost":"split"; if(step==="h2h" && tr.vals.sweep) return v===2?"beat all":v===0?"lost to all":"split"; return v.toFixed(3).replace(/^0/,""); };
+  const rl=t=>{ const r=rec.get(t); return `${r.w}–${r.l}`; };
+  const stat=new Map(RES?RES.teamStats.map(t=>[t.team,t]):[]);
+  // one row per team; a tie group gets its trace above its first member
+  const seen=new Set();
+  const tableFor=order=>order.map((o,i)=>{ const s=stat.get(o.team)||{};
+    const first=o.tied.length>1 && !seen.has(o.tied[0]); o.tied.forEach(t=>seen.add(t));
+    const trace = !first ? "" : (()=>{ const items=order.filter(x=>x.tied===o.tied && x.trace);
+      // consecutive steps that do not apply (no games to compare) collapse into one line
+      const lines=items.map(x=>{ const out=[]; let na=[];
+        const flush=()=>{ if(na.length){ out.push(`<div><b>${na.map(s=>SHORT[s]||s).join(", ")}</b>: not applicable</div>`); na=[]; } };
+        for(const tr of x.trace){ if(tr.vals==null){ na.push(tr.step); continue; } flush();
+          const vals = tr.teams.map((t,j)=>`${short(t)} <b class="num">${f(tr.vals[j],tr)}</b>`).join(" · ");
+          const res = tr.keep.length===1 ? ` → <span class="pick">${short(tr.keep[0])}</span>` : tr.keep.length<tr.teams.length ? ` → ${tr.keep.map(short).join(", ")} still tied, back to step 1` : ` → no separation`;
+          out.push(`<div><b>${SHORT[tr.step]||tr.step}</b>: ${vals}${res}</div>`); }
+        flush(); return out.join(""); }).join("");
+      return `<tr class="tb-head"><td colspan="4"><div class="tb-trace"><div><b>${o.tied.map(short).join(", ")}</b> tied at ${rl(o.tied[0])}</div>${lines}</div></td></tr>`; })();
+    return `${trace}<tr><td class="num c">${i+1}</td><td class="w">${badge(o.team)}</td><td class="num c">${rl(o.team)}</td><td class="num c">${s.pCCG!=null?Math.round(s.pCCG*100)+"%":"—"}</td></tr>`; }).join("");
+  const tables=ordered.map(x=>`${x.label?`<h3>${x.label} division</h3>`:""}<table class="gstat tb"><thead><tr><th class="c">#</th><th>Team</th><th class="c">Conf</th><th class="c">Title game</th></tr></thead><tbody>${tableFor(x.order)}</tbody></table>`).join("");
+  $("#sheet").innerHTML=`<button class="close" aria-label="Close">×</button>
+    <h2>${conf} tiebreakers</h2>
+    <div class="kv"><span>${rules.verified?`League policy${rules.season?", "+rules.season:""}`:"Standard procedure; the league's published policy was not verified"}</span>${rules.source?`<span><a href="${rules.source}" target="_blank" rel="noopener">source</a></span>`:""}</div>
+    <div class="plain">
+      <h3>${same?"Two or more teams tied":"Two teams tied"}</h3>${steps(rules.two)}
+      ${same?"":`<h3>Three or more teams tied</h3>${steps(rules.multi)}`}
+      <p class="gnote">${rules.note?rules.note+" ":""}When a step seeds part of a multi-team group, the rest start again from step 1. The simulation applies the same procedure to every simulated season's results to pick the title game; its ranking step uses the team rating and its draw is random.</p>
+      <h3>Applied to the standings now</h3>
+      ${tables}
+      <p class="gnote">Ties are broken on results so far; a SportSource or composite step uses the ${MODEL_NAMES[MODEL]} rating, the CFP step the committee ranking when every tied team is ranked, and the scoring margin is computed from scores to date. Title game is the share of simulated seasons in which the team reaches the championship game.</p>
+    </div>`;
+  $("#modal").hidden=false; document.body.style.overflow="hidden"; $("#sheet").scrollTop=0;
+}
+
 
 function renderSeason(r){
   document.querySelectorAll("#seasonView button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===UI.seasonView)));
